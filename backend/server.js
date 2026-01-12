@@ -23,6 +23,7 @@ const corsOptions = {
     // ✅ YOUR FRONTEND DOMAINS (add when deployed)
     "https://your-frontend.onrender.com",
     "https://non-teaching.yourdomain.com",
+    "https://dataentrymla.netlify.app",
     "http://teaching.yourdomain.com", "http://staff.yourdomain.com",
     "https://teaching.yourdomain.com", "https://staff.yourdomain.com",
     "https://availably-nonmathematical-don.ngrok-free.dev",
@@ -225,3 +226,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 });
+
