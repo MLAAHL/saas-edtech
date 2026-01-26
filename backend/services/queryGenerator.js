@@ -21,7 +21,7 @@ function parseDateFromQuery(question) {
     /(\d{2})\/(\d{2})\/(\d{4})/, // DD/MM/YYYY
     /(\d{4})-(\d{2})-(\d{2})/   // YYYY-MM-DD
   ];
-  
+
   for (const pattern of datePatterns) {
     const match = question.match(pattern);
     if (match) {
@@ -34,19 +34,19 @@ function parseDateFromQuery(question) {
       }
     }
   }
-  
+
   // Check for "today"
   if (question.toLowerCase().includes('today')) {
     return new Date().toISOString().split('T')[0];
   }
-  
+
   // Check for "yesterday"
   if (question.toLowerCase().includes('yesterday')) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday.toISOString().split('T')[0];
   }
-  
+
   return null;
 }
 
@@ -57,8 +57,8 @@ function parseDateFromQuery(question) {
 
 function buildStudentAttendanceQuery(studentName, specificDate = null) {
   console.log(`🎯 [Pre-built Query] Student: ${studentName}, Date: ${specificDate || 'all'}`);
-  
-  const dateFilter = specificDate 
+
+  const dateFilter = specificDate
     ? [{ "$regexMatch": { "input": "$date", "regex": `^${specificDate}` } }]
     : [];
 
@@ -75,10 +75,10 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
     {
       "$lookup": {
         "from": "attendance",
-        "let": { 
-          "studentID": "$studentID", 
-          "stream": "$stream", 
-          "semester": "$semester" 
+        "let": {
+          "studentID": "$studentID",
+          "stream": "$stream",
+          "semester": "$semester"
         },
         "pipeline": [
           {
@@ -174,7 +174,7 @@ async function executeQuery(queryInfo) {
 
     switch (operation) {
       case 'find':
-        results = projection 
+        results = projection
           ? await coll.find(query).project(projection).toArray()
           : await coll.find(query).toArray();
         console.log(`✅ [Results] Found ${results.length} documents`);
@@ -188,30 +188,30 @@ async function executeQuery(queryInfo) {
       case 'aggregate':
         results = await coll.aggregate(query).toArray();
         console.log(`✅ [Results] Aggregation returned ${results.length} documents`);
-        
+
         if (results.length === 0 && collection === 'students') {
           const queryStr = JSON.stringify(query);
           const studentNameMatch = queryStr.match(/"name":\s*\{\s*"\$regex"\s*:\s*"([^"]+)"/);
-          
+
           if (studentNameMatch) {
             const studentName = studentNameMatch[1];
             console.log(`⚠️ No attendance data found for "${studentName}", checking if student exists...`);
-            
+
             const studentColl = db.collection('students');
             const studentExists = await studentColl.findOne({
               name: { $regex: studentName, $options: 'i' },
               isActive: true
             });
-            
+
             if (studentExists) {
               console.log(`✅ Student found: ${studentExists.name} (${studentExists.studentID})`);
-              
+
               const attendanceColl = db.collection('attendance');
               const attendanceCount = await attendanceColl.countDocuments({
                 stream: studentExists.stream,
                 semester: studentExists.semester
               });
-              
+
               if (attendanceCount === 0) {
                 throw new Error(`NO_ATTENDANCE_RECORDS:${studentExists.name}:${studentExists.stream}:${studentExists.semester}`);
               } else {
@@ -246,26 +246,338 @@ async function generateMongoQuery(question) {
   console.log(`📝 [Query Generator] Question: ${question}`);
 
   const schemaContext = getSchemaContext();
-  
+
   const now = new Date();
   const currentDate = now.toISOString().split('T')[0];
   const currentDateTime = now.toISOString().replace('T', ' ').substring(0, 19);
-  
+
   // Parse date if present
   const parsedDate = parseDateFromQuery(question);
-  
-  // Quick check for student attendance queries - USE PRE-BUILT TEMPLATE
-  const attendanceMatch = question.toLowerCase().match(/(?:attendance|report).*?(?:of|for)\s+(\w+)|(\w+)(?:'s|s)\s+(?:attendance|report)/i);
+  const lowerQuestion = question.toLowerCase();
+
+  // =========== PRE-BUILT TEMPLATE: LOW ATTENDANCE / DEFAULTERS ===========
+  if (lowerQuestion.match(/low\s*attendance|below\s*75|less\s*than\s*75|defaulter|shortage|poor\s*attendance|<\s*75/i)) {
+    console.log(`🎯 [Quick Match] Low attendance query detected`);
+
+    // Extract stream - look for any 2-4 letter word pattern that could be a stream
+    // Common streams: BCA, BBA, BCOM, MCA, MBA, BDA, BSC, BA, etc.
+    const streamPatterns = lowerQuestion.match(/\b([a-z]{2,5})\b/gi) || [];
+    const knownStreams = ['bca', 'bba', 'bcom', 'mca', 'mba', 'bda', 'bsc', 'ba', 'btech', 'mtech', 'msc', 'ma'];
+    let detectedStream = null;
+
+    for (const word of streamPatterns) {
+      if (knownStreams.includes(word.toLowerCase())) {
+        detectedStream = word.toUpperCase();
+        break;
+      }
+    }
+
+    // Also try direct uppercase match in original question
+    const directStreamMatch = question.match(/\b(BCA|BBA|BCOM|MCA|MBA|BDA|BSC|BA|BTECH|MTECH|MSC|MA)\b/i);
+    if (directStreamMatch) {
+      detectedStream = directStreamMatch[1].toUpperCase();
+    }
+
+    // Extract semester - multiple patterns
+    let detectedSemester = null;
+    const semPatterns = [
+      /sem(?:ester)?\s*(\d)/i,           // sem 6, semester 6
+      /(\d)(?:st|nd|rd|th)?\s*sem/i,     // 6th sem, 6 sem
+      /\bsem(\d)\b/i,                     // sem6
+      /\bsemester\s*(\d)\b/i              // semester 6
+    ];
+
+    for (const pattern of semPatterns) {
+      const match = lowerQuestion.match(pattern);
+      if (match) {
+        detectedSemester = parseInt(match[1]);
+        break;
+      }
+    }
+
+    console.log(`📍 Detected Stream: ${detectedStream || 'ALL'}, Semester: ${detectedSemester || 'ALL'}`);
+
+    const matchFilter = { isActive: true };
+    if (detectedStream) matchFilter.stream = detectedStream;
+    if (detectedSemester) matchFilter.semester = detectedSemester;
+
+    return {
+      collection: "students",
+      operation: "aggregate",
+      query: [
+        { "$match": matchFilter },
+        {
+          "$lookup": {
+            "from": "attendance",
+            "let": { "studentID": "$studentID", "stream": "$stream", "semester": "$semester" },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$and": [
+                      { "$eq": ["$stream", "$$stream"] },
+                      { "$eq": ["$semester", "$$semester"] }
+                    ]
+                  }
+                }
+              },
+              {
+                "$group": {
+                  "_id": null,
+                  "totalClasses": { "$sum": 1 },
+                  "attended": { "$sum": { "$cond": [{ "$in": ["$$studentID", "$studentsPresent"] }, 1, 0] } }
+                }
+              }
+            ],
+            "as": "stats"
+          }
+        },
+        { "$unwind": { "path": "$stats", "preserveNullAndEmptyArrays": true } },
+        {
+          "$addFields": {
+            "attendancePercentage": {
+              "$cond": [
+                { "$gt": [{ "$ifNull": ["$stats.totalClasses", 0] }, 0] },
+                { "$multiply": [{ "$divide": ["$stats.attended", "$stats.totalClasses"] }, 100] },
+                0
+              ]
+            }
+          }
+        },
+        { "$match": { "attendancePercentage": { "$lt": 75 } } },
+        {
+          "$project": {
+            "name": 1, "studentID": 1, "stream": 1, "semester": 1,
+            "attendancePercentage": { "$round": ["$attendancePercentage", 1] },
+            "classesAttended": "$stats.attended",
+            "totalClasses": "$stats.totalClasses"
+          }
+        },
+        { "$sort": { "attendancePercentage": 1 } }
+      ],
+      explanation: `Students with attendance below 75%${detectedStream ? ` in ${detectedStream}` : ''}${detectedSemester ? ` Semester ${detectedSemester}` : ''}`
+    };
+  }
+
+  // =========== PRE-BUILT TEMPLATE: DATE-BASED ATTENDANCE ===========
+  if (parsedDate || lowerQuestion.includes('today') || lowerQuestion.includes('yesterday')) {
+    const dateToUse = parsedDate || (lowerQuestion.includes('yesterday')
+      ? new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      : currentDate);
+
+    if (lowerQuestion.match(/attendance|class|session/i)) {
+      console.log(`🎯 [Quick Match] Date-based attendance: ${dateToUse}`);
+
+      // Extract stream and semester for filtering
+      const streamPatterns = lowerQuestion.match(/\b([a-z]{2,5})\b/gi) || [];
+      const knownStreams = ['bca', 'bba', 'bcom', 'mca', 'mba', 'bda', 'bsc', 'ba', 'btech', 'mtech', 'msc', 'ma'];
+      let detectedStream = null;
+      for (const word of streamPatterns) {
+        if (knownStreams.includes(word.toLowerCase())) {
+          detectedStream = word.toUpperCase();
+          break;
+        }
+      }
+
+      let detectedSemester = null;
+      const semPatterns = [/sem(?:ester)?\s*(\d)/i, /(\d)(?:st|nd|rd|th)?\s*sem/i, /\bsem(\d)\b/i];
+      for (const pattern of semPatterns) {
+        const match = lowerQuestion.match(pattern);
+        if (match) { detectedSemester = parseInt(match[1]); break; }
+      }
+
+      const query = { "date": { "$regex": `^${dateToUse}` } };
+      if (detectedStream) query.stream = detectedStream;
+      if (detectedSemester) query.semester = detectedSemester;
+
+      return {
+        collection: "attendance",
+        operation: "find",
+        query: query,
+        projection: { "subject": 1, "stream": 1, "semester": 1, "teacherName": 1, "presentCount": 1, "absentCount": 1, "totalStudents": 1, "time": 1, "date": 1 },
+        explanation: `Attendance records for ${dateToUse}${detectedStream ? ` in ${detectedStream}` : ''}${detectedSemester ? ` Semester ${detectedSemester}` : ''}`
+      };
+    }
+  }
+
+  // =========== PRE-BUILT TEMPLATE: STUDENT ATTENDANCE REPORT ===========
+  // Catch patterns like: "attendance of X", "report for X", "Arvind's attendance", 
+  // "how many classes has Arvind attended", "classes attended by Arvind"
+  const studentAttendanceRegex = /(?:attendance|report|how\s+many\s+classes|classes(?:\s+attended)?).*?(?:of|for|by|student|has)\s+([^?.]+)|([^?.]+?)(?:'s|s|s')\s+(?:attendance|report|classes)/i;
+  const attendanceMatch = lowerQuestion.match(studentAttendanceRegex);
+
   if (attendanceMatch) {
-    const studentName = attendanceMatch[1] || attendanceMatch[2];
+    let studentName = (attendanceMatch[1] || attendanceMatch[2]).trim();
+    // Clean up suffix "attended" if it was captured
+    studentName = studentName.replace(/\s+attended$/i, '').trim();
+    // Remove common filler words that might be captured at the start
+    studentName = studentName.replace(/^(?:student|has|attended)\s+/i, '').trim();
+
     if (studentName && studentName.length > 2) {
       console.log(`🎯 [Quick Match] Student attendance query for: ${studentName}`);
       return buildStudentAttendanceQuery(studentName, parsedDate);
     }
   }
-  
+
+  // =========== PRE-BUILT TEMPLATE: SUBJECT LISTS ===========
+  if (lowerQuestion.match(/subjects|curriculum|syllabus|papers|classes\s+of/i)) {
+    console.log(`🎯 [Quick Match] Subject list query detected`);
+
+    // Extract stream
+    const streamPatterns = lowerQuestion.match(/\b([a-z]{2,5})\b/gi) || [];
+    const knownStreams = ['bca', 'bba', 'bcom', 'mca', 'mba', 'bda', 'bsc', 'ba', 'btech', 'mtech', 'msc', 'ma'];
+    let detectedStream = null;
+    for (const word of streamPatterns) {
+      if (knownStreams.includes(word.toLowerCase())) {
+        detectedStream = word.toUpperCase();
+        break;
+      }
+    }
+
+    // Extract semester
+    let detectedSemester = null;
+    const semPatterns = [/sem(?:ester)?\s*(\d)/i, /(\d)(?:st|nd|rd|th)?\s*sem/i, /\bsem(\d)\b/i];
+    for (const pattern of semPatterns) {
+      const match = lowerQuestion.match(pattern);
+      if (match) { detectedSemester = parseInt(match[1]); break; }
+    }
+
+    const query = { isActive: true };
+    if (detectedStream) query.stream = detectedStream;
+    if (detectedSemester) query.semester = detectedSemester;
+
+    return {
+      collection: "subjects",
+      operation: "find",
+      query: query,
+      projection: { name: 1, subjectCode: 1, stream: 1, semester: 1, subjectType: 1 },
+      explanation: `Subject list for ${detectedStream || 'all streams'}${detectedSemester ? ` Semester ${detectedSemester}` : ''}`
+    };
+  }
+
+  // =========== PRE-BUILT TEMPLATE: ATTENDANCE SUMMARY ===========
+  if (lowerQuestion.match(/attendance\s+summary|overall\s+attendance|attendance\s+overview|attendance\s+stats/i)) {
+    console.log(`🎯 [Quick Match] Attendance summary query detected`);
+
+    // Extract stream
+    const streamPatterns = lowerQuestion.match(/\b([a-z]{2,5})\b/gi) || [];
+    const knownStreams = ['bca', 'bba', 'bcom', 'mca', 'mba', 'bda', 'bsc', 'ba', 'btech', 'mtech', 'msc', 'ma'];
+    let detectedStream = null;
+    for (const word of streamPatterns) {
+      if (knownStreams.includes(word.toLowerCase())) {
+        detectedStream = word.toUpperCase();
+        break;
+      }
+    }
+
+    // Extract semester
+    let detectedSemester = null;
+    const semPatterns = [/sem(?:ester)?\s*(\d)/i, /(\d)(?:st|nd|rd|th)?\s*sem/i, /\bsem(\d)\b/i];
+    for (const pattern of semPatterns) {
+      const match = lowerQuestion.match(pattern);
+      if (match) { detectedSemester = parseInt(match[1]); break; }
+    }
+
+    // If both stream and semester are detected, show STUDENT + SUBJECT summary
+    if (detectedStream && detectedSemester) {
+      console.log(`🎯 [Template Override] Student+Subject summary for ${detectedStream} Sem ${detectedSemester}`);
+      return {
+        collection: "students",
+        operation: "aggregate",
+        query: [
+          { "$match": { "stream": detectedStream, "semester": detectedSemester, "isActive": true } },
+          {
+            "$lookup": {
+              "from": "attendance",
+              "let": { "studentID": "$studentID", "stream": "$stream", "semester": "$semester" },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$and": [
+                        { "$eq": ["$stream", "$$stream"] },
+                        { "$eq": ["$semester", "$$semester"] }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$group": {
+                    "_id": "$subject",
+                    "totalClasses": { "$sum": 1 },
+                    "attended": { "$sum": { "$cond": [{ "$in": ["$$studentID", "$studentsPresent"] }, 1, 0] } }
+                  }
+                }
+              ],
+              "as": "subjectStats"
+            }
+          },
+          { "$unwind": { "path": "$subjectStats", "preserveNullAndEmptyArrays": false } },
+          {
+            "$addFields": {
+              "attendancePercentage": {
+                "$cond": [
+                  { "$gt": ["$subjectStats.totalClasses", 0] },
+                  { "$multiply": [{ "$divide": ["$subjectStats.attended", "$subjectStats.totalClasses"] }, 100] },
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "$project": {
+              "name": 1,
+              "studentID": 1,
+              "subject": "$subjectStats._id",
+              "attendancePercentage": { "$round": ["$attendancePercentage", 1] },
+              "classesAttended": "$subjectStats.attended",
+              "totalClasses": "$subjectStats.totalClasses",
+              "stream": 1,
+              "semester": 1
+            }
+          },
+          { "$sort": { "studentID": 1, "subject": 1 } }
+        ],
+        explanation: `Detailed student-wise and subject-wise attendance summary for ${detectedStream} Semester ${detectedSemester}`
+      };
+    }
+
+    const matchStage = {};
+    if (detectedStream) matchStage.stream = detectedStream;
+    if (detectedSemester) matchStage.semester = detectedSemester;
+
+    return {
+      collection: "attendance",
+      operation: "aggregate",
+      query: [
+        { "$match": matchStage },
+        {
+          "$group": {
+            "_id": detectedSemester ? "$subject" : "$semester",
+            "totalSessions": { "$sum": 1 },
+            "totalPresent": { "$sum": "$presentCount" },
+            "totalStudents": { "$sum": "$totalStudents" }
+          }
+        },
+        {
+          "$addFields": {
+            "avgPercentage": {
+              "$cond": [
+                { "$gt": ["$totalStudents", 0] },
+                { "$round": [{ "$multiply": [{ "$divide": ["$totalPresent", "$totalStudents"] }, 100] }, 1] },
+                0
+              ]
+            }
+          }
+        },
+        { "$sort": { "_id": 1 } }
+      ],
+      explanation: `${detectedStream || ''} Attendance Summary${detectedSemester ? ` for Semester ${detectedSemester}` : ''}`
+    };
+  }
+
   const dateHint = parsedDate ? `\n\nDETECTED DATE: ${parsedDate} (use this exact format in queries)` : '';
-  
+
   // Simplified prompt for faster response
   const prompt = `${schemaContext}
 
@@ -334,7 +646,7 @@ Generate JSON query:`;
     console.log(`📦 [Gemini] Response Length: ${response.length} chars`);
 
     // Robust JSON extraction
-        let cleaned = response
+    let cleaned = response
       .replace(/```/)
       .replace(/```\s*/g, '')        // FIX: Complete backtick pattern
       .replace(/^[^{]*/, '')         // Remove before first {
@@ -416,7 +728,7 @@ Generate JSON query:`;
 
 function generateNaturalIntro(question, results, collection) {
   const count = Array.isArray(results) ? results.length : (typeof results === 'number' ? results : 1);
-  
+
   // For students
   if (collection === 'students') {
     if (count === 0) {
@@ -430,7 +742,7 @@ function generateNaturalIntro(question, results, collection) {
       return `I found ${count} students in the database${streams.length > 0 ? ` across ${streamText}` : ''}. Here's the complete list with all their information:`;
     }
   }
-  
+
   // For teachers
   if (collection === 'teachers') {
     if (count === 0) {
@@ -444,7 +756,7 @@ function generateNaturalIntro(question, results, collection) {
       return `I found ${count} teachers in the faculty database, collectively teaching ${totalSubjects} subjects across various streams. Here's detailed information about each:`;
     }
   }
-  
+
   // For subjects
   if (collection === 'subjects') {
     if (count === 0) {
@@ -455,7 +767,7 @@ function generateNaturalIntro(question, results, collection) {
       return `I found ${count} subject${count !== 1 ? 's' : ''} in the curriculum${cores > 0 && electives > 0 ? ` (${cores} core and ${electives} elective)` : ''}. Here's the complete breakdown:`;
     }
   }
-  
+
   // For attendance records
   if (collection === 'attendance') {
     if (count === 0) {
@@ -467,12 +779,12 @@ function generateNaturalIntro(question, results, collection) {
       return `I found ${count} attendance session${count !== 1 ? 's' : ''} on record with an average attendance of ${avgPct}%. Here's the detailed breakdown:`;
     }
   }
-  
+
   // For counts
   if (typeof results === 'number') {
     return `I've counted the total number of ${collection} in the database. The count is ${results}. Here's the summary:`;
   }
-  
+
   // Default
   return `I retrieved ${count} record${count !== 1 ? 's' : ''} matching your query. Here are the details:`;
 }
@@ -492,12 +804,66 @@ function formatAsTable(results, collection, question) {
   let table = `${intro}\n\n`;
 
   const firstItem = results[0];
-  
-  // Student table
+
+  // =========== STUDENT + SUBJECT DETAILED SUMMARY TABLE ===========
+  if (firstItem.studentID && firstItem.subject && firstItem.attendancePercentage !== undefined) {
+    table = `Detailed attendance summary for ${firstItem.stream || ''} Semester ${firstItem.semester || ''}, sorted by Student ID:\n\n`;
+    table += `| # | Student ID | Name | Subject | Attended | Total | Att % | Status |\n`;
+    table += `|---|------------|------|---------|----------|-------|-------|--------|\n`;
+
+    results.forEach((row, index) => {
+      const id = (row.studentID || '-').substring(0, 14);
+      const name = (row.name || '-').substring(0, 20);
+      const subject = (row.subject || '-').substring(0, 25);
+      const attended = row.classesAttended !== undefined ? row.classesAttended : 0;
+      const total = row.totalClasses !== undefined ? row.totalClasses : 0;
+      const pct = row.attendancePercentage !== undefined ? row.attendancePercentage.toFixed(1) : '0';
+      const status = parseFloat(pct) >= 75 ? '✓ Good' : '⚠ Low';
+
+      table += `| ${index + 1} | ${id} | ${name} | ${subject} | ${attended} | ${total} | ${pct}% | ${status} |\n`;
+    });
+
+    return table;
+  }
+
+  // =========== LOW ATTENDANCE / DEFAULTERS TABLE ===========
+  if (firstItem.attendancePercentage !== undefined && firstItem.studentID) {
+    table = `I found ${results.length} student${results.length !== 1 ? 's' : ''} with attendance below 75%. Here's the complete list sorted by attendance percentage:\n\n`;
+    table += `| # | Student ID | Name | Stream | Sem | Attendance % | Classes | Status |\n`;
+    table += `|---|------------|------|--------|-----|--------------|---------|--------|\n`;
+
+    results.slice(0, 100).forEach((student, index) => {
+      const id = (student.studentID || '-').substring(0, 14);
+      const name = (student.name || '-').substring(0, 20);
+      const stream = student.stream || '-';
+      const sem = student.semester || '-';
+      const pct = student.attendancePercentage !== undefined ? student.attendancePercentage.toFixed(1) : '0';
+      const classes = student.classesAttended !== undefined && student.totalClasses !== undefined
+        ? `${student.classesAttended}/${student.totalClasses}`
+        : '-';
+      const status = parseFloat(pct) < 50 ? '⚠ Critical' : '⚠ Low';
+
+      table += `| ${index + 1} | ${id} | ${name} | ${stream} | ${sem} | ${pct}% | ${classes} | ${status} |\n`;
+    });
+
+    if (results.length > 100) {
+      table += `\n*+${results.length - 100} more students*\n`;
+    }
+
+    const critical = results.filter(s => s.attendancePercentage < 50).length;
+    const low = results.filter(s => s.attendancePercentage >= 50 && s.attendancePercentage < 75).length;
+
+    table += `\n**Summary:** ${results.length} defaulters total | **Critical (<50%):** ${critical} | **Low (50-75%):** ${low}\n`;
+    table += `\n⚠ These students need immediate attention to meet the 75% attendance requirement.\n`;
+
+    return table;
+  }
+
+  // Student table (regular)
   if (collection === 'students' || (firstItem.studentID && firstItem.name && !firstItem.email)) {
     table += `| # | ID | Name | Stream | Sem | Phone | Lang | Elective | Year |\n`;
     table += `|---|----|----|--------|-----|-------|------|----------|------|\n`;
-    
+
     results.slice(0, 100).forEach((student, index) => {
       const id = (student.studentID || '-').substring(0, 12);
       const name = (student.name || '-').substring(0, 18);
@@ -507,87 +873,117 @@ function formatAsTable(results, collection, question) {
       const lang = (student.languageSubject && student.languageSubject.trim() !== '') ? student.languageSubject.substring(0, 8) : '-';
       const elec = (student.electiveSubject && student.electiveSubject.trim() !== '') ? student.electiveSubject.substring(0, 10) : '-';
       const year = student.academicYear || '-';
-      
+
       table += `| ${index + 1} | ${id} | ${name} | ${stream} | ${sem} | ${phone} | ${lang} | ${elec} | ${year} |\n`;
     });
-    
+
     if (results.length > 100) {
       table += `\n*+${results.length - 100} more students*\n`;
     }
-    
+
     // Accurate summary
     table += `\n**Total Students:** ${results.length}`;
-    
+
     const streamCounts = {};
     results.forEach(s => {
       const stream = s.stream || 'Unknown';
       streamCounts[stream] = (streamCounts[stream] || 0) + 1;
     });
-    
-    table += ` | **Distribution:** ${Object.entries(streamCounts).map(([k,v]) => `${k} (${v})`).join(', ')}\n`;
-    
+
+    table += ` | **Distribution:** ${Object.entries(streamCounts).map(([k, v]) => `${k} (${v})`).join(', ')}\n`;
+
     return table;
   }
-  
+
   // Subject table
   if (collection === 'subjects' || (firstItem.name && firstItem.subjectCode)) {
     table += `| # | Subject | Code | Stream | Sem | Type |\n`;
     table += `|---|---------|------|--------|-----|------|\n`;
-    
+
     results.slice(0, 100).forEach((subject, index) => {
       const name = (subject.name || '-').substring(0, 25);
       const code = (subject.subjectCode || '-').substring(0, 10);
       const stream = subject.stream || '-';
       const sem = subject.semester || '-';
       const type = subject.subjectType === 'CORE' ? 'Core' : subject.subjectType === 'ELECTIVE' ? 'Elec' : '-';
-      
+
       table += `| ${index + 1} | ${name} | ${code} | ${stream} | ${sem} | ${type} |\n`;
     });
-    
+
     if (results.length > 100) {
       table += `\n*+${results.length - 100} more subjects*\n`;
     }
-    
+
     const typeCounts = { CORE: 0, ELECTIVE: 0 };
     results.forEach(s => {
       if (s.subjectType === 'CORE') typeCounts.CORE++;
       else if (s.subjectType === 'ELECTIVE') typeCounts.ELECTIVE++;
     });
-    
+
     table += `\n**Total:** ${results.length} subjects | **Core:** ${typeCounts.CORE} | **Elective:** ${typeCounts.ELECTIVE}\n`;
-    
+
     return table;
   }
-  
+
   // Attendance table
   if (collection === 'attendance' || (firstItem.subject && firstItem.date)) {
-    table += `| # | Subject | Stream | Sem | Date | Time | Att% |\n`;
-    table += `|---|---------|--------|-----|------|------|------|\n`;
-    
+    // =========== ATTENDANCE SUMMARY TABLE (STATS OVERVIEW) ===========
+    if (firstItem.avgPercentage !== undefined && firstItem.totalSessions !== undefined) {
+      const isSemBreakdown = typeof firstItem._id === 'number';
+      table = `### Attendance Overview\n\n`;
+      table += `| # | ${isSemBreakdown ? 'Semester' : 'Subject'} | Sessions | Present | Students | Avg Att% | Status |\n`;
+      table += `|---|----------|----------|---------|----------|----------|--------|\n`;
+
+      results.forEach((stat, index) => {
+        const label = stat._id || '-';
+        const sessions = stat.totalSessions || 0;
+        const present = stat.totalPresent || 0;
+        const total = stat.totalStudents || 0;
+        const pct = stat.avgPercentage !== undefined ? stat.avgPercentage.toFixed(1) : '0';
+        const status = parseFloat(pct) >= 75 ? '✓ Good' : '⚠ Low';
+
+        table += `| ${index + 1} | ${label} | ${sessions} | ${present} | ${total} | ${pct}% | ${status} |\n`;
+      });
+
+      const grandTotalPresent = results.reduce((sum, r) => sum + (r.totalPresent || 0), 0);
+      const grandTotalStudents = results.reduce((sum, r) => sum + (r.totalStudents || 0), 0);
+      const grandTotalSessions = results.reduce((sum, r) => sum + (r.totalSessions || 0), 0);
+      const weightedAvg = grandTotalStudents > 0 ? ((grandTotalPresent / grandTotalStudents) * 100).toFixed(1) : '0';
+
+      table += `\n**Total Over All:** ${grandTotalSessions} sessions | **Overall Presence:** ${grandTotalPresent}/${grandTotalStudents} | **Average:** ${weightedAvg}%\n`;
+
+      return table;
+    }
+
+    // Regular attendance records table
+    table += `| # | Subject | Stream | Sem | Date | Present | Absent | Att% |\n`;
+    table += `|---|---------|--------|-----|------|---------|--------|------|\n`;
+
     results.slice(0, 100).forEach((att, index) => {
       const subject = (att.subject || '-').substring(0, 22);
       const stream = att.stream || '-';
       const sem = att.semester || '-';
-      const date = att.date ? new Date(att.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
-      const time = (att.time || '-').substring(0, 8);
+      const date = att.date ? new Date(att.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-';
+      const present = att.presentCount !== undefined ? att.presentCount : '-';
+      const absent = att.absentCount !== undefined ? att.absentCount : (att.totalStudents - att.presentCount || '-');
       const pct = att.totalStudents > 0 ? ((att.presentCount / att.totalStudents) * 100).toFixed(1) : '0';
-      
-      table += `| ${index + 1} | ${subject} | ${stream} | ${sem} | ${date} | ${time} | ${pct}% |\n`;
+
+      table += `| ${index + 1} | ${subject} | ${stream} | ${sem} | ${date} | ${present} | ${absent} | ${pct}% |\n`;
     });
-    
+
     if (results.length > 100) {
       table += `\n*+${results.length - 100} more records*\n`;
     }
-    
+
     const totalPresent = results.reduce((sum, r) => sum + (r.presentCount || 0), 0);
     const totalStudents = results.reduce((sum, r) => sum + (r.totalStudents || 0), 0);
     const avgPct = totalStudents > 0 ? ((totalPresent / totalStudents) * 100).toFixed(1) : '0';
-    
+
     table += `\n**Total Sessions:** ${results.length} | **Average Attendance:** ${avgPct}% | **Total Present:** ${totalPresent}/${totalStudents}\n`;
-    
+
     return table;
   }
-  
+
   return null;
 }
 
@@ -636,11 +1032,11 @@ async function generateNaturalResponse(question, results, queryInfo) {
 async function generateAIResponse(question, results, queryInfo) {
   const now = new Date();
   const currentDateTime = now.toISOString().replace('T', ' ').substring(0, 19);
-  
-  const resultsPreview = Array.isArray(results) 
+
+  const resultsPreview = Array.isArray(results)
     ? results.slice(0, 10)
     : results;
-  
+
   const prompt = `You are a friendly and accurate college AI assistant. Generate a natural, conversational response with precise information.
 
 CURRENT DATE TIME: ${currentDateTime}
@@ -714,23 +1110,23 @@ function friendlyFormatResults(results, question, collection) {
     }
 
     let formatted = `${intro}\n\n`;
-    
+
     const firstItem = results[0];
-    
+
     if (firstItem.name && firstItem.email) {
       // Teachers - natural language format
       results.slice(0, 10).forEach((teacher, i) => {
         formatted += `### ${i + 1}. ${teacher.name}\n\n`;
         formatted += `**Email:** ${teacher.email}\n`;
-        
+
         if (teacher.phone) {
           formatted += `**Phone:** ${teacher.phone}\n`;
         }
-        
+
         if (teacher.department) {
           formatted += `**Department:** ${teacher.department}\n`;
         }
-        
+
         if (teacher.createdSubjects && teacher.createdSubjects.length > 0) {
           formatted += `\n**Teaching ${teacher.createdSubjects.length} Subject${teacher.createdSubjects.length !== 1 ? 's' : ''}:**\n\n`;
           teacher.createdSubjects.slice(0, 5).forEach((subj) => {
@@ -744,18 +1140,18 @@ function friendlyFormatResults(results, question, collection) {
         } else {
           formatted += `\n**Subjects:** No teaching assignments currently\n`;
         }
-        
+
         formatted += `\n`;
       });
-      
+
       if (results.length > 10) {
         formatted += `\n*Showing first 10 of ${results.length} teachers. +${results.length - 10} more available.*\n`;
       }
     } else {
-      formatted += results.slice(0, 10).map((item, i) => 
+      formatted += results.slice(0, 10).map((item, i) =>
         `${i + 1}. ${JSON.stringify(item).substring(0, 80)}...`
       ).join('\n\n');
-      
+
       if (results.length > 10) {
         formatted += `\n\n*+${results.length - 10} more records available*`;
       }
@@ -778,51 +1174,51 @@ function formatAttendanceReport(data) {
   }
 
   const student = data[0];
-  
+
   // Calculate accurate statistics
   const totalClasses = data.reduce((sum, s) => sum + (s.totalClasses || 0), 0);
   const totalAttended = data.reduce((sum, s) => sum + (s.classesAttended || 0), 0);
   const totalAbsent = totalClasses - totalAttended;
   const overallPct = totalClasses > 0 ? ((totalAttended / totalClasses) * 100).toFixed(1) : '0';
-  
+
   // Accurate natural intro
   let response = `I found the complete attendance report for ${student.studentName} (${student.studentID}). Out of ${totalClasses} total classes, they have attended ${totalAttended} and missed ${totalAbsent}, giving them an overall attendance of ${overallPct}%. Here's the detailed subject-wise breakdown:\n\n`;
-  
+
   // Header
   response += `# Attendance Report → ${student.studentName}\n\n`;
   response += `**Student ID:** ${student.studentID} | **Stream:** ${student.stream} | **Semester:** ${student.semester}\n\n`;
   response += `---\n\n`;
-  
+
   // Accurate Summary
   response += `## Overall Summary\n\n`;
   response += `**Total Classes Held:** ${totalClasses} | **Classes Attended:** ${totalAttended} | **Classes Missed:** ${totalAbsent} | **Overall Percentage:** ${overallPct}%\n\n`;
-  
+
   // Subject-wise breakdown
   response += `## Subject-wise Breakdown\n\n`;
   response += `| Subject | Attended / Total | Percentage | Status |\n`;
   response += `|---------|------------------|------------|--------|\n`;
-  
+
   data.forEach(subject => {
     const pct = (subject.attendancePercentage || 0).toFixed(1);
     const status = pct >= 75 ? '✓ Good' : '⚠ Low';
     const subj = (subject.subject || '').substring(0, 30);
     response += `| ${subj} | ${subject.classesAttended} / ${subject.totalClasses} | ${pct}% | ${status} |\n`;
   });
-  
+
   response += `\n\n`;
-  
+
   // Accurate shortage analysis
   const shortages = data.filter(s => (s.attendancePercentage || 0) < 75);
-  
+
   if (shortages.length > 0) {
     response += `## ⚠ Attendance Alert\n\n`;
     response += `${shortages.length} subject${shortages.length !== 1 ? 's' : ''} ${shortages.length !== 1 ? 'are' : 'is'} below the 75% attendance requirement:\n\n`;
-    
+
     shortages.forEach(s => {
       const needed = Math.max(0, Math.ceil((75 * s.totalClasses - 100 * s.classesAttended) / 25));
       const pct = s.attendancePercentage.toFixed(1);
       const absent = s.totalClasses - s.classesAttended;
-      
+
       response += `**${s.subject}**\n`;
       response += `• Current Attendance: ${pct}% (${s.classesAttended} out of ${s.totalClasses} classes)\n`;
       response += `• Classes Missed: ${absent}\n`;
@@ -832,7 +1228,7 @@ function formatAttendanceReport(data) {
   } else if (totalClasses > 0) {
     response += `## ✓ Excellent Standing\n\n`;
     response += `All ${data.length} subjects have attendance ≥ 75%. Great work!\n\n`;
-    
+
     response += `**Subject Details:**\n\n`;
     data.forEach(s => {
       const pct = s.attendancePercentage.toFixed(1);
@@ -840,9 +1236,9 @@ function formatAttendanceReport(data) {
       response += `• **${s.subject}:** ${pct}% (${s.classesAttended}/${s.totalClasses}) - ${margin}% above requirement\n`;
     });
   }
-  
+
   response += `\n\n\n\n`;
-  
+
   return response;
 }
 
@@ -856,7 +1252,7 @@ function getCurrentDateTime() {
   return {
     date: now.toISOString().split('T')[0],
     dateTime: now.toISOString().replace('T', ' ').substring(0, 19),
-    formatted: now.toLocaleString('en-US', { 
+    formatted: now.toLocaleString('en-US', {
       timeZone: 'UTC',
       year: 'numeric',
       month: '2-digit',
@@ -876,39 +1272,39 @@ function getCurrentDateTime() {
 
 async function handleLLMChat(message, userId = 'anonymous') {
   const startTime = Date.now();
-  
+
   console.log(`\n${'█'.repeat(70)}`);
   console.log(`█ 🚀 LLM CHAT REQUEST - ${new Date().toISOString()}`);
   console.log(`█ User: ${userId}`);
   console.log(`█ Message: "${message}"`);
   console.log(`${'█'.repeat(70)}\n`);
-  
+
   try {
     // Step 1: Generate MongoDB query
     const queryInfo = await generateMongoQuery(message);
-    
+
     // Step 2: Execute query
     const results = await executeQuery(queryInfo);
-    
+
     // Step 3: Check if it's attendance data - use special formatter
     let response;
-    if (queryInfo.collection === 'students' && 
-        queryInfo.operation === 'aggregate' && 
-        Array.isArray(results) && 
-        results.length > 0 && 
-        results[0].attendancePercentage) {
+    if (queryInfo.collection === 'students' &&
+      queryInfo.operation === 'aggregate' &&
+      Array.isArray(results) &&
+      results.length > 0 &&
+      results[0].attendancePercentage) {
       response = formatAttendanceReport(results);
     } else {
       // Step 3: Generate natural response
       response = await generateNaturalResponse(message, results, queryInfo);
     }
-    
+
     const duration = Date.now() - startTime;
-    
+
     console.log(`${'█'.repeat(70)}`);
     console.log(`█ ✅ CHAT COMPLETED - ${duration}ms`);
     console.log(`${'█'.repeat(70)}\n`);
-    
+
     return {
       success: true,
       response,
@@ -921,18 +1317,18 @@ async function handleLLMChat(message, userId = 'anonymous') {
         userId
       }
     };
-    
+
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     console.log(`${'█'.repeat(70)}`);
     console.log(`█ ❌ CHAT FAILED - ${duration}ms`);
     console.log(`█ Error: ${error.message}`);
     console.log(`${'█'.repeat(70)}\n`);
-    
+
     // Parse error message for specific cases
     const errorMsg = error.message;
-    
+
     if (errorMsg.startsWith('STUDENT_NOT_FOUND:')) {
       const studentName = errorMsg.split(':')[1];
       return {
@@ -943,7 +1339,7 @@ async function handleLLMChat(message, userId = 'anonymous') {
         userId
       };
     }
-    
+
     if (errorMsg.startsWith('NO_ATTENDANCE_RECORDS:')) {
       const parts = errorMsg.split(':');
       const studentName = parts[1];
@@ -957,7 +1353,7 @@ async function handleLLMChat(message, userId = 'anonymous') {
         userId
       };
     }
-    
+
     if (errorMsg.startsWith('STUDENT_EXISTS_NO_ATTENDANCE:')) {
       const parts = errorMsg.split(':');
       const studentName = parts[1];
@@ -972,7 +1368,7 @@ async function handleLLMChat(message, userId = 'anonymous') {
         userId
       };
     }
-    
+
     return {
       success: false,
       error: error.message,
