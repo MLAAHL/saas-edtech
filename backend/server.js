@@ -3,38 +3,121 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const compression = require("compression");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 require('./config/firebase-admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // ============================================================================
-// ✅ CORS - PERFECT FOR SEPARATE FRONTEND
+// SECURITY MIDDLEWARE
+// ============================================================================
+
+// Helmet - Security Headers (XSS, Clickjacking, MIME sniffing protection)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
+
+// Rate Limiting - Prevent DoS attacks
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 100 : 1000, // 100 requests per 15 min in production
+  message: {
+    success: false,
+    error: 'Too many requests. Please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict rate limit for sensitive operations
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: isProduction ? 20 : 100, // 20 requests per hour for sensitive ops
+  message: {
+    success: false,
+    error: 'Rate limit exceeded for this operation.',
+    retryAfter: '1 hour'
+  }
+});
+
+// AI/Chatbot specific limiter (Gemini API costs money)
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: isProduction ? 10 : 50, // 10 requests per minute
+  message: {
+    success: false,
+    error: 'AI rate limit exceeded. Please wait.',
+    retryAfter: '1 minute'
+  }
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/chatbot', aiLimiter);
+app.use('/api/ai-assistant', aiLimiter);
+app.use('/api/students/bulk/delete', strictLimiter);
+app.use('/api/promotion', strictLimiter);
+
+// ============================================================================
+// CORS CONFIGURATION
 // ============================================================================
 
 const corsOptions = {
-  origin: [
-    "https://saas-edtech.onrender.com",           // Backend itself
-    "http://localhost:3000", "http://localhost:5500", "http://localhost:5501",
-    "http://localhost:5502", "http://localhost:8001", "http://localhost:8002",
-    "http://127.0.0.1:3000", "http://127.0.0.1:5500", "http://127.0.0.1:5501", 
-    "http://127.0.0.1:5502", "http://127.0.0.1:8001", "http://127.0.0.1:8002",
-    // ✅ YOUR FRONTEND DOMAINS (add when deployed)
-    "https://your-frontend.onrender.com",
-    "https://non-teaching.yourdomain.com",
-    "https://dataentrymla.netlify.app",
-    "http://teaching.yourdomain.com", "http://staff.yourdomain.com",
-    "https://teaching.yourdomain.com", "https://staff.yourdomain.com",
-    "https://availably-nonmathematical-don.ngrok-free.dev",
-    /^https?:\/\/.*\.ngrok-free\.(app|dev|io)$/,
-    /^https?:\/\/.*\.onrender\.com$/,  // All Render apps
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.) in development
+    if (!origin && !isProduction) {
+      return callback(null, true);
+    }
+
+    const allowedOrigins = [
+      // Local development
+      "http://localhost:5000",
+      "http://localhost:5500",
+      "http://localhost:5501",
+      "http://localhost:5502",
+      "http://localhost:8001",
+      "http://localhost:8002",
+      "http://127.0.0.1:5000",
+      "http://127.0.0.1:5500",
+      "http://127.0.0.1:5501",
+      "http://127.0.0.1:5502",
+      "http://127.0.0.1:8001",
+      "http://127.0.0.1:8002",
+      // Production domains - UPDATE THESE WITH YOUR ACTUAL DOMAINS
+      "https://your-production-domain.com",
+      "https://teaching.yourdomain.com",
+      "https://staff.yourdomain.com",
+    ];
+
+    // Add any custom allowed origins from environment
+    if (process.env.ALLOWED_ORIGINS) {
+      const customOrigins = process.env.ALLOWED_ORIGINS.split(',');
+      allowedOrigins.push(...customOrigins);
+    }
+
+    if (allowedOrigins.includes(origin) || !isProduction) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
-    "Content-Type", "Authorization", "Cache-Control", "Pragma", 
-    "Expires", "Accept", "X-Requested-With"
+    "Content-Type",
+    "Authorization",
+    "Cache-Control",
+    "Pragma",
+    "Expires",
+    "Accept",
+    "X-Requested-With"
   ],
+  exposedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
   optionsSuccessStatus: 200,
   preflightContinue: false
@@ -44,16 +127,15 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // ============================================================================
-// RENDER PRODUCTION MIDDLEWARE
+// MIDDLEWARE
 // ============================================================================
 
-app.set('trust proxy', 1);  // Essential for Render
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ============================================================================
-// MONGODB + MIDDLEWARE (unchanged)
+// MONGODB CONNECTION
 // ============================================================================
 
 mongoose
@@ -72,6 +154,7 @@ mongoose
     process.exit(1);
   });
 
+// Database middleware
 app.use((req, res, next) => {
   if (!req.app.locals.db && mongoose.connection.db) {
     req.app.locals.db = mongoose.connection.db;
@@ -80,82 +163,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============================================================================
+// REQUEST LOGGER
+// ============================================================================
+
 app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.path} | Origin: ${req.get('origin') || 'direct'}`);
+  console.log(`📥 ${req.method} ${req.path}`);
   next();
 });
 
 // ============================================================================
-// API DOCUMENTATION LANDING PAGE
+// LOAD ROUTE MODULES
 // ============================================================================
 
-app.get('/', (req, res) => {
-  res.json({
-    message: "🚀 Smart Attendance LMS API - LIVE ON RENDER",
-    apiBase: "https://saas-edtech.onrender.com/api",
-    frontendApi: "https://saas-edtech.onrender.com/api", 
-    documentation: {
-      health: "/api/health",
-      students: "/api/students",
-      dashboard: "/api/dashboard/stats",
-      config: "/api/config/app"
-    },
-    status: "production-ready"
-  });
-});
-
-// ============================================================================
-// YOUR EXISTING ENDPOINTS (ENHANCED)
-// ============================================================================
-
-app.get("/api/config/cloudinary", (req, res) => {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
-  if (!cloudName || !uploadPreset) {
-    return res.status(500).json({ success: false, error: 'Cloudinary configuration not available' });
-  }
-  res.json({ success: true, config: { cloudName, uploadPreset } });
-});
-
-app.get("/api/config/app", (req, res) => {
-  res.json({
-    success: true,
-    config: {
-      appName: 'Smart Attendance',
-      version: '1.0.0',
-      environment: process.env.NODE_ENV || 'production',
-      apiBase: 'https://saas-edtech.onrender.com/api',  // ✅ For your frontend
-      features: {
-        cloudinaryEnabled: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_UPLOAD_PRESET),
-        aiAssistantEnabled: !!process.env.GEMINI_API_KEY,
-        whatsappEnabled: !!(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN)
-      }
-    }
-  });
-});
-
-app.get("/health", (req, res) => {
-  res.json({
-    status: "OK - PRODUCTION",
-    url: "https://saas-edtech.onrender.com",
-    frontendApiBase: "https://saas-edtech.onrender.com/api",
-    timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
-  });
-});
-
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "Backend LIVE on Render ✅",
-    apiUrl: "https://saas-edtech.onrender.com/api",
-    frontendConfig: "Use apiBase: 'https://saas-edtech.onrender.com/api'",
-    timestamp: new Date().toISOString(),
-    database: req.db ? "Connected" : "Disconnected"
-  });
-});
-
-// Load your routes (unchanged)
 const teacherRoutes = require("./routes/teacherRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const studentsRoutes = require("./routes/students");
@@ -167,55 +187,152 @@ const aiAssistantRouter = require("./routes/ai-assistant");
 const chatbotRoutes = require("./routes/chatbot");
 const absenceNotificationRoutes = require("./routes/absenceNotificationRoutes");
 
+// ============================================================================
+// STANDALONE API ENDPOINTS
+// ============================================================================
+
+// Cloudinary config
+app.get("/api/config/cloudinary", (req, res) => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    return res.status(500).json({
+      success: false,
+      error: 'Cloudinary configuration not available'
+    });
+  }
+
+  res.json({
+    success: true,
+    config: { cloudName, uploadPreset }
+  });
+});
+
+// App config
+app.get("/api/config/app", (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      appName: 'Smart Attendance',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      features: {
+        cloudinaryEnabled: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_UPLOAD_PRESET),
+        aiAssistantEnabled: !!process.env.GEMINI_API_KEY,
+        whatsappEnabled: !!(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN)
+      }
+    }
+  });
+});
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
+    database: mongoose.connection.db?.databaseName,
+    cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? "Configured" : "Not configured",
+    whatsapp: {
+      configured: !!(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN),
+      collegeName: process.env.COLLEGE_NAME || 'MLA ACADEMY',
+      collegePhone: process.env.COLLEGE_PHONE || '+91-1234567890',
+      collegeEmail: process.env.COLLEGE_EMAIL || 'office@mlaacademy.edu'
+    }
+  });
+});
+
+// API health check
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+    timestamp: new Date().toISOString(),
+    database: req.db ? "Connected" : "Disconnected"
+  });
+});
+
+// ============================================================================
+// REGISTER API ROUTES (Order Matters!)
+// ============================================================================
+
+// Specific routes first
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/students", studentsRoutes);
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-assistant", aiAssistantRouter);
 app.use("/api/chatbot", chatbotRoutes);
+
+// ✅ PROMOTION ROUTES - BEFORE ATTENDANCE (Critical!)
 app.use("/api", promotionRoutes);
+
+// General routes last
 app.use("/api", attendanceRoutes);
 app.use("/api", absenceNotificationRoutes);
 app.use("/api", viewAttendanceRoutes);
 
-// Error handlers (unchanged)
+// ============================================================================
+// ERROR HANDLERS (Must be LAST!)
+// ============================================================================
+
+// 404 handler
 app.use('/api/*', (req, res) => {
+  console.log('⚠️ 404 - API endpoint not found:', req.originalUrl);
   res.status(404).json({
     success: false,
     error: 'API endpoint not found',
-    baseUrl: 'https://saas-edtech.onrender.com/api'
+    path: req.originalUrl,
+    method: req.method
   });
 });
 
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('❌ Server error:', err);
   res.status(err.status || 500).json({
     success: false,
-    error: err.message || 'Internal server error'
+    error: err.message || 'Internal server error',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
-// Render production server
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log('\n🚀 SMART ATTENDANCE API - RENDER LIVE');
-  console.log('='.repeat(60));
-  console.log('🌐 API: https://saas-edtech.onrender.com/api');
-  console.log('📱 Frontend uses: https://saas-edtech.onrender.com/api');
-  console.log('✅ CORS allows all localhost + Render + ngrok');
-  console.log('='.repeat(60));
+// ============================================================================
+// START SERVER
+// ============================================================================
+
+app.listen(PORT, () => {
+  console.log('\n' + '='.repeat(70));
+  console.log('🚀 SMART ATTENDANCE LMS - BACKEND SERVER');
+  console.log('='.repeat(70));
+  console.log(`📡 Server:              http://localhost:${PORT}`);
+  console.log(`🏥 Health Check:        http://localhost:${PORT}/health`);
+  console.log(`📊 Dashboard:           http://localhost:${PORT}/api/dashboard/stats`);
+  console.log(`👥 Students:            http://localhost:${PORT}/api/students`);
+  console.log(`📚 Streams:             http://localhost:${PORT}/api/streams`);
+  console.log(`🎓 Promotion:           http://localhost:${PORT}/api/simple-promotion-preview/BCA`);
+  console.log(`👨‍🏫 Teacher:             http://localhost:${PORT}/api/teacher`);
+  console.log('='.repeat(70));
+  console.log('✅ All routes registered\n');
 });
 
-// Graceful shutdown (unchanged)
+// ============================================================================
+// GRACEFUL SHUTDOWN
+// ============================================================================
+
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down...');
   await mongoose.connection.close();
-  server.close(() => process.exit(0));
+  console.log('✅ MongoDB closed');
+  process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\n🛑 SIGTERM received...');
   await mongoose.connection.close();
-  server.close(() => process.exit(0));
+  console.log('✅ MongoDB closed');
+  process.exit(0);
 });
 
 process.on('uncaughtException', (error) => {
@@ -225,5 +342,4 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
-});
-
+}); 
