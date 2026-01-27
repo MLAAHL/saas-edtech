@@ -152,10 +152,15 @@ test-teachers.js
 test.js
 ultimate-reset.js
 index_backup.html
-
 # Security & Credentials
 serviceAccountKey.json
 config/serviceAccountKey.json
 .env
 .env.local
 .env.production
+
+# Firebase credentials (ALL locations) ← ADD THESE
+**/serviceAccountKey.json
+**/config/serviceAccountKey.json
+**/firebase-adminsdk*.json
+.DS_Store
