@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard - Smart Attendance</title>
+  <link rel="icon" type="image/png" href="logo2.png" />
+  <script src="js/config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.4);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      --primary-color: #6366F1;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #F1F5F9;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      color: var(--text-primary);
+    }
+
+    /* ========== GLASS SIDEBAR ========== */
+    .sidebar {
+      width: 72px;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid var(--glass-border);
+      flex-direction: column;
+      padding: 20px 0;
+      display: flex;
+      flex-shrink: 0;
+      z-index: 1000;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .sidebar:hover {
+      width: 240px;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      margin-bottom: 24px;
+      padding-left: 20px;
+      transition: padding 0.35s ease;
+    }
+
+    .sidebar:hover .logo-section {
+      padding-left: 20px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      opacity: 0;
+      margin-left: 12px;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .brand-name {
+      opacity: 1;
+    }
+
+    .nav-menu {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      margin: 0 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.25s ease;
+      overflow: hidden;
+    }
+
+    .nav-item .material-symbols-rounded {
+      font-size: 22px;
+      width: 52px;
+      min-width: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.25s ease;
+    }
+
+    .nav-item span:not(.material-symbols-rounded) {
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .nav-item span:not(.material-symbols-rounded) {
+      opacity: 1;
+    }
+
+    .nav-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: #0F172A;
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    }
+
+    .nav-item.active .material-symbols-rounded {
+      color: white;
+    }
+
+    .nav-item.active:hover {
+      background: #1E293B;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 10px 8px;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.06);
+      color: #EF4444;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.25s ease;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .logout-btn .material-symbols-rounded {
+      font-size: 22px;
+      width: 52px;
+      min-width: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logout-btn span:not(.material-symbols-rounded) {
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .logout-btn span:not(.material-symbols-rounded) {
+      opacity: 1;
+    }
+
+    /* ========== MAIN CONTENT ========== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ========== HEADER ========== */
+    .header {
+      background: transparent;
+      padding: 16px 12px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-title h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    .header-user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 12px 4px 4px;
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: 40px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .header-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #0F172A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ========== CONTENT AREA ========== */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 12px 24px;
+    }
+
+    /* ========== GLASS CARDS ========== */
+    .stat-card,
+    .chart-card,
+    .students-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--glass-shadow);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .stat-card:hover,
+    .chart-card:hover,
+    .students-card:hover {
+      transform: translateY(-4px);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-icon.blue {
+      background: rgba(99, 102, 241, 0.15);
+      color: #6366F1;
+    }
+
+    .stat-icon.green {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+    }
+
+    .stat-icon.orange {
+      background: rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+    }
+
+    .stat-icon.purple {
+      background: rgba(139, 92, 246, 0.15);
+      color: #8B5CF6;
+    }
+
+    .stat-trend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .stat-title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .time-filter {
+      display: flex;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 4px;
+      border-radius: 50px;
+      backdrop-filter: blur(10px);
+    }
+
+    .time-btn {
+      padding: 6px 16px;
+      border: none;
+      background: transparent;
+      border-radius: 50px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .time-btn.active {
+      background: rgba(255, 255, 255, 0.9);
+      color: #0F172A;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .time-btn:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.3);
+      color: var(--text-primary);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .student-item,
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      margin-bottom: 12px;
+      transition: all 0.3s;
+    }
+
+    .student-item:hover,
+    .activity-item:hover {
+      background: rgba(255, 255, 255, 0.4);
+      transform: translateX(8px);
+    }
+
+    .student-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: #0F172A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: white;
+    }
+
+    .student-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .activity-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .content-area::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .content-area::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo-section">
+      <div class="logo">
+        <img src="logo2.png" alt="Logo">
+      </div>
+      <div class="brand-name">Smart Attendance</div>
+    </div>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-item active">
+        <span class="material-symbols-rounded">dashboard</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="students.html" class="nav-item">
+        <span class="material-symbols-rounded">group</span>
+        <span>Students</span>
+      </a>
+      <a href="report.html" class="nav-item">
+        <span class="material-symbols-rounded">description</span>
+        <span>Reports</span>
+      </a>
+      <a href="promotion.html" class="nav-item">
+        <span class="material-symbols-rounded">trending_up</span>
+        <span>Promote</span>
+      </a>
+      <a href="ai-assistant.html" class="nav-item">
+        <span class="material-symbols-rounded">auto_awesome</span>
+        <span>AI Assistant</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" id="logoutBtn">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Log Out</span>
+      </button>
+    </div>
+  </aside>
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <header class="header">
+      <div class="page-title">
+        <h1 id="welcomeText">Welcome back, <span id="welcomeName">Admin</span></h1>
+        <p id="currentDate">Friday, October 25, 2025</p>
+      </div>
+      <div class="header-actions">
+        <div class="header-user-profile">
+          <div class="header-avatar" id="headerAvatar">AD</div>
+          <div class="header-user-info">
+            <div class="header-user-name" id="headerUserFullName">Admin User</div>
+            <div class="header-user-email" id="headerUserEmail">admin@college.edu</div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="content-area">
+
+      <!-- STATS CARDS -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon blue"><span class="material-symbols-rounded">group</span></div>
+            <div class="stat-trend" id="studentsTrend"></div>
+          </div>
+          <div class="stat-title">Total Students</div>
+          <div class="stat-value" id="totalStudents">-</div>
+          <div class="stat-subtitle" id="studentsSubtitle">Loading...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon green"><span class="material-symbols-rounded">lan</span></div>
+            <div class="stat-trend" id="streamsTrend"></div>
+          </div>
+          <div class="stat-title">Active Streams</div>
+          <div class="stat-value" id="totalStreams">-</div>
+          <div class="stat-subtitle" id="streamsSubtitle">Loading...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon orange"><span class="material-symbols-rounded">menu_book</span></div>
+            <div class="stat-trend" id="subjectsTrend"></div>
+          </div>
+          <div class="stat-title">Total Subjects</div>
+          <div class="stat-value" id="totalSubjects">-</div>
+          <div class="stat-subtitle" id="subjectsSubtitle">Loading...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon purple"><span class="material-symbols-rounded">check_circle</span></div>
+            <div class="stat-trend" id="attendanceTrend"></div>
+          </div>
+          <div class="stat-title">Attendance Rate</div>
+          <div class="stat-value"><span id="attendanceRate">-</span></div>
+          <div class="stat-subtitle" id="attendanceSubtitle">Loading...</div>
+        </div>
+      </div>
+      <!-- CHARTS -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Attendance Trend</div>
+              <div class="card-subtitle">Overview of student attendance</div>
+            </div>
+            <div class="time-filter">
+              <button class="time-btn">Week</button>
+              <button class="time-btn active">Month</button>
+              <button class="time-btn">Year</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="attendanceChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Stream Distribution</div>
+              <div class="card-subtitle">Student enrollment by stream</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="streamChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- TODAY'S OVERVIEW & INSIGHTS -->
+      <div class="analytics-grid">
+        <!-- Today's Attendance Overview -->
+        <div class="students-card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-rounded"
+                style="font-size: 18px; vertical-align: middle; margin-right: 6px; color: #6366F1;">event</span>Today's
+              Attendance</div>
+            <div id="todayDate" style="font-size: 11px; color: #94A3B8;"></div>
+          </div>
+          <div id="todayOverview" style="padding: 10px 0;">
+            <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+              <div
+                style="flex: 1; background: linear-gradient(135deg, #ECFDF5, #D1FAE5); padding: 16px; border-radius: 14px; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #059669;" id="todayPresent">-</div>
+                <div style="font-size: 11px; color: #10B981; font-weight: 600; text-transform: uppercase;">Present</div>
+              </div>
+              <div
+                style="flex: 1; background: linear-gradient(135deg, #FEF2F2, #FECACA); padding: 16px; border-radius: 14px; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #DC2626;" id="todayAbsent">-</div>
+                <div style="font-size: 11px; color: #EF4444; font-weight: 600; text-transform: uppercase;">Absent</div>
+              </div>
+            </div>
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; padding: 12px 16px; border-radius: 12px;">
+              <div>
+                <div style="font-size: 12px; color: #64748B;">Today's Rate</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1E293B;" id="todayRate">-%</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 12px; color: #64748B;">Classes Marked</div>
+                <div style="font-size: 20px; font-weight: 700; color: #6366F1;" id="classesMarked">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Alerts & Insights -->
+        <div class="students-card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-rounded"
+                style="font-size: 18px; vertical-align: middle; margin-right: 6px; color: #F59E0B;">notifications_active</span>Alerts
+              & Insights</div>
+          </div>
+          <div id="alertsContainer" style="padding: 10px 0;">
+            <p style="color:#94A3B8;text-align:center;padding:20px;font-size:12px;">Loading alerts...</p>
+          </div>
+        </div>
+      </div>
+      <!-- TOP PERFORMERS & WEEKLY COMPARISON -->
+      <div class="analytics-grid">
+        <!-- Top Performing Streams -->
+        <div class="students-card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-rounded"
+                style="font-size: 18px; vertical-align: middle; margin-right: 6px; color: #10B981;">trophy</span>Top
+              Performing Streams</div>
+            <div style="font-size: 11px; color: #94A3B8;">This Month</div>
+          </div>
+          <div id="topPerformers" style="padding: 10px 0;">
+            <p style="color:#94A3B8;text-align:center;padding:20px;font-size:12px;">Loading...</p>
+          </div>
+        </div>
+        <!-- Weekly Comparison -->
+        <div class="students-card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-rounded"
+                style="font-size: 18px; vertical-align: middle; margin-right: 6px; color: #8B5CF6;">bar_chart</span>Weekly
+              Comparison</div>
+          </div>
+          <div id="weeklyComparison" style="padding: 16px 0;">
+            <div style="display: flex; gap: 16px;">
+              <div style="flex: 1; text-align: center; padding: 16px; background: #F8FAFC; border-radius: 14px;">
+                <div style="font-size: 11px; color: #64748B; margin-bottom: 8px; text-transform: uppercase;">This Week
+                </div>
+                <div style="font-size: 32px; font-weight: 700; color: #6366F1;" id="thisWeekRate">-%</div>
+                <div style="font-size: 11px; color: #94A3B8;" id="thisWeekSessions">- sessions</div>
+              </div>
+              <div style="flex: 1; text-align: center; padding: 16px; background: #F8FAFC; border-radius: 14px;">
+                <div style="font-size: 11px; color: #64748B; margin-bottom: 8px; text-transform: uppercase;">Last Week
+                </div>
+                <div style="font-size: 32px; font-weight: 700; color: #94A3B8;" id="lastWeekRate">-%</div>
+                <div style="font-size: 11px; color: #94A3B8;" id="lastWeekSessions">- sessions</div>
+              </div>
+            </div>
+            <div id="weeklyTrendBadge"
+              style="margin-top: 16px; text-align: center; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600;">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Firebase Auth Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+    // ✅ API Base URL - Use localhost for development, remote for production
+    // API_BASE_URL is set in js/config.js via window.APP_CONFIG
+    const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+    console.log('🌐 Using API:', API_BASE_URL);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+    // Update current date
+    function updateCurrentDate() {
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const today = new Date();
+      const dateElement = document.getElementById('currentDate');
+      if (dateElement) {
+        dateElement.textContent = today.toLocaleDateString('en-US', options);
+      }
+    }
+    updateCurrentDate();
+    async function fetchTeacherProfile(email) {
+      try {
+        console.log('👤 Fetching teacher profile for:', email);
+        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        if (!response.ok) {
+          console.warn(`⚠️ Teacher profile fetch failed: ${response.status}`);
+          return null;
+        }
+        const data = await response.json();
+        if (data.success && data.teacher) {
+          console.log('✅ Teacher profile loaded:', data.teacher.name);
+          return data.teacher;
+        }
+        console.warn('⚠️ Teacher profile not found in response');
+        return null;
+      } catch (error) {
+        console.error('❌ Error fetching teacher profile:', error);
+        return null;
+      }
+    }
+    function getInitials(name, fallback = "IT") {
+      if (!name || typeof name !== "string") return fallback;
+      const parts = name.trim().split(" ").filter(Boolean);
+      if (parts.length === 0) return fallback;
+      return parts.map(n => n[0]).join("").substring(0, 2).toUpperCase();
+    }
+    function updateUserInfo(displayName, email) {
+      console.log('🔄 Updating user info:', { displayName, email });
+      const fullNameEl = document.getElementById('headerUserFullName');
+      const emailEl = document.getElementById('headerUserEmail');
+      const avatarEl = document.getElementById('headerAvatar');
+      const welcomeNameEl = document.getElementById('welcomeName');
+
+      if (fullNameEl) fullNameEl.textContent = displayName;
+      if (emailEl) emailEl.textContent = email;
+      if (welcomeNameEl) welcomeNameEl.textContent = displayName.split(' ')[0];
+
+      const initials = getInitials(displayName);
+      if (avatarEl) avatarEl.textContent = initials;
+      console.log('✅ User info updated');
+    }
+    // Logout handler
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.onclick = async function () {
+        try {
+          console.log('🚪 Logging out...');
+          await signOut(auth);
+          localStorage.clear();
+          sessionStorage.clear();
+          console.log('✅ Logout successful');
+          window.location.replace("index.html");
+        } catch (error) {
+          console.error('❌ Logout error:', error);
+          // Force redirect anywa
+          window.location.replace("index.html");
+        }
+      };
+    }
+    // Auth state observer
+    onAuthStateChanged(auth, async (user) => {
+      console.log('🔍 Auth state changed:', user ? user.email : 'No user');
+      if (user && user.email) {
+        console.log('✅ User authenticated:', user.email);
+        // Generate display name from email
+        let displayName = user.displayName ||
+          user.email.split('@')[0]
+            .replace(/[._]/g, ' ')
+            .split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+        // Try to fetch teacher profile
+        const profile = await fetchTeacherProfile(user.email);
+        if (profile && profile.name) {
+          displayName = profile.name;
+        }
+        updateUserInfo(displayName, user.email);
+        // Wait for window to fully load, then load dashboard data
+        if (document.readyState === 'complete') {
+          console.log('📊 Loading dashboard data...');
+          if (typeof loadDashboardData === 'function') {
+            loadDashboardData();
+          } else {
+            // Retry after a short delay if function not yet available
+            setTimeout(() => {
+              if (typeof loadDashboardData === 'function') loadDashboardData();
+            }, 500);
+          }
+        } else {
+          window.addEventListener('load', () => {
+            console.log('📊 Loading dashboard data after window load...');
+            if (typeof loadDashboardData === 'function') loadDashboardData();
+          });
+        }
+      } else {
+        console.warn('⚠️ No user found, redirecting to login...');
+        window.location.href = 'index.html';
+      }
+    });
+  </script>
+  <!-- Dashboard Core Script -->
+  <script>
+    // Reference global API URL (set by Firebase module script)
+    const dashboardApiUrl = window.APP_CONFIG.API_BASE_URL;
+    console.log('📊 Dashboard API URL:', dashboardApiUrl);
+    let attendanceChart, streamChart;
+    function setVal(id, val) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = val ?? "-";
+      }
+    }
+    function getInitials(name, fallback = "NA") {
+      if (!name || typeof name !== "string") return fallback;
+      const parts = name.trim().split(" ").filter(Boolean);
+      if (parts.length === 0) return fallback;
+      return parts.map(w => w[0]).join("").substring(0, 2).toUpperCase();
+    }
+    // Helper to set trend badge with real data
+    function setTrend(elementId, value, isPositiveGood = true) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      if (value === null || value === undefined) {
+        el.innerHTML = '';
+        el.className = 'stat-trend';
+        return;
+      }
+      const isUp = value >= 0;
+      const isGood = isPositiveGood ? isUp : !isUp;
+      const icon = isUp ? 'trending_up' : 'trending_down';
+      const colorClass = isGood ? 'up' : 'down';
+      el.className = `stat-trend ${colorClass}`;
+      el.innerHTML = `<span class="material-symbols-rounded" style="font-size: 14px;">${icon}</span> ${Math.abs(value)}%`;
+    }
+    function initCharts() {
+      console.log('📊 Initializing charts...');
+      try {
+        // Attendance Trend Chart
+        const ctxLine = document.getElementById('attendanceChart');
+        console.log('📊 Attendance canvas element:', ctxLine ? 'found' : 'NOT FOUND');
+        if (ctxLine) {
+          // Destroy existing chart if any
+          if (attendanceChart) {
+            attendanceChart.destroy();
+          }
+          const ctx = ctxLine.getContext('2d');
+          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+          gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+          gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+          attendanceChart = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+              labels: [],
+              datasets: [{
+                label: 'Attendance %',
+                data: [],
+                borderColor: '#6366F1',
+                backgroundColor: gradient,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#6366F1',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                borderWidth: 3,
+                shadowColor: 'rgba(99, 102, 241, 0.2)',
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowOffsetY: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { intersect: false, mode: 'index' },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: '#1E293B',
+                  padding: 12,
+                  borderRadius: 12,
+                  titleFont: { size: 13, weight: '600', family: 'Poppins' },
+                  bodyFont: { size: 12, family: 'Poppins' },
+                  displayColors: false
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  suggestedMax: 110, // Added padding at top
+                  ticks: {
+                    color: '#64748B',
+                    font: { size: 10, family: 'Poppins' },
+                    stepSize: 20,
+                    callback: val => val <= 100 ? val + '%' : ''
+                  },
+                  grid: { color: 'rgba(0,0,0,0.03)', drawBorder: false }
+                },
+                x: {
+                  ticks: {
+                    color: '#64748B',
+                    font: { size: 10, family: 'Poppins' },
+                    padding: 10
+                  },
+                  grid: { display: false, drawBorder: false }
+                }
+              }
+            }
+          });
+          console.log('✅ Attendance chart created');
+        } else {
+          console.error('❌ Attendance chart canvas not found!');
+        }
+        // Stream Distribution Chart
+        const ctxDoughnut = document.getElementById('streamChart');
+        console.log('📊 Stream chart canvas element:', ctxDoughnut ? 'found' : 'NOT FOUND');
+        if (ctxDoughnut) {
+          // Destroy existing chart if any
+          if (streamChart) {
+            streamChart.destroy();
+          }
+          streamChart = new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+              labels: [],
+              datasets: [{
+                data: [],
+                backgroundColor: [
+                  '#6366F1', // Indigo
+                  '#10B981', // Emerald
+                  '#F59E0B', // Amber
+                  '#EF4444', // Rose
+                  '#8B5CF6', // Violet
+                  '#06B6D4'  // Cyan
+                ],
+                borderWidth: 0,
+                hoverOffset: 8
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '60%',
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  align: 'center',
+                  labels: {
+                    padding: 20,
+                    font: { size: 12, weight: '500', family: 'Poppins' },
+                    color: '#475569',
+                    usePointStyle: true,
+                    pointStyle: 'circle',
+                    boxWidth: 10,
+                    boxHeight: 10
+                  }
+                },
+                tooltip: {
+                  backgroundColor: '#0F172A',
+                  padding: 14,
+                  borderRadius: 12,
+                  titleFont: { family: 'Poppins', size: 13 },
+                  bodyFont: { family: 'Poppins', size: 12 }
+                }
+              },
+              layout: {
+                padding: {
+                  top: 0,
+                  bottom: 10,
+                  left: 0,
+                  right: 0
+                }
+              }
+            }
+          });
+          console.log('✅ Stream chart created');
+        } else {
+          console.error('❌ Stream chart canvas not found!');
+        }
+        console.log('✅ Charts initialized successfully', { attendanceChart: !!attendanceChart, streamChart: !!streamChart });
+      } catch (error) {
+        console.error('❌ Error initializing charts:', error);
+      }
+    }
+    // Update charts with real data from API
+    function updateCharts(chartData) {
+      console.log('📈 Updating charts with real data...', chartData);
+      try {
+        // Initialize charts if not already initialized
+        if (!attendanceChart || !streamChart) {
+          console.log('📊 Charts not initialized, initializing now...');
+          initCharts();
+        }
+        // Update Attendance Trend Chart
+        if (attendanceChart && chartData.attendanceTrend) {
+          const trend = chartData.attendanceTrend;
+          console.log('📊 Attendance trend data:', trend);
+          attendanceChart.data.labels = trend.labels || [];
+          attendanceChart.data.datasets[0].data = trend.data || [];
+          attendanceChart.update('none'); // Update without animation first
+          setTimeout(() => {
+            attendanceChart.resize();
+            attendanceChart.update();
+          }, 100);
+          console.log('✅ Attendance chart updated with', trend.labels?.length || 0, 'data points');
+        } else {
+          console.warn('⚠️ Cannot update attendance chart:', { chart: !!attendanceChart, data: !!chartData.attendanceTrend });
+        }
+        // Update Stream Distribution Chart
+        if (streamChart && chartData.streamDistribution) {
+          const dist = chartData.streamDistribution;
+          console.log('📊 Stream distribution data:', dist);
+          streamChart.data.labels = dist.labels || [];
+          streamChart.data.datasets[0].data = dist.data || [];
+          streamChart.update('none'); // Update without animation first
+          setTimeout(() => {
+            streamChart.resize();
+            streamChart.update();
+          }, 100);
+          console.log('✅ Stream chart updated with', dist.labels?.length || 0, 'data points');
+        } else {
+          console.warn('⚠️ Cannot update stream chart:', { chart: !!streamChart, data: !!chartData.streamDistribution });
+        }
+      } catch (error) {
+        console.error('❌ Error updating charts:', error);
+      }
+    }
+    // Load recent activity from backend
+    function loadRecentActivity(activities) {
+      const container = document.getElementById("recentActivity");
+      if (!container) {
+        console.warn('⚠️ Recent activity container not found');
+        return;
+      }
+      if (!Array.isArray(activities) || activities.length === 0) {
+        container.innerHTML = '<p style="color:#94A3B8;text-align:center;padding:30px;font-size:12px;">No recent activity</p>';
+        return;
+      }
+      const activityIcons = {
+        'registration': { icon: 'person_add', color: '#6366F1', bg: 'blue' },
+        'attendance': { icon: 'check_circle', color: '#10B981', bg: 'green' },
+        'promotion': { icon: 'trending_up', color: '#F59E0B', bg: 'orange' },
+        'report': { icon: 'description', color: '#8B5CF6', bg: 'purple' },
+        'default': { icon: 'info', color: '#64748B', bg: 'blue' }
+      };
+      // Helper to format time ago
+      function timeAgo(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+      }
+      container.innerHTML = activities.slice(0, 5).map(activity => {
+        const iconConfig = activityIcons[activity.type] || activityIcons.default;
+        return `<div class="activity-item">
+          <div class="activity-icon ${iconConfig.bg}">
+            <span class="material-symbols-rounded" style="color:${iconConfig.color}">${iconConfig.icon}</span>
+          </div>
+          <div class="student-info">
+            <div class="student-name">${activity.title || 'Activity'}</div>
+            <div class="student-details">${activity.description || ''}</div>
+          </div>
+          <div class="student-details">${timeAgo(activity.timestamp)}</div>
+        </div>`;
+      }).join("");
+      console.log(`✅ Loaded ${activities.slice(0, 5).length} recent activities`);
+    }
+    function loadRecentStudents(students) {
+      const container = document.getElementById("recentStudents");
+      if (!container) {
+        console.warn('⚠️ Recent students container not found');
+        return;
+      }
+      if (!Array.isArray(students) || students.length === 0) {
+        container.innerHTML = '<p style="color:#94A3B8;text-align:center;padding:30px;font-size:12px;">No recent students found</p>';
+        return;
+      }
+      const colors = ["#6366F1", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+      container.innerHTML = students.slice(0, 5).map((student, idx) => {
+        const initials = student.name ? getInitials(student.name, "NA") : "NA";
+        const badgeClass = student.isActive !== false ? "badge-active" : "badge-pending";
+        const badgeText = student.isActive !== false ? "Active" : "Inactive";
+        return `<div class="student-item">
+        <div class="student-avatar" style="background:${colors[idx % colors.length]};">${initials}</div>
+        <div class="student-info">
+          <div class="student-name">${student.name || "Unknown"}</div>
+          <div class="student-details">${student.stream || "N/A"} • Semester ${student.semester || "N/A"}</div>
+        </div>
+        <div class="student-badge ${badgeClass}">${badgeText}</div>
+      </div>`;
+      }).join("");
+      console.log(`✅ Loaded ${students.slice(0, 5).length} recent students`);
+    }
+    async function loadDashboardData() {
+      console.log('📊 Loading SaaS dashboard data...');
+      // Set loading state for stats
+      setVal("totalStudents", "...");
+      setVal("totalStreams", "...");
+      setVal("totalSubjects", "...");
+      setVal("attendanceRate", "...");
+      try {
+        const timestamp = new Date().getTime();
+        const res = await fetch(`${dashboardApiUrl}/dashboard/stats?t=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        const data = await res.json();
+        console.log('📦 SaaS Dashboard data received:', data);
+        if (data.success && data.stats) {
+          const stats = data.stats;
+          // Update stat values
+          setVal("totalStudents", stats.totalStudents ?? 0);
+          setVal("totalStreams", stats.totalStreams ?? 0);
+          setVal("totalSubjects", stats.totalSubjects ?? 0);
+          setVal("attendanceRate", (stats.attendanceRate ?? 0) + '%');
+          // Update trend badges
+          if (stats.trends) {
+            setTrend("studentsTrend", stats.trends.students);
+            setTrend("streamsTrend", stats.trends.streams);
+            setTrend("subjectsTrend", stats.trends.subjects);
+            setTrend("attendanceTrend", stats.trends.attendance);
+          }
+          // Update subtitles
+          setVal("studentsSubtitle", stats.studentsSubtitle || `${stats.totalStudents || 0} enrolled`);
+          setVal("streamsSubtitle", stats.streamsSubtitle || `${stats.totalStreams || 0} programs`);
+          setVal("subjectsSubtitle", stats.subjectsSubtitle || `Across all streams`);
+          setVal("attendanceSubtitle", stats.attendanceSubtitle || `This month`);
+          // ===== TODAY'S OVERVIEW =====
+          if (stats.todayOverview) {
+            const today = stats.todayOverview;
+            setVal("todayPresent", today.present ?? 0);
+            setVal("todayAbsent", today.absent ?? 0);
+            setVal("todayRate", (today.rate ?? 0) + '%');
+            setVal("classesMarked", today.classesMarked ?? 0);
+            setVal("todayDate", today.date || new Date().toISOString().split('T')[0]);
+          }
+          // ===== WEEKLY COMPARISON =====
+          if (stats.weeklyComparison) {
+            const weekly = stats.weeklyComparison;
+            setVal("thisWeekRate", (weekly.thisWeek ?? 0) + '%');
+            setVal("lastWeekRate", (weekly.lastWeek ?? 0) + '%');
+            setVal("thisWeekSessions", `${weekly.thisWeekSessions ?? 0} sessions`);
+            setVal("lastWeekSessions", `${weekly.lastWeekSessions ?? 0} sessions`);
+            // Weekly trend badge
+            const trendBadge = document.getElementById("weeklyTrendBadge");
+            if (trendBadge) {
+              const trend = weekly.trend || 0;
+              if (trend > 0) {
+                trendBadge.style.background = '#ECFDF5';
+                trendBadge.style.color = '#059669';
+                trendBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">trending_up</span> +${trend}% improvement from last week`;
+              } else if (trend < 0) {
+                trendBadge.style.background = '#FEF2F2';
+                trendBadge.style.color = '#DC2626';
+                trendBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">trending_down</span> ${trend}% from last week`;
+              } else {
+                trendBadge.style.background = '#F8FAFC';
+                trendBadge.style.color = '#64748B';
+                trendBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">trending_flat</span> No change from last week`;
+              }
+            }
+          }
+          // ===== ALERTS =====
+          const alertsContainer = document.getElementById("alertsContainer");
+          if (alertsContainer && stats.alerts) {
+            if (stats.alerts.length === 0) {
+              alertsContainer.innerHTML = `<div style="text-align:center;padding:20px;color:#10B981;">
+                <span class="material-symbols-rounded" style="font-size:32px;">check_circle</span>
+                <p style="margin-top:8px;font-size:13px;font-weight:600;">All Good!</p>
+                <p style="font-size:11px;color:#94A3B8;">No alerts at this time</p>
+              </div>`;
+            } else {
+              const alertColors = {
+                'warning': { bg: '#FFFBEB', border: '#FDE68A', color: '#D97706' },
+                'alert': { bg: '#FEF2F2', border: '#FECACA', color: '#DC2626' },
+                'success': { bg: '#ECFDF5', border: '#A7F3D0', color: '#059669' },
+                'info': { bg: '#EFF6FF', border: '#BFDBFE', color: '#2563EB' }
+              };
+              alertsContainer.innerHTML = stats.alerts.map(alert => {
+                const colors = alertColors[alert.type] || alertColors.info;
+                return `<div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;background:${colors.bg};border:1px solid ${colors.border};border-radius:12px;">
+                  <span class="material-symbols-rounded" style="color:${colors.color};font-size:20px;">${alert.icon || 'info'}</span>
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;color:${colors.color};">${alert.title}</div>
+                    <div style="font-size:11px;color:#64748B;">${alert.description}</div>
+                  </div>
+                </div>`;
+              }).join('');
+            }
+          }
+          // ===== TOP PERFORMERS =====
+          const topPerformersContainer = document.getElementById("topPerformers");
+          if (topPerformersContainer && stats.topPerformers) {
+            if (stats.topPerformers.length === 0) {
+              topPerformersContainer.innerHTML = '<p style="color:#94A3B8;text-align:center;padding:20px;font-size:12px;">No data available</p>';
+            } else {
+              const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32', '#6366F1'];
+              topPerformersContainer.innerHTML = stats.topPerformers.map((stream, idx) => {
+                const rateColor = stream.rate >= 90 ? '#059669' : stream.rate >= 75 ? '#D97706' : '#DC2626';
+                const rankColor = rankColors[idx] || '#94A3B8';
+                return `<div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;background:#F8FAFC;border-radius:12px;">
+                  <div style="width:32px;height:32px;background:${rankColor};border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${idx + 1}</div>
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;color:#1E293B;">${stream.stream}</div>
+                    <div style="font-size:11px;color:#94A3B8;">${stream.sessions} sessions this month</div>
+                  </div>
+                  <div style="font-size:18px;font-weight:700;color:${rateColor};">${stream.rate}%</div>
+                </div>`;
+              }).join('');
+            }
+          }
+          // Update charts with real data
+          if (stats.charts) {
+            console.log('📊 Received chart data from API:', stats.charts);
+            updateCharts(stats.charts);
+          } else {
+            console.warn('⚠️ No chart data in API response');
+          }
+          console.log('✅ SaaS Dashboard loaded successfully');
+        } else {
+          throw new Error(data.error || 'Failed to load dashboard stats');
+        }
+      } catch (error) {
+        console.error('❌ Error loading dashboard data:', error);
+        setVal("totalStudents", "0");
+        setVal("totalStreams", "0");
+        setVal("totalSubjects", "0");
+        setVal("attendanceRate", "0%");
+        // Show error in alerts section
+        const alertsContainer = document.getElementById("alertsContainer");
+        if (alertsContainer) {
+          alertsContainer.innerHTML = `<div style="text-align:center;padding:20px;color:#EF4444;">
+            <span class="material-symbols-rounded" style="font-size:32px;">error</span>
+            <p style="margin-top:8px;font-size:12px;">${error.message}</p>
+          </div>`;
+        }
+      }
+    }
+    // Initialize charts when DOM is ready
+    window.addEventListener('load', () => {
+      console.log('🚀 Window loaded, initializing charts...');
+      initCharts();
+    });
+
+
+    // Refresh Dashboard
+    async function refreshDashboardData() {
+      const refreshBtn = document.getElementById('refreshDashboard');
+      const refreshIcon = document.getElementById('refreshIcon');
+
+      // Disable button and show spinning animation
+      if (refreshBtn) refreshBtn.disabled = true;
+      if (refreshIcon) refreshIcon.style.animation = 'spin 1s linear infinite';
+
+      try {
+        await loadDashboardData();
+        console.log('✅ Dashboard refreshed successfully');
+      } catch (error) {
+        console.error('❌ Refresh failed:', error);
+      } finally {
+        // Re-enable button and stop spinning
+        if (refreshBtn) refreshBtn.disabled = false;
+        if (refreshIcon) refreshIcon.style.animation = 'none';
+      }
+    }
+  </script>
+</body>
+
+</html>

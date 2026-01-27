@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Check</title>
+    <link rel="stylesheet" href="astyles.css"> <!-- Link to external CSS -->
+    <script src="js/config.js"></script>
+    <script>
+        async function fetchAttendance() {
+            const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+            const studentID = document.getElementById("studentID").value.trim();
+            const resultDiv = document.getElementById("attendance-result");
+
+            if (!studentID) {
+                resultDiv.innerHTML = "<p class='error'>Please enter a Student ID.</p>";
+                return;
+            }
+
+            resultDiv.innerHTML = "<p class='loading'>Fetching data...</p>"; // Show loading state
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/student/attendance/${encodeURIComponent(studentID)}`);
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch data");
+                }
+
+                const student = await response.json();
+                console.log("Student Data:", student); // Debugging log
+
+                if (!student || !student.subjects) {
+                    throw new Error("Invalid response format");
+                }
+
+                let resultHTML = `<h3>Attendance for ${student.name} (${student.studentID})</h3>`;
+                Object.keys(student.subjects).forEach(subject => {
+                    let data = student.subjects[subject];
+                    let percentage = (data.totalClasses > 0)
+                        ? ((data.attendedClasses / data.totalClasses) * 100).toFixed(2)
+                        : "N/A"; // Avoid division by zero
+
+                    resultHTML += `<p><strong>${subject}</strong>: ${data.attendedClasses} / ${data.totalClasses} (${percentage}%)</p>`;
+                });
+
+                resultDiv.innerHTML = resultHTML;
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                resultDiv.innerHTML = "<p class='error'>Error fetching data. Please try again.</p>";
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Back Button -->
+        <div style="margin-bottom: 20px;">
+            <a href="myclass.html"
+                style="display: inline-flex; align-items: center; padding: 8px 16px; background-color: #667eea; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; transition: background-color 0.3s;">
+                <span style="margin-right: 8px;">←</span>
+                Back to Classes
+            </a>
+        </div>
+
+        <h2>Student Attendance Check</h2>
+        <input type="text" id="studentID" placeholder="Enter Student ID">
+        <button onclick="fetchAttendance()">Check Attendance</button>
+        <div id="attendance-result"></div>
+    </div>
+</body>
+
+</html>

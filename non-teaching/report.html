@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - Smart Attendance</title>
+
+  <link rel="icon" type="image/png" href="logo2.png" />
+  <script src="js/config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.4);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      --primary-color: #6366F1;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #F1F5F9;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      color: var(--text-primary);
+    }
+
+    /* ========== GLASS SIDEBAR ========== */
+    .sidebar {
+      width: 72px;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid var(--glass-border);
+      flex-direction: column;
+      padding: 20px 0;
+      display: flex;
+      flex-shrink: 0;
+      z-index: 1000;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .sidebar:hover {
+      width: 240px;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      margin-bottom: 24px;
+      padding-left: 20px;
+      transition: padding 0.35s ease;
+    }
+
+    .sidebar:hover .logo-section {
+      padding-left: 20px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      opacity: 0;
+      margin-left: 12px;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .brand-name {
+      opacity: 1;
+    }
+
+    .nav-menu {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      margin: 0 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.25s ease;
+      overflow: hidden;
+    }
+
+    .nav-item .material-symbols-rounded {
+      font-size: 22px;
+      width: 52px;
+      min-width: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.25s ease;
+    }
+
+    .nav-item span:not(.material-symbols-rounded) {
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .nav-item span:not(.material-symbols-rounded) {
+      opacity: 1;
+    }
+
+    .nav-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: #0F172A;
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    }
+
+    .nav-item.active .material-symbols-rounded {
+      color: white;
+    }
+
+    .nav-item.active:hover {
+      background: #1E293B;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 10px 8px;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.06);
+      color: #EF4444;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.25s ease;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .logout-btn .material-symbols-rounded {
+      font-size: 22px;
+      width: 52px;
+      min-width: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logout-btn span:not(.material-symbols-rounded) {
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .logout-btn span:not(.material-symbols-rounded) {
+      opacity: 1;
+    }
+
+    /* ========== MAIN CONTENT ========== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ========== COMPACT HEADER ========== */
+    .header {
+      background: transparent;
+      padding: 16px 24px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-title-section h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    .page-title-section p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .header-user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 12px 4px 4px;
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: 40px;
+      cursor: pointer;
+    }
+
+    .header-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #0F172A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ========== CONTENT AREA ========== */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 24px 24px;
+    }
+
+    /* ========== GLASS CARDS ========== */
+    .filter-card,
+    .report-card {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .filter-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .filter-header .material-symbols-rounded {
+      color: #6366F1;
+      font-size: 20px;
+    }
+
+    .filter-header h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1E293B;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748B;
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      padding: 8px 12px;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      background: white;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s;
+      width: 100%;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* ========== BUTTONS ========== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-primary {
+      background: #0F172A;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #22C55E, #16a34a);
+      color: white;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      color: white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========== ACTION BUTTONS BAR ========== */
+    .action-buttons-bar {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ========== STATS CARDS ========== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-info {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1E293B;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #64748B;
+    }
+
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .stat-icon.blue {
+      background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+      color: #1E40AF;
+    }
+
+    .stat-icon.green {
+      background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+      color: #065F46;
+    }
+
+    .stat-icon.purple {
+      background: linear-gradient(135deg, #E0E7FF, #C7D2FE);
+      color: #4338CA;
+    }
+
+    /* ========== TABLES ========== */
+    .table-container {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    thead th {
+      background: #F8FAFC;
+      font-weight: 600;
+      font-size: 11px;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    tbody tr:hover {
+      background: #F8FAFC;
+    }
+
+    /* ========== REPORT SPECIFIC ========== */
+    .report-title {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .report-title h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 4px;
+    }
+
+    .report-title p {
+      font-size: 12px;
+      color: #64748B;
+    }
+
+    .empty-state-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      padding: 40px 20px;
+    }
+
+    .empty-state {
+      text-align: center;
+      max-width: 500px;
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .empty-state-icon {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 20px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6366F1;
+      font-size: 40px;
+    }
+
+    .empty-state-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .feature-item {
+      background: white;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      text-align: center;
+    }
+
+    .feature-icon {
+      width: 32px;
+      height: 32px;
+      margin: 0 auto 8px;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+    }
+
+    .subject-header {
+      background: #F8FAFC;
+      border: 1px solid #E5E7EB;
+      padding: 12px;
+      border-radius: 12px 12px 0 0;
+      margin-top: 16px;
+    }
+
+    .subject-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      color: #1E293B;
+      margin-bottom: 10px;
+    }
+
+    .subject-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .subject-badge {
+      background: white;
+      border: 1px solid #E5E7EB;
+      padding: 6px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .percentage-excellent {
+      color: #16a34a;
+      font-weight: 700;
+    }
+
+    .percentage-good {
+      color: #f59e0b;
+      font-weight: 700;
+    }
+
+    .percentage-poor {
+      color: #ef4444;
+      font-weight: 700;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ========== PRINT STYLES ========== */
+    @media print {
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .sidebar,
+      .header,
+      .filter-card,
+      .action-buttons-bar,
+      .stats-grid,
+      .no-print,
+      .empty-state-container {
+        display: none !important;
+      }
+
+      .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+
+      .content-area {
+        padding: 15px !important;
+      }
+
+      .report-card {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .print-header h1 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #000;
+      }
+
+      table {
+        border: 1px solid #333 !important;
+      }
+
+      th,
+      td {
+        border: 1px solid #333 !important;
+        padding: 8px !important;
+        color: #000 !important;
+      }
+
+      @page {
+        margin: 1cm;
+        size: A4 landscape;
+      }
+    }
+
+    /* ========== SCROLLBAR ========== */
+    .content-area::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .content-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .content-area::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <div class="logo-section">
+      <div class="logo">
+        <img src="logo2.png" alt="Logo">
+      </div>
+      <div class="brand-name">Smart Attendance</div>
+    </div>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-item">
+        <span class="material-symbols-rounded">dashboard</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="students.html" class="nav-item">
+        <span class="material-symbols-rounded">group</span>
+        <span>Students</span>
+      </a>
+      <a href="report.html" class="nav-item active">
+        <span class="material-symbols-rounded">description</span>
+        <span>Reports</span>
+      </a>
+      <a href="promotion.html" class="nav-item">
+        <span class="material-symbols-rounded">trending_up</span>
+        <span>Promote</span>
+      </a>
+
+      <a href="ai-assistant.html" class="nav-item">
+        <span class="material-symbols-rounded">auto_awesome</span>
+        <span>AI Assistant</span>
+      </a>
+
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" id="logoutBtn">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Log Out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <div class="main-content">
+    <!-- ========== HEADER ========== -->
+    <header class="header">
+      <div class="page-title-section">
+        <h1>Attendance Reports</h1>
+        <p>View and export attendance reports</p>
+      </div>
+      <div class="header-actions">
+        <div class="header-user-profile">
+          <div class="header-avatar" id="headerAvatar">IT</div>
+          <div class="header-user-info">
+            <div class="header-user-name" id="headerUserFullName"></div>
+            <div class="header-user-email" id="headerUserEmail"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ========== CONTENT AREA ========== */ -->
+    <div class="content-area">
+
+      <!-- Filter Panel -->
+      <div class="filter-card no-print">
+        <div class="filter-header">
+          <span class="material-symbols-rounded">filter_alt</span>
+          <h2>Generate Report</h2>
+        </div>
+
+        <div class="filter-grid">
+          <div class="form-group">
+            <label>Academic Stream</label>
+            <select id="reportStream" class="form-control">
+              <option value="">Loading streams...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Semester Level</label>
+            <select id="reportSemester" class="form-control" disabled>
+              <option value="">Select stream first</option>
+            </select>
+          </div>
+
+          <button onclick="generateReport()" id="generateBtn" class="btn btn-primary" disabled style="height: 38px;">
+            <span class="material-symbols-rounded">analytics</span>
+            Generate Report
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state-container">
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <span class="material-symbols-rounded">analytics</span>
+          </div>
+          <h3>Automate Your Reports</h3>
+          <p>Select a stream and semester from the filters above to generate detailed attendance reports.</p>
+
+          <div class="empty-state-features">
+            <div class="feature-item">
+              <div class="feature-icon"><span class="material-symbols-rounded">speed</span></div>
+              <div class="feature-text">Instant Generation</div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon"><span class="material-symbols-rounded">download</span></div>
+              <div class="feature-text">Export to Excel</div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon"><span class="material-symbols-rounded">print</span></div>
+              <div class="feature-text">Print Ready</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="reportResults" class="hidden">
+
+        <!-- Action Buttons -->
+        <div class="action-buttons-bar no-print">
+          <div style="font-size: 14px; font-weight: 600; color: #1E293B;">Report Results</div>
+          <div class="action-buttons">
+            <button onclick="exportToExcel()" class="btn btn-success">
+              <span class="material-symbols-rounded">download</span> Export
+            </button>
+            <button onclick="printReport()" class="btn btn-info">
+              <span class="material-symbols-rounded">print</span> Print
+            </button>
+          </div>
+        </div>
+
+        <div class="report-card no-print">
+          <div class="report-title">
+            <h2 id="reportTitle">Student Attendance Report</h2>
+            <p>Generated on: <span id="reportDate"></span></p>
+          </div>
+
+          <div class="stats-grid" id="summaryCards"></div>
+        </div>
+
+        <div id="subjectSection" class="hidden">
+          <!-- Print-Only Header -->
+          <div class="print-header no-print" style="display:none;">
+            <h1 id="printStreamSemester">Attendance Report</h1>
+            <p id="printDate"></p>
+          </div>
+
+          <div class="subject-header no-print">
+            <h3>📚 Subjects</h3>
+            <div id="subjectHeaders" class="subject-grid"></div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-wrapper">
+              <table id="reportTable">
+                <thead>
+                  <tr id="tableHeader">
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Firebase Auth Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+
+    // API_BASE_URL is set in js/config.js via window.APP_CONFIG
+
+    async function fetchTeacherProfile(email) {
+      try {
+        const url = `${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.success && data.teacher ? data.teacher : null;
+      } catch (error) { return null; }
+    }
+
+    function getInitials(name) {
+      if (!name) return "AD";
+      return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+    }
+
+    function updateUserInfo(displayName, email) {
+      document.getElementById('headerUserFullName').textContent = displayName;
+      document.getElementById('headerUserEmail').textContent = email;
+      document.getElementById('headerAvatar').textContent = getInitials(displayName);
+    }
+
+    document.getElementById("logoutBtn").onclick = () => {
+      signOut(auth).then(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.replace("login.html");
+      });
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user && user.email) {
+        let displayName = user.displayName || user.email.split('@')[0];
+        const profile = await fetchTeacherProfile(user.email);
+        if (profile && profile.name) displayName = profile.name;
+        updateUserInfo(displayName, user.email);
+        loadAvailableStreams();
+      } else {
+        window.location.href = 'login.html';
+      }
+    });
+  </script>
+
+  <script>
+    let currentReportData = null;
+
+    async function loadAvailableStreams() {
+      const streamSelect = document.getElementById('reportStream');
+      try {
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-streams`);
+        const data = await response.json();
+        if (data.success && data.streams) {
+          streamSelect.innerHTML = '<option value="">Select Academic Stream</option>';
+          data.streams.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name; opt.textContent = s.name;
+            streamSelect.appendChild(opt);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('reportStream').addEventListener('change', async function () {
+      const semSelect = document.getElementById('reportSemester');
+      const genBtn = document.getElementById('generateBtn');
+      if (!this.value) { semSelect.disabled = true; genBtn.disabled = true; return; }
+
+      try {
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-semesters/${encodeURIComponent(this.value)}`);
+        const data = await response.json();
+        if (data.success && data.semesters) {
+          semSelect.innerHTML = '<option value="">Select Semester</option>';
+          data.semesters.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s; opt.textContent = `Semester ${s}`;
+            semSelect.appendChild(opt);
+          });
+          semSelect.disabled = false;
+        }
+      } catch (e) { console.error(e); }
+    });
+
+    document.getElementById('reportSemester').addEventListener('change', function () {
+      document.getElementById('generateBtn').disabled = !this.value;
+    });
+
+    async function generateReport() {
+      const stream = document.getElementById('reportStream').value;
+      const sem = document.getElementById('reportSemester').value;
+      const btn = document.getElementById('generateBtn');
+
+      btn.disabled = true;
+      btn.innerHTML = 'Generating...';
+
+      try {
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/student-subject-report/${encodeURIComponent(stream)}/sem${sem}`);
+        const data = await response.json();
+        if (data.success) {
+          currentReportData = data;
+          displayReport(data);
+        }
+      } catch (e) { console.error(e); }
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-rounded">analytics</span> Generate Report';
+    }
+
+    function displayReport(data) {
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('reportResults').classList.remove('hidden');
+      document.getElementById('reportTitle').textContent = `${data.stream} - Semester ${data.semester} Report`;
+      document.getElementById('reportDate').textContent = data.reportDate;
+
+      const summaryHTML = `
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value">${data.totalStudents}</div>
+            <div class="stat-label">Total Students</div>
+          </div>
+          <div class="stat-icon blue">
+            <span class="material-symbols-rounded">group</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value">${data.totalSubjects}</div>
+            <div class="stat-label">Total Subjects</div>
+          </div>
+          <div class="stat-icon green">
+            <span class="material-symbols-rounded">menu_book</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value">${data.stream}</div>
+            <div class="stat-label">Stream</div>
+          </div>
+          <div class="stat-icon purple">
+            <span class="material-symbols-rounded">school</span>
+          </div>
+        </div>
+      `;
+      document.getElementById('summaryCards').innerHTML = summaryHTML;
+
+      let subHeaders = '';
+      data.subjects.forEach(s => subHeaders += `<div class="subject-badge">${s}</div>`);
+      document.getElementById('subjectHeaders').innerHTML = subHeaders;
+
+      let tableHead = '<th>Student ID</th><th>Student Name</th>';
+      data.subjects.forEach(s => tableHead += `<th class="text-center">${s}</th>`);
+      document.getElementById('tableHeader').innerHTML = tableHead;
+
+      let tableBody = '';
+      data.students.forEach(s => {
+        tableBody += `<tr><td style="font-weight:600;">${s.studentID}</td><td>${s.name}</td>`;
+        data.subjects.forEach(sub => {
+          const val = s.subjects[sub] ? s.subjects[sub].percentage : 0;
+          let cls = 'percentage-poor';
+          if (val >= 75) cls = 'percentage-excellent'; else if (val >= 60) cls = 'percentage-good';
+          tableBody += `<td class="text-center ${cls}">${val}%</td>`;
+        });
+        tableBody += '</tr>';
+      });
+      document.getElementById('tableBody').innerHTML = tableBody;
+      document.getElementById('subjectSection').classList.remove('hidden');
+    }
+
+    function exportToExcel() {
+      if (!currentReportData) return;
+      const ws = XLSX.utils.json_to_sheet(currentReportData.students.map(s => {
+        const row = { 'Student ID': s.studentID, 'Name': s.name };
+        currentReportData.subjects.forEach(sub => row[sub] = (s.subjects[sub] ? s.subjects[sub].percentage : 0) + '%');
+        return row;
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+      XLSX.writeFile(wb, `Attendance_Report_${currentReportData.stream}_Sem${currentReportData.semester}.xlsx`);
+    }
+
+    function printReport() { window.print(); }
+
+    function showAlert(msg, type) { alert(msg); }
+  </script>
+</body>
+
+</html>

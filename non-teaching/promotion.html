@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Promotion - Smart Attendance</title>
+
+  <link rel="icon" type="image/png" href="logo2.png" />
+  <script src="js/config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.4);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      --primary-color: #6366F1;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #F1F5F9;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      color: var(--text-primary);
+    }
+
+    /* ========== GLASS SIDEBAR ========== */
+    .sidebar {
+      width: 72px;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid var(--glass-border);
+      flex-direction: column;
+      padding: 20px 0;
+      display: flex;
+      flex-shrink: 0;
+      z-index: 1000;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .sidebar:hover {
+      width: 240px;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      margin-bottom: 24px;
+      padding-left: 20px;
+      transition: padding 0.35s ease;
+    }
+
+    .sidebar:hover .logo-section {
+      padding-left: 20px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      opacity: 0;
+      margin-left: 12px;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .brand-name {
+      opacity: 1;
+    }
+
+    .nav-menu {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      margin: 0 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.25s ease;
+      overflow: hidden;
+    }
+
+    .nav-item .material-symbols-rounded {
+      font-size: 22px;
+      width: 52px;
+      min-width: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.25s ease;
+    }
+
+    .nav-item span:not(.material-symbols-rounded) {
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .nav-item span:not(.material-symbols-rounded) {
+      opacity: 1;
+    }
+
+    .nav-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: #0F172A;
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    }
+
+    .nav-item.active .material-symbols-rounded {
+      color: white;
+    }
+
+    .nav-item.active:hover {
+      background: #1E293B;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 10px 8px;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.06);
+      color: #EF4444;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.25s ease;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .logout-btn .material-symbols-rounded {
+      font-size: 22px;
+      width: 52px;
+      min-width: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logout-btn span:not(.material-symbols-rounded) {
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease 0.1s;
+    }
+
+    .sidebar:hover .logout-btn span:not(.material-symbols-rounded) {
+      opacity: 1;
+    }
+
+    /* ========== MAIN CONTENT ========== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ========== COMPACT HEADER ========== */
+    .header {
+      background: transparent;
+      padding: 16px 24px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-title-section h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    .page-title-section p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .header-user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 12px 4px 4px;
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: 40px;
+      cursor: pointer;
+    }
+
+    .header-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #0F172A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ========== CONTENT AREA ========== */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 24px 24px;
+    }
+
+    /* ========== GLASS CARDS ========== */
+    .filter-card,
+    .promotion-card {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .filter-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .filter-header .material-symbols-rounded {
+      color: #6366F1;
+      font-size: 20px;
+    }
+
+    .filter-header h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1E293B;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748B;
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      padding: 8px 12px;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      background: white;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s;
+      width: 100%;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* ========== BUTTONS ========== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-primary {
+      background: #0F172A;
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #22C55E, #16a34a);
+      color: white;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      color: white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========== STATS CARDS ========== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-info {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1E293B;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #64748B;
+    }
+
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .stat-icon.blue {
+      background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+      color: #1E40AF;
+    }
+
+    .stat-icon.green {
+      background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+      color: #065F46;
+    }
+
+    .stat-icon.purple {
+      background: linear-gradient(135deg, #E0E7FF, #C7D2FE);
+      color: #4338CA;
+    }
+
+    .stat-icon.yellow {
+      background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+      color: #92400E;
+    }
+
+    /* ========== PROMOTION SPECIFIC ========== */
+    .preview-box {
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+      border: 1px solid white;
+    }
+
+    .preview-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .semester-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .semester-box {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      border: 1px solid #F1F5F9;
+    }
+
+    .semester-number {
+      font-size: 20px;
+      font-weight: 700;
+      color: #6366F1;
+    }
+
+    .semester-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: #64748B;
+      text-transform: uppercase;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+    }
+
+    .flow-card {
+      background: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #F1F5F9;
+    }
+
+    .flow-count {
+      font-weight: 700;
+      color: #6366F1;
+    }
+
+    .warning-banner {
+      background: #FFFBEB;
+      border-left: 4px solid #F59E0B;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .warning-banner .material-symbols-rounded {
+      color: #F59E0B;
+    }
+
+    .warning-content h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #92400E;
+    }
+
+    .warning-content p {
+      font-size: 11px;
+      color: #92400E;
+    }
+
+    .undo-banner {
+      background: #EEF2FF;
+      border: 1px solid #C7D2FE;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .empty-state-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+    }
+
+    .empty-state {
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .empty-state-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      color: #6366F1;
+      font-size: 32px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .loading-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <div class="logo-section">
+      <div class="logo">
+        <img src="logo2.png" alt="Logo">
+      </div>
+      <div class="brand-name">Smart Attendance</div>
+    </div>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-item">
+        <span class="material-symbols-rounded">dashboard</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="students.html" class="nav-item">
+        <span class="material-symbols-rounded">group</span>
+        <span>Students</span>
+      </a>
+      <a href="report.html" class="nav-item">
+        <span class="material-symbols-rounded">description</span>
+        <span>Reports</span>
+      </a>
+      <a href="promotion.html" class="nav-item active">
+        <span class="material-symbols-rounded">trending_up</span>
+        <span>Promote</span>
+      </a>
+      <a href="ai-assistant.html" class="nav-item">
+        <span class="material-symbols-rounded">auto_awesome</span>
+        <span>AI Assistant</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" id="logoutBtn">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Log Out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <div class="main-content">
+    <header class="header">
+      <div class="page-title-section">
+        <h1>Student Promotion</h1>
+        <p>Manage semester upgrades and graduations</p>
+      </div>
+      <div class="header-actions">
+        <div class="header-user-profile">
+          <div class="header-avatar" id="headerAvatar">IT</div>
+          <div class="header-user-info">
+            <div class="header-user-name" id="headerUserFullName"></div>
+            <div class="header-user-email" id="headerUserEmail"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-area">
+      <!-- Filter -->
+      <div class="filter-card">
+        <div class="filter-header">
+          <span class="material-symbols-rounded">filter_alt</span>
+          <h2>Select Stream</h2>
+        </div>
+        <div class="filter-grid">
+          <div class="form-group">
+            <label>Academic Stream</label>
+            <select id="promotionStream" class="form-control">
+              <option value="">-- Select Stream --</option>
+            </select>
+          </div>
+          <button onclick="loadPromotionPreview()" id="loadBtn" class="btn btn-primary" disabled style="height: 38px;">
+            <span class="material-symbols-rounded">refresh</span>
+            Load Data
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div id="statsRow" class="stats-grid hidden">
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value" id="totalStudents">0</div>
+            <div class="stat-label">Total Students</div>
+          </div>
+          <div class="stat-icon blue"><span class="material-symbols-rounded">group</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value" id="willGraduate">0</div>
+            <div class="stat-label">Will Graduate</div>
+          </div>
+          <div class="stat-icon green"><span class="material-symbols-rounded">school</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value" id="willPromote">0</div>
+            <div class="stat-label">Will Promote</div>
+          </div>
+          <div class="stat-icon purple"><span class="material-symbols-rounded">trending_up</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="stat-value" id="sem1Empty">0</div>
+            <div class="stat-label">Sem 1 Ready</div>
+          </div>
+          <div class="stat-icon yellow"><span class="material-symbols-rounded">new_releases</span></div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state-container">
+        <div class="empty-state">
+          <div class="empty-state-icon"><span class="material-symbols-rounded">upgrade</span></div>
+          <h3>Ready for Promotion</h3>
+          <p>Select a stream and load data to preview and execute semester upgrades.</p>
+        </div>
+      </div>
+
+      <!-- Promotion Card -->
+      <div id="promotionPreview" class="hidden">
+        <div class="promotion-card">
+          <div class="filter-header" style="border:none; margin-bottom:0;">
+            <span class="material-symbols-rounded">upgrade</span>
+            <h2 style="font-size:18px;">Semester Promotion</h2>
+          </div>
+          <p style="font-size:12px; color:#64748B; margin-bottom:16px;">Execute upgrades for all students in this stream
+          </p>
+
+          <div class="preview-box">
+            <div class="preview-title">📊 Semester Distribution</div>
+            <div class="semester-row" id="semesterGrid"></div>
+
+            <div class="preview-title">🎓 Promotion Flow</div>
+            <div class="flow-grid" id="promotionFlow"></div>
+          </div>
+
+          <div id="undoSection" class="hidden undo-banner">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="material-symbols-rounded" style="color:#6366F1;">history</span>
+              <div style="font-size:12px;">
+                <strong style="display:block;">Undo Available</strong>
+                <span id="undoInfo" style="color:#4338CA;"></span>
+              </div>
+            </div>
+            <button onclick="undoLastPromotion()" id="undoBtn" class="btn btn-info"
+              style="padding:6px 12px; font-size:11px;">
+              Undo Last
+            </button>
+          </div>
+
+          <div class="warning-banner">
+            <span class="material-symbols-rounded">info</span>
+            <div class="warning-content">
+              <h4>Important</h4>
+              <p>Promoting students is irreversible after 24 hours. Semester 6 students will be marked graduated.</p>
+            </div>
+          </div>
+
+          <button onclick="executeSimplePromotion()" id="promoteBtn" class="btn btn-success"
+            style="width:100%; height:44px; font-size:14px;">
+            <span class="material-symbols-rounded">upgrade</span>
+            Confirm & Execute Promotion
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Auth Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+
+    // API_BASE_URL is set in js/config.js via window.APP_CONFIG
+
+    async function fetchTeacherProfile(email) {
+      try {
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const data = await response.json();
+        return data.success ? data.teacher : null;
+      } catch (e) { return null; }
+    }
+
+    function updateUserInfo(displayName, email) {
+      document.getElementById('headerUserFullName').textContent = displayName;
+      document.getElementById('headerUserEmail').textContent = email;
+      document.getElementById('headerAvatar').textContent = displayName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+    }
+
+    document.getElementById("logoutBtn").onclick = () => {
+      signOut(auth).then(() => { localStorage.clear(); sessionStorage.clear(); window.location.replace("login.html"); });
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user && user.email) {
+        let name = user.displayName || user.email.split('@')[0];
+        const profile = await fetchTeacherProfile(user.email);
+        if (profile) name = profile.name;
+        updateUserInfo(name, user.email);
+        loadStreams();
+      } else { window.location.href = 'login.html'; }
+    });
+  </script>
+
+  <script>
+    // API_BASE_URL is set in js/config.js via window.APP_CONFIG
+
+    document.getElementById('promotionStream').addEventListener('change', function () {
+      document.getElementById('loadBtn').disabled = !this.value;
+      document.getElementById('statsRow').classList.add('hidden');
+      document.getElementById('promotionPreview').classList.add('hidden');
+      document.getElementById('emptyState').classList.remove('hidden');
+    });
+
+    async function loadStreams() {
+      try {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-streams`);
+        const data = await res.json();
+        if (data.success && data.streams) {
+          const sel = document.getElementById('promotionStream');
+          sel.innerHTML = '<option value="">-- Select Stream --</option>';
+          data.streams.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name; opt.textContent = s.name;
+            sel.appendChild(opt);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadPromotionPreview() {
+      const stream = document.getElementById('promotionStream').value;
+      const btn = document.getElementById('loadBtn');
+      const original = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>';
+
+      try {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/simple-promotion-preview/${encodeURIComponent(stream)}`);
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('totalStudents').textContent = data.totalStudents || 0;
+          document.getElementById('willGraduate').textContent = data.semesterBreakdown?.semester6 || 0;
+          document.getElementById('willPromote').textContent = (data.totalStudents || 0) - (data.semesterBreakdown?.semester6 || 0);
+          document.getElementById('sem1Empty').textContent = data.semesterBreakdown?.semester1 || 0;
+
+          const grid = document.getElementById('semesterGrid');
+          grid.innerHTML = '';
+          for (let i = 1; i <= 6; i++) {
+            const count = data.semesterBreakdown?.[`semester${i}`] || 0;
+            grid.innerHTML += `<div class="semester-box"><div class="semester-number">${count}</div><div class="semester-name">Sem ${i}</div></div>`;
+          }
+
+          const flow = document.getElementById('promotionFlow');
+          flow.innerHTML = (data.promotionPreview || []).map(f => {
+            const m = f.match(/Sem (\d) → (Sem \d|Graduate) \((\d+) students\)/);
+            return m ? `<div class="flow-card"><span>Sem ${m[1]} → ${m[2]}</span><span class="flow-count">${m[3]}</span></div>`
+              : `<div class="flow-card">${f}</div>`;
+          }).join('');
+
+          const undoRes = await fetch(`${window.APP_CONFIG.API_BASE_URL}/can-undo-promotion/${encodeURIComponent(stream)}`);
+          const undoData = await undoRes.json();
+          if (undoData.success && undoData.canUndo) {
+            document.getElementById('undoInfo').textContent = `${undoData.hoursOld}h old · ${undoData.studentsInBackup} students`;
+            document.getElementById('undoSection').classList.remove('hidden');
+          } else {
+            document.getElementById('undoSection').classList.add('hidden');
+          }
+
+          document.getElementById('emptyState').classList.add('hidden');
+          document.getElementById('statsRow').classList.remove('hidden');
+          document.getElementById('promotionPreview').classList.remove('hidden');
+        }
+      } catch (e) { alert('Load failed'); }
+      btn.disabled = false; btn.innerHTML = original;
+    }
+  </script>
+
+  <script src="js/promotion.js"></script>
+</body>
+
+</html>
