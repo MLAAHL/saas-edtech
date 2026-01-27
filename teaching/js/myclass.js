@@ -919,7 +919,7 @@ async function saveSubjectToDatabase(subjectData) {
   try {
     console.log('💾 Saving subject to database.. .');
 
-    const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
+    const response = await fetch(`${API_BASE_URL}/teacher/subjects`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1369,7 +1369,7 @@ async function deleteSubject(subjectId) {
   if (!confirmed) return;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/teacher/subjects/${subjectId}`, {
+    const response = await fetch(`${API_BASE_URL}/teacher/subjects/${subjectId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teacherEmail: userData.userEmail })
