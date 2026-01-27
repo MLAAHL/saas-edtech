@@ -90,7 +90,6 @@ const corsOptions = {
       "http://127.0.0.1:8001",
       "http://127.0.0.1:8002",
       "https://dataentrymla.netlify.app",
-      "https://saas-edtech.onrender.com",
       "https://your-production-domain.com",
     ];
 
@@ -186,7 +185,7 @@ const promotionRoutes = require("./routes/promotion");
 const aiAssistantRouter = require("./routes/ai-assistant");
 const chatbotRoutes = require("./routes/chatbot");
 const absenceNotificationRoutes = require("./routes/absenceNotificationRoutes");
-const authRoutes = require("./routes/auth");  // ← ADD THIS LINE
+const authRoutes = require("./routes/auth");
 
 // ============================================================================
 // STANDALONE API ENDPOINTS
@@ -265,6 +264,7 @@ app.use("/api/teacher", teacherRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-assistant", aiAssistantRouter);
 app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/auth", authRoutes);
 
 // ✅ PROMOTION ROUTES - BEFORE ATTENDANCE (Critical!)
 app.use("/api", promotionRoutes);
@@ -273,7 +273,6 @@ app.use("/api", promotionRoutes);
 app.use("/api", attendanceRoutes);
 app.use("/api", absenceNotificationRoutes);
 app.use("/api", viewAttendanceRoutes);
-app.use("/api/auth", authRoutes);  // ← ADD THIS LINE
 
 // ============================================================================
 // ERROR HANDLERS (Must be LAST!)
@@ -345,4 +344,3 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 }); 
-
