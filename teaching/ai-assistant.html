@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AI Assistant</title>
+
+  <link rel="icon" type="image/png" href="logo2.png" />
+  <script src="js/config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/lib/marked.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.04);
+      --primary-color: #6366F1;
+      --text-primary: #334155;
+      --text-secondary: #64748B;
+      --bg-accent: #F8FAFC;
+      --danger: #EF4444;
+      --safe-bottom: env(safe-area-inset-bottom, 20px);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top right, #EEF2FF, #F8FAFC);
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h2,
+    .header-title {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* BACKGROUND */
+    .ambient-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.08), transparent 40%),
+        radial-gradient(circle at 0% 100%, rgba(139, 92, 246, 0.08), transparent 40%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* HEADER - MOBILE ONLY */
+    .app-header {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 50;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .profile-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    /* CHAT VIEW */
+    .chat-view {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* WELCOME SCREEN */
+    .welcome-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+
+    .welcome-icon {
+      width: 80px;
+      height: 80px;
+      background: white;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      box-shadow: 0 15px 35px -5px rgba(99, 102, 241, 0.15);
+      animation: float 4s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    .welcome-icon span {
+      font-size: 40px;
+      color: var(--primary);
+    }
+
+    .welcome-text h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .welcome-text p {
+      font-size: 15px;
+      color: var(--text-light);
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    /* SUGGESTIONS */
+    .suggestions-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      width: 100%;
+      padding: 4px 4px 20px 4px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .suggestions-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .suggestion-chip {
+      flex: 0 0 auto;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      scroll-snap-align: center;
+      transition: transform 0.1s;
+    }
+
+    .suggestion-chip:active {
+      transform: scale(0.96);
+    }
+
+    .suggestion-chip:hover {
+      background: #f1f5f9;
+    }
+
+    .suggestion-chip span {
+      font-size: 18px;
+      color: var(--primary);
+    }
+
+    /* MESSAGES LIST */
+    .messages-list {
+      flex: 1;
+      overflow-y: auto;
+      /* Mobile default: large bottom padding for floating input */
+      padding: 20px 16px 180px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      scrollbar-width: none;
+    }
+
+    .messages-list.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .messages-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .msg {
+      width: 100%;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(10px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* BUBBLES */
+    .msg-user {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .msg-user .bubble {
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 18px;
+      border-radius: 20px 20px 4px 20px;
+      font-size: 15px;
+      max-width: 85%;
+      box-shadow: var(--glass-shadow);
+    }
+
+    .msg-ai {
+      display: flex;
+      width: 100%;
+    }
+
+    .msg-ai .bubble {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--text-primary);
+      width: 100%;
+      padding: 16px;
+      border-radius: 20px;
+      font-size: 15px;
+      line-height: 1.6;
+      box-shadow: var(--glass-shadow);
+      border: 1px solid var(--glass-border);
+    }
+
+    /* MARKDOWN */
+    .msg-ai strong {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .msg-ai ul {
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+
+    .msg-ai li {
+      margin-bottom: 4px;
+    }
+
+    .msg-ai table {
+      width: 100%;
+      display: block;
+      overflow-x: auto;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .msg-ai th,
+    .msg-ai td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+
+    .msg-ai th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    /* ========== TABLE EXPORT MENU ========== */
+    .table-container-wrapper {
+      margin-top: 12px;
+      border: 1px solid #F1F5F9;
+      border-radius: 12px;
+      background: #F8FAFC;
+      overflow: hidden;
+    }
+
+    .table-content-area {
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .table-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 8px 12px;
+      background: #F1F5F9;
+      border-top: 1px solid #E2E8F0;
+      position: relative;
+    }
+
+    .table-actions-trigger {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #64748B;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .table-actions-trigger:hover {
+      background: #E2E8F0;
+      color: #1E293B;
+    }
+
+    .table-dropdown {
+      position: absolute;
+      right: 12px;
+      bottom: 40px;
+      background: white;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      padding: 4px;
+      min-width: 150px;
+    }
+
+    .table-dropdown.show {
+      display: flex;
+    }
+
+    .table-dropdown-item {
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .table-dropdown-item:hover {
+      background: #F8FAFC;
+      color: var(--primary-color);
+    }
+
+    .table-dropdown-item .material-symbols-rounded {
+      font-size: 20px;
+    }
+
+    /* INPUT BAR - MOBILE (Floating) */
+    .input-container {
+      position: absolute;
+      bottom: 110px;
+      /* Lifted for mobile nav */
+      left: 16px;
+      right: 16px;
+      z-index: 1010;
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .input-box {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 30px;
+      padding: 6px 6px 6px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--glass-shadow);
+    }
+
+    .input-box:focus-within {
+      transform: translateY(-2px);
+      border-color: var(--primary-color);
+    }
+
+    .input-field {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 16px;
+      color: var(--text-primary);
+      padding: 12px 0;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--primary-color) !important;
+      color: white !important;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      flex-shrink: 0;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    .send-btn .material-symbols-rounded {
+      font-size: 24px;
+      color: white;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+      background: #4F46E5;
+    }
+
+    .send-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* BOTTOM NAV - MOBILE ONLY */
+    .bottom-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      border-radius: 24px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      z-index: 999;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      border: none;
+      background: transparent;
+      padding: 12px;
+      border-radius: 16px;
+      height: 48px;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex: 1;
+      max-width: 120px;
+      text-decoration: none;
+    }
+
+    .nav-item.active {
+      background: #1E293B;
+      color: white;
+      padding: 12px 20px;
+      flex: 1.5;
+      max-width: 160px;
+      box-shadow: 0 8px 20px -6px rgba(30, 41, 59, 0.4);
+    }
+
+    .nav-item .material-symbols-rounded {
+      font-size: 24px;
+      font-variation-settings: 'FILL' 0;
+      transition: all 0.3s;
+    }
+
+    .nav-item.active .material-symbols-rounded {
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .nav-label {
+      display: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-label {
+      display: block;
+    }
+
+    /* TYPING DOTS */
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background: #94A3B8;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite;
+    }
+
+    .dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0);
+      }
+
+      40% {
+        transform: scale(1);
+      }
+    }
+
+    /* =========================================
+       DESKTOP RESPONSIVE STYLES (Min-Width 769px)
+       ========================================= */
+    @media (min-width: 769px) {
+      .app-header {
+        display: none;
+      }
+
+      .chat-view {
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .messages-list {
+        padding: 40px 40px 140px 40px;
+      }
+
+      .input-container {
+        bottom: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: 700px;
+        width: 90%;
+      }
+
+      .input-box:focus-within {
+        transform: scale(1.02);
+      }
+
+      .bottom-nav {
+        max-width: 600px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="ambient-bg"></div>
+
+  <!-- MOBILE HEADER (Only shows on mobile) -->
+  <div class="app-header">
+    <div class="header-title">AI Assistant</div>
+
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="chat-view">
+    <div class="welcome-screen" id="welcomeScreen">
+      <div class="welcome-icon">
+        <span class="material-symbols-rounded">auto_awesome</span>
+      </div>
+      <div class="welcome-text">
+        <h2 id="welcomeUserName">Hi!</h2>
+        <p>I can help you manage students & attendance.</p>
+      </div>
+
+    </div>
+
+    <div class="messages-list" id="msgList"></div>
+
+    <div class="input-container" id="inputContainer">
+      <div class="input-box">
+        <input type="text" class="input-field" id="msgInput" placeholder="Ask anything..." autocomplete="off">
+        <button class="send-btn" id="sendBtn">
+          <span class="material-symbols-rounded">arrow_upward</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXED BOTTOM NAV (MOBILE ONLY) -->
+  <nav class="bottom-nav">
+    <a href="myclass.html" class="nav-item">
+      <span class="material-symbols-rounded">home</span>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="myclass.html#subjects" class="nav-item">
+      <span class="material-symbols-rounded">menu_book</span>
+      <span class="nav-label">Subjects</span>
+    </a>
+    <a href="myclass.html#history" class="nav-item">
+      <span class="material-symbols-rounded">history</span>
+      <span class="nav-label">History</span>
+    </a>
+    <a href="ai-assistant.html" class="nav-item active">
+      <span class="material-symbols-rounded">auto_awesome</span>
+      <span class="nav-label">AI</span>
+    </a>
+  </nav>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    function getInitials(name) {
+      return name ? name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "IT";
+    }
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) window.location.href = 'login.html';
+      else {
+        const email = user.email;
+        let displayName = email.split('@')[0].replace(/[._]/g, ' ').split(' ')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+        // Try to fetch custom name from profile
+        try {
+          const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+          const data = await res.json();
+          if (data.success && data.teacher && data.teacher.name) {
+            displayName = data.teacher.name;
+          }
+        } catch (e) { console.error("Profile fetch fail", e); }
+
+        const welcomeUserEl = document.getElementById('welcomeUserName');
+        if (welcomeUserEl) welcomeUserEl.textContent = `Hi, ${displayName}!`;
+
+        const initials = getInitials(displayName);
+        if (document.getElementById('headerAvatar')) document.getElementById('headerAvatar').textContent = initials;
+      }
+    });
+  </script>
+
+  <script>
+    // ====================================
+    // API CONFIGURATION
+    // ====================================
+    // API URL is set in js/config.js via window.APP_CONFIG
+
+    // Endpoints
+    const API_ENDPOINTS = {
+      chat: '/chatbot/chat'
+    };
+
+    // Get current API base URL
+    const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+
+    console.log('🌐 API Base URL:', API_BASE_URL);
+
+    // ====================================
+    // CHAT FUNCTIONALITY
+    // ====================================
+    const msgList = document.getElementById('msgList');
+    const input = document.getElementById('msgInput');
+    const btn = document.getElementById('sendBtn');
+    const welcome = document.getElementById('welcomeScreen');
+
+    let isFirst = true;
+
+    function scrollToBottom() {
+      const doScroll = () => {
+        msgList.scrollTop = msgList.scrollHeight + 1000;
+      };
+      doScroll();
+      setTimeout(doScroll, 50);
+      setTimeout(doScroll, 150);
+      setTimeout(doScroll, 300);
+    }
+
+    function ask(txt) {
+      input.value = txt;
+      send();
+    }
+
+    function addMsg(html, type) {
+      const div = document.createElement('div');
+      div.className = `msg msg-${type}`;
+
+      let processedHtml = html;
+      // Add export options for tables
+      if (type === 'ai' && html.includes('<table')) {
+        processedHtml = `<div class="table-container-wrapper">
+              <div class="table-content-area">${html}</div>
+              <div class="table-footer">
+                  <div class="table-actions-trigger" onclick="toggleTableMenu(this)">
+                    <span class="material-symbols-rounded">more_vert</span>
+                  </div>
+                  <div class="table-dropdown">
+                      <div class="table-dropdown-item" onclick="exportTableToExcel(this)">
+                          <span class="material-symbols-rounded">description</span> Excel
+                      </div>
+                      <div class="table-dropdown-item" onclick="exportTableToPDF(this)">
+                          <span class="material-symbols-rounded">picture_as_pdf</span> PDF
+                      </div>
+                  </div>
+              </div>
+          </div>`;
+      }
+
+      div.innerHTML = `<div class="bubble">${processedHtml}</div>`;
+      msgList.appendChild(div);
+      scrollToBottom();
+    }
+
+    // Table export menu toggle
+    function toggleTableMenu(el) {
+      const dropdown = el.nextElementSibling;
+      const isShown = dropdown.classList.contains('show');
+      document.querySelectorAll('.table-dropdown').forEach(d => d.classList.remove('show'));
+      if (!isShown) dropdown.classList.add('show');
+    }
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('.table-container-wrapper')) {
+        document.querySelectorAll('.table-dropdown').forEach(d => d.classList.remove('show'));
+      }
+    });
+
+    // Export to Excel
+    function exportTableToExcel(el) {
+      try {
+        const table = el.closest('.table-container-wrapper').querySelector('table');
+        const wb = XLSX.utils.table_to_book(table, { sheet: "AI Report" });
+        XLSX.writeFile(wb, "Smart_Attendance_AI_Report.xlsx");
+      } catch (e) { alert("Excel export failed"); }
+      el.parentElement.classList.remove('show');
+    }
+
+    // Export to PDF
+    function exportTableToPDF(el) {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const table = el.closest('.table-container-wrapper').querySelector('table');
+        doc.autoTable({
+          html: table,
+          theme: 'grid',
+          headStyles: { fillColor: [99, 102, 241] },
+          styles: { fontSize: 8 }
+        });
+        doc.save("Smart_Attendance_AI_Report.pdf");
+      } catch (e) { alert("PDF export failed"); }
+      el.parentElement.classList.remove('show');
+    }
+
+    function showTyping() {
+      const div = document.createElement('div');
+      div.className = 'msg msg-ai';
+      div.id = 'typing';
+      div.innerHTML = `<div class="bubble"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+      msgList.appendChild(div);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      const el = document.getElementById('typing');
+      if (el) el.remove();
+    }
+
+    async function send() {
+      const txt = input.value.trim();
+      if (!txt) return;
+
+      if (isFirst) {
+        welcome.style.opacity = '0';
+        setTimeout(() => welcome.style.display = 'none', 300);
+        msgList.classList.add('active');
+        isFirst = false;
+      }
+
+      input.value = '';
+      input.blur();
+
+      addMsg(txt.replace(/</g, "&lt;"), 'user');
+      showTyping();
+
+      try {
+        // Use API_BASE_URL + endpoint
+        const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.chat}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ question: txt })
+        });
+
+        const data = await res.json();
+        hideTyping();
+
+        if (data.success) {
+          let content = data.answer;
+          if (typeof marked !== 'undefined') content = marked.parse(content);
+          addMsg(content, 'ai');
+        } else {
+          addMsg('Sorry, I encountered an error processing your request.', 'ai');
+        }
+      } catch (e) {
+        hideTyping();
+        console.error('API Error:', e);
+        addMsg('Connection failed. Please ensure the backend is running.', 'ai');
+      }
+    }
+
+    btn.onclick = send;
+    input.onkeypress = (e) => { if (e.key === 'Enter') send(); };
+    window.ask = ask;
+  </script>
+
+</body>
+
+</html>
