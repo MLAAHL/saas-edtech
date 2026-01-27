@@ -186,6 +186,7 @@ const promotionRoutes = require("./routes/promotion");
 const aiAssistantRouter = require("./routes/ai-assistant");
 const chatbotRoutes = require("./routes/chatbot");
 const absenceNotificationRoutes = require("./routes/absenceNotificationRoutes");
+const authRoutes = require("./routes/auth");  // ← ADD THIS LINE
 
 // ============================================================================
 // STANDALONE API ENDPOINTS
@@ -272,6 +273,7 @@ app.use("/api", promotionRoutes);
 app.use("/api", attendanceRoutes);
 app.use("/api", absenceNotificationRoutes);
 app.use("/api", viewAttendanceRoutes);
+app.use("/api/auth", authRoutes);  // ← ADD THIS LINE
 
 // ============================================================================
 // ERROR HANDLERS (Must be LAST!)
@@ -343,3 +345,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 }); 
+
