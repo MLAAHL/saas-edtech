@@ -358,6 +358,7 @@ async function restoreState() {
     const streamSelect = document.getElementById('streamSelect');
     const semesterSelect = document.getElementById('semesterSelect');
     const subjectSelect = document.getElementById('subjectSelect');
+    const specificDateInput = document.getElementById('specificDateInput');
 
     streamSelect.value = state.stream;
     currentStream = state.stream;
@@ -374,7 +375,30 @@ async function restoreState() {
 
     console.log('✅ State restored successfully');
     await sleep(200);
-    loadRegister();
+
+    // Load the register first
+    await loadRegister();
+
+    // Check if we should switch to single date view (from History navigation)
+    if (state.viewMode === 'single' && state.date) {
+      console.log('📅 Switching to single date view for:', state.date);
+      await sleep(200);
+
+      // Set the date input value
+      if (specificDateInput) {
+        specificDateInput.value = state.date;
+      }
+
+      // Switch to single date view
+      switchViewMode('single');
+
+      // Load the single date data
+      await sleep(200);
+      loadSingleDateView();
+
+      // Clear the state after use to prevent re-loading on refresh
+      localStorage.removeItem('attendanceViewState');
+    }
 
   } catch (error) {
     console.error('❌ Error restoring state:', error);
