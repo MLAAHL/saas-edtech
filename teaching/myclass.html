@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Attendance - My Classes</title>
+
+  <link rel="icon" type="image/png" href="logo2.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2937">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Smart Attendance">
+  <link rel="apple-touch-icon" href="logo2.png">
+
+  <script src="js/config.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css">
+
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.04);
+      --primary-color: #6366F1;
+      --text-primary: #334155;
+      --text-secondary: #64748B;
+      --bg-accent: #F8FAFC;
+      --danger: #EF4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F8FAFC;
+      /* Unified Glassmorphism Base Color */
+      padding-bottom: 100px;
+      overflow-x: hidden;
+      min-height: 100vh;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    .form-title,
+    .card-subject,
+    .welcome-message,
+    .empty-title {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* ==========================
+       GLASS HEADER
+       ========================== */
+    .header {
+      background: #F8FAFC;
+      /* Match Body Background */
+      padding: 18px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+
+      transition: all 0.3s ease;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+    }
+
+    /* AVATAR STYLING */
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--bg-accent);
+      box-shadow: var(--glass-shadow);
+      border: 2px solid white;
+      flex-shrink: 0;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .greeting h1 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748B;
+      line-height: 1.2;
+    }
+
+    .greeting h1 span {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1E293B;
+      display: block;
+      letter-spacing: -0.5px;
+    }
+
+    /* ==========================
+       GLASS WELCOME BANNER
+       ========================== */
+    .welcome-banner {
+      margin: 16px;
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--glass-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--glass-border);
+    }
+
+    /* Shiny overlay for banner */
+    .welcome-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .welcome-content {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+      color: var(--text-primary);
+    }
+
+    .welcome-text {
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0.9;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .welcome-message {
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.4;
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .welcome-illustration {
+      width: 140px;
+      height: 140px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 16px 32px rgba(99, 102, 241, 0.08);
+      border: 1px solid var(--glass-border);
+      overflow: hidden;
+      margin-left: 20px;
+    }
+
+    .welcome-illustration img {
+      width: 130%;
+      height: 130%;
+      object-fit: contain;
+      filter: drop-shadow(0 20px 30px rgba(99, 102, 241, 0.3));
+    }
+
+    /* EDIT NAME BUTTON STYLING */
+    .name-edit-btn {
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      color: var(--primary-color);
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+
+    .name-edit-btn:hover {
+      background: var(--primary-color);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    .name-edit-btn:active {
+      transform: translateY(0) scale(0.95);
+    }
+
+    .name-edit-btn .material-symbols-rounded {
+      font-size: 16px;
+    }
+
+    /* GLASS MENU BUTTON */
+    .menu-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(4px);
+    }
+
+    .menu-icon span {
+      width: 20px;
+      height: 2.5px;
+      background: #1E293B;
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    /* MAIN CONTENT */
+    main {
+      padding: 0 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1E293B;
+      letter-spacing: -0.5px;
+    }
+
+    .section-count {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.08);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    /* GLASS ADD BUTTON */
+    .add-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .add-btn .material-symbols-rounded {
+      font-size: 22px;
+      color: white;
+    }
+
+    .add-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* ==========================
+       GLASS EMPTY STATE
+       ========================== */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 28px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+
+    .empty-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 16px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    .empty-icon .material-symbols-rounded {
+      font-size: 32px;
+      color: #6366F1;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 8px;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      color: #64748B;
+    }
+
+    .empty-action-btn {
+      margin-top: 24px;
+      padding: 14px 28px;
+      border-radius: 16px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+      transition: all 0.2s;
+    }
+
+    .empty-action-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ==========================
+       YOUR GLASS BOTTOM NAV (Full Width Update)
+       ========================== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      border-radius: 24px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      z-index: 999;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #64748B;
+      border: none;
+      background: transparent;
+      padding: 12px;
+      border-radius: 16px;
+      height: 48px;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex: 1;
+      /* Allow items to grow */
+      max-width: 120px;
+      /* Prevent them getting too wide on desktop */
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .nav-item.active {
+      background: #1E293B;
+      color: white;
+      padding: 12px 20px;
+      box-shadow: 0 8px 20px -6px rgba(30, 41, 59, 0.4);
+      flex: 1.5;
+      /* Grow active item slightly more */
+      max-width: 160px;
+    }
+
+    .nav-item .material-symbols-rounded {
+      font-size: 24px;
+      font-variation-settings: 'FILL' 0;
+      transition: all 0.3s;
+    }
+
+    .nav-item.active .material-symbols-rounded {
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .nav-label {
+      display: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-label {
+      display: block;
+    }
+
+
+    /* ==========================
+       GLASS SIDEBAR
+       ========================== */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.85);
+      /* Frosted sidebar */
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.1);
+      border-right: 1px solid rgba(255, 255, 255, 0.6);
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1001;
+      overflow-y: auto;
+    }
+
+    .sidebar.show {
+      left: 0;
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(30, 41, 59, 0.4);
+      /* Darker dim */
+      backdrop-filter: blur(4px);
+      /* Blur background content */
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+
+    .sidebar-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    }
+
+    .sidebar-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    .sidebar-close .material-symbols-rounded {
+      font-size: 20px;
+      color: #64748B;
+    }
+
+    .sidebar-profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .sidebar-avatar-container {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: white;
+      box-shadow: var(--glass-shadow);
+      border: 2px solid white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-camera-badge {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 26px;
+      height: 26px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid white;
+    }
+
+    .sidebar-camera-badge .material-symbols-rounded {
+      font-size: 16px;
+      color: #6366F1;
+    }
+
+    .sidebar-user h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 4px;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .sidebar-user p {
+      font-size: 13px;
+      color: #64748B;
+      opacity: 0.8;
+    }
+
+    .sidebar-nav {
+      padding: 16px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: #64748B;
+      margin-bottom: 6px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .sidebar-item:hover {
+      background: rgba(255, 255, 255, 0.6);
+      color: #1E293B;
+    }
+
+    .sidebar-item.active {
+      background: rgba(238, 242, 255, 0.8);
+      color: #6366F1;
+      border: 1px solid rgba(99, 102, 241, 0.1);
+    }
+
+    .sidebar-item.logout {
+      color: #EF4444;
+      margin-top: 20px;
+    }
+
+    .sidebar-item.logout:hover {
+      background: rgba(254, 226, 226, 0.5);
+    }
+
+    /* ==========================
+       GLASS FORM PAGE
+       ========================== */
+    .form-page {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(248, 250, 252, 0.6);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      z-index: 1100;
+      padding: 24px;
+      padding-bottom: 120px;
+      overflow-y: auto;
+    }
+
+    .form-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+    }
+
+    .back-btn:active {
+      transform: scale(0.95);
+    }
+
+    .form-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1E293B;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1E293B;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 16px;
+      border: 2px solid rgba(226, 232, 240, 0.8);
+      border-radius: 16px;
+      font-size: 15px;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(4px);
+      color: #1E293B;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: #6366F1;
+      background: white;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+      z-index: 10;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 16px;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #64748B;
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* ==========================
+       GLASS MODALS (Crop/Edit)
+       ========================== */
+    .crop-modal,
+    .edit-name-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 2000;
+    }
+
+    .crop-container,
+    .edit-name-container {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border-radius: 32px;
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 32px 64px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 440px;
+      overflow: hidden;
+      animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalPop {
+      from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .crop-header,
+    .edit-name-header {
+      padding: 24px 24px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .crop-title,
+    .edit-name-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    #cropContainer {
+      padding: 0 24px;
+      margin-bottom: 24px;
+    }
+
+    .crop-actions,
+    .edit-name-actions {
+      padding: 12px 24px 24px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .edit-name-input {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid var(--glass-border);
+      border-radius: 18px;
+      font-size: 16px;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--text-primary);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .edit-name-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ==========================
+       DYNAMIC CARD STYLES
+       ========================== */
+    .cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .class-card {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 12px 16px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+
+    .class-card:active {
+      transform: scale(0.98);
+      background: #F8FAFC;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-index {
+      font-size: 11px;
+      font-weight: 800;
+      color: #6366F1;
+      background: rgba(99, 102, 241, 0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .card-content {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F1F5F9;
+      color: #6366F1;
+      flex-shrink: 0;
+    }
+
+    .card-icon .material-symbols-rounded {
+      font-size: 20px;
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-subject {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-detail {
+      font-size: 12px;
+      color: #64748B;
+      font-weight: 500;
+    }
+
+    .card-badge-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .badge-stream {
+      background: #E0E7FF;
+      color: #4338CA;
+    }
+
+    .badge-sem {
+      background: #F1F5F9;
+      color: #475569;
+    }
+
+    .badge-time {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .badge-date {
+      background: #DCFCE7;
+      color: #166534;
+    }
+
+    .card-action-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid #E2E8F0;
+      background: white;
+      color: #6366F1;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .card-action-btn.active:active {
+      background: #6366F1;
+      color: white;
+      border-color: #6366F1;
+    }
+
+    .subject-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(10px);
+      padding: 10px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+
+    .subject-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .subject-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subject-meta {
+      font-size: 12px;
+      color: #64748B;
+      font-weight: 500;
+    }
+
+    .subject-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #64748B;
+      cursor: pointer;
+    }
+
+    .action-icon-btn.delete:active {
+      color: #EF4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .action-icon-btn.add:active {
+      color: #6366F1;
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 12px 16px;
+      }
+
+      .welcome-banner {
+        margin: 12px;
+        padding: 18px;
+        border-radius: 20px;
+      }
+
+      .welcome-message {
+        font-size: 16px;
+      }
+
+      .welcome-illustration {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+      }
+
+      main {
+        padding: 0 16px;
+      }
+
+      .section-title {
+        font-size: 18px;
+      }
+    }
+
+    /* ==========================
+       MODERN LOADING OVERLAY
+       ========================== */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      pointer-events: none;
+      transform: translateY(-100px);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .loading-spinner {
+      width: 38px;
+      height: 38px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .loading-spinner::after {
+      content: "";
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid rgba(99, 102, 241, 0.1);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: instagram-spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      display: none;
+    }
+
+    @keyframes instagram-spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    @keyframes instagram-spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    // ✅ API URL from config
+    const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+    console.log('🔧 API Base URL:', API_BASE_URL);
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    window.firebaseAuth = auth;
+    window.firebaseSignOut = signOut;
+    window.firebaseOnAuthStateChanged = onAuthStateChanged;
+
+    console.log('✅ Firebase Auth initialized (Cloudinary for storage)');
+
+    // Fetch teacher profile
+    async function fetchTeacherProfile(email) {
+      try {
+        // ✅ FIXED: Added API_BASE_URL prefix
+        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const data = await response.json();
+        return data.success && data.teacher ? data.teacher : null;
+      } catch (error) {
+        console.error('❌ Error fetching profile:', error);
+        return null;
+      }
+    }
+
+    // Update avatar display
+    function updateAvatar(email, displayName, profileImageUrl) {
+      const headerAvatar = document.getElementById('headerAvatar');
+      const sidebarAvatar = document.getElementById('sidebarAvatar');
+
+      if (profileImageUrl) {
+        if (headerAvatar) {
+          headerAvatar.innerHTML = `<img src="${profileImageUrl}" alt="Profile">`;
+        }
+        if (sidebarAvatar) {
+          sidebarAvatar.innerHTML = `<img src="${profileImageUrl}" alt="Profile">`;
+        }
+      } else {
+        if (headerAvatar) {
+          headerAvatar.innerHTML = '<span class="material-symbols-rounded" style="font-size: 26px; color: white;">person</span>';
+        }
+        if (sidebarAvatar) {
+          sidebarAvatar.innerHTML = '<span class="material-symbols-rounded" style="font-size: 32px; color: white;">person</span>';
+        }
+      }
+    }
+
+    // Update user info
+    function updateUserInfo(displayName, email) {
+      const headerUserName = document.getElementById('headerUserName');
+      const sidebarUserName = document.getElementById('sidebarUserName');
+      const userEmailEl = document.getElementById('userEmail');
+
+      if (headerUserName) headerUserName.textContent = displayName;
+      if (sidebarUserName) sidebarUserName.textContent = displayName;
+      if (userEmailEl) userEmailEl.textContent = email;
+    }
+
+    // Make functions globally available
+    window.updateAvatar = updateAvatar;
+    window.fetchTeacherProfile = fetchTeacherProfile;
+
+    // Auth state observer
+    onAuthStateChanged(auth, async (user) => {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+
+      if (user && user.email) {
+        const email = user.email;
+        console.log('👤 User logged in:', email);
+
+        const teacherProfile = await fetchTeacherProfile(email);
+
+        let displayName = email.split('@')[0].replace(/[._]/g, ' ').split(' ')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+        let profileImageUrl = null;
+
+        if (teacherProfile) {
+          if (teacherProfile.name) displayName = teacherProfile.name;
+          if (teacherProfile.profileImageUrl) profileImageUrl = teacherProfile.profileImageUrl;
+        }
+
+        updateAvatar(email, displayName, profileImageUrl);
+        updateUserInfo(displayName, email);
+
+        // Store email globally
+        window.currentUserEmail = email;
+
+        // Hide loading overlay
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
+      } else {
+        window.location.href = 'index.html';
+      }
+    });
+  </script>
+
+</head>
+
+<body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading...</div>
+  </div>
+
+  <!-- Hidden file input -->
+  <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
+
+  <!-- Crop Modal -->
+  <div id="cropModal" class="crop-modal hidden">
+    <div class="crop-container">
+      <div class="crop-header">
+        <h3 class="crop-title">Adjust Your Photo</h3>
+        <button class="crop-close" onclick="closeCropModal()">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+
+      <div id="cropContainer"></div>
+
+      <div class="crop-actions">
+        <button onclick="closeCropModal()" class="btn btn-secondary">Cancel</button>
+        <button onclick="uploadCroppedImage()" class="btn btn-primary">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Name Modal -->
+  <div id="editNameModal" class="edit-name-modal hidden">
+    <div class="edit-name-container">
+      <div class="edit-name-header">
+        <h3 class="edit-name-title">Edit Name</h3>
+        <button class="edit-name-close" onclick="closeEditNameModal()">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+
+      <div style="padding: 0 24px 24px;">
+        <input type="text" id="editNameInput" class="edit-name-input" style="margin-bottom: 24px; display: block;"
+          placeholder="Enter your name" maxlength="50" />
+
+        <div class="edit-name-actions" style="padding: 0; gap: 12px; display: flex;">
+          <button onclick="closeEditNameModal()" class="btn btn-secondary" style="margin: 0; flex: 1;">Cancel</button>
+          <button onclick="updateName()" class="btn btn-primary" style="margin: 0; flex: 1.5;">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="avatar" id="headerAvatar">
+          <span class="material-symbols-rounded" style="font-size: 26px; color: white;">person</span>
+        </div>
+
+        <div class="greeting">
+          <h1>Hello, <span id="headerUserName">Teacher</span></h1>
+        </div>
+      </div>
+
+      <div class="menu-icon" onclick="toggleMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <button class="sidebar-close" onclick="toggleMenu()">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+
+      <div class="sidebar-profile">
+        <div class="sidebar-avatar-container">
+          <div class="sidebar-avatar" id="sidebarAvatar">
+            <span class="material-symbols-rounded" style="font-size: 48px; color: white;">person</span>
+          </div>
+          <div class="sidebar-camera-badge" onclick="triggerImageUpload()" title="Change photo">
+            <span class="material-symbols-rounded">photo_camera</span>
+          </div>
+        </div>
+
+        <div class="sidebar-user" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+          <div
+            style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; width: 100%;">
+            <h3 id="sidebarUserName" style="margin: 0;">Teacher</h3>
+            <button onclick="showEditNameModal()" class="name-edit-btn" title="Edit name"
+              style="padding: 0; background: none; border: none; cursor: pointer; display: flex; align-items: center;">
+              <span class="material-symbols-rounded" style="font-size: 18px; color: var(--primary-color);">edit</span>
+            </button>
+          </div>
+          <p id="userEmail" style="margin: 0; opacity: 0.7;">teacher@example.com</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button onclick="logout()" class="sidebar-item logout" style="margin-top: auto;">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Logout</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div class="welcome-content">
+      <div class="welcome-text">Welcome! </div>
+      <div class="welcome-message">Let's schedule your classes</div>
+    </div>
+    <div class="welcome-illustration">
+      <img src="banner.jpg" alt="Teacher">
+    </div>
+  </div>
+  <!-- Main -->
+  <main>
+    <!-- Today -->
+    <div id="todaySection">
+      <div class="section-header">
+        <h2 class="section-title">My Classes</h2>
+        <span class="section-count" id="queueCount">0</span>
+      </div>
+
+      <div id="emptyQueuePrompt" class="empty">
+        <div class="empty-icon">
+          <span class="material-symbols-rounded">event</span>
+        </div>
+        <h3 class="empty-title">No classes today</h3>
+        <p class="empty-text">Add subjects to get started</p>
+      </div>
+
+      <div class="cards-grid" id="queueList"></div>
+    </div>
+
+    <!-- Subjects -->
+    <div id="subjectsSection" class="hidden">
+      <div class="section-header">
+        <h2 class="section-title">Subjects</h2>
+        <button onclick="showCreateSubjectForm()" class="add-btn">
+          <span class="material-symbols-rounded">add</span>
+        </button>
+      </div>
+
+      <div id="emptySubjectsPrompt" class="empty">
+        <div class="empty-icon">
+          <span class="material-symbols-rounded">book</span>
+        </div>
+        <h3 class="empty-title">No subjects yet</h3>
+        <p class="empty-text">Create your first subject</p>
+        <button onclick="showCreateSubjectForm()" class="empty-action-btn">
+          <span class="material-symbols-rounded">add</span>
+          Add Subject
+        </button>
+      </div>
+
+      <div id="subjectsList"></div>
+    </div>
+
+    <!-- Completed -->
+    <div id="completedSection" class="hidden">
+      <div class="section-header">
+        <h2 class="section-title">History</h2>
+        <span class="section-count" id="completedCount">0</span>
+      </div>
+
+      <!-- Calendar Filter Only -->
+      <div class="search-container" style="margin-bottom: 24px;">
+        <div class="calendar-box" id="calendarWrapper"
+          onclick="const el = document.getElementById('historyDateInput'); if (el.showPicker) el.showPicker(); else el.click();"
+          style="
+          background: rgba(255, 255, 255, 0.45);
+          backdrop-filter: blur(10px);
+          border: 1px solid var(--glass-border);
+          border-radius: 18px;
+          padding: 12px 20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          box-shadow: var(--glass-shadow);
+          cursor: pointer;
+          position: relative;
+        ">
+          <span class="material-symbols-rounded"
+            style="color: var(--primary-color); font-size: 24px;">calendar_month</span>
+          <div style="flex: 1; pointer-events: none;">
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Filter by Date</div>
+            <div id="selectedDateDisplay" style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Click
+              to select a date</div>
+          </div>
+          <button id="clearDateBtn" onclick="clearHistoryDate(event)" style="
+            display: none;
+            background: rgba(0,0,0,0.05);
+            border: none;
+            border-radius: 8px;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            z-index: 10;
+          ">
+            <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
+          </button>
+          <input type="date" id="historyDateInput" style="
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              height: 100%;
+              opacity: 0;
+              cursor: pointer;
+              z-index: 5;
+              pointer-events: none;
+            " onchange="filterHistory()">
+        </div>
+      </div>
+
+      <div id="emptyCompletedPrompt" class="empty">
+        <div class="empty-icon">
+          <span class="material-symbols-rounded">history</span>
+        </div>
+        <h3 class="empty-title">No history yet</h3>
+        <p class="empty-text">Completed classes appear here</p>
+      </div>
+
+      <div id="completedList"></div>
+    </div>
+
+    <!-- Create Form -->
+    <div id="createSubjectPage" class="hidden form-page">
+      <div class="form-header">
+        <button class="back-btn" onclick="cancelCreateSubject()">
+          <span class="material-symbols-rounded">arrow_back</span>
+        </button>
+        <h2 class="form-title">Add Subject</h2>
+      </div>
+
+      <form id="createSubjectForm">
+        <div class="form-group">
+          <label class="form-label">Stream</label>
+          <select id="createStreamContainer" class="form-select" required>
+            <option value="">Choose stream</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Semester</label>
+          <select id="createSemester" class="form-select" required>
+            <option value="">Select semester</option>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+            <option value="4">Semester 4</option>
+            <option value="5">Semester 5</option>
+            <option value="6">Semester 6</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <select id="createSubject" class="form-select" required disabled>
+            <option value="">Select stream & semester first</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" onclick="cancelCreateSubject()" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Subject</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-today" onclick="switchTab('today', this)">
+      <span class="material-symbols-rounded">home</span>
+      <span class="nav-label">Home</span>
+    </button>
+
+    <button class="nav-item" id="nav-subjects" onclick="switchTab('subjects', this)">
+      <span class="material-symbols-rounded">menu_book</span>
+      <span class="nav-label">Subjects</span>
+    </button>
+
+    <button class="nav-item" id="nav-completed" onclick="switchTab('completed', this)">
+      <span class="material-symbols-rounded">history</span>
+      <span class="nav-label">History</span>
+    </button>
+
+    <button class="nav-item" onclick="window.location.href='ai-assistant.html'">
+      <span class="material-symbols-rounded">auto_awesome</span>
+      <span class="nav-label">AI</span>
+    </button>
+  </nav>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
+  <script src="js/myclass.js"></script>
+
+  <script>
+    let croppieInstance = null;
+
+    function triggerImageUpload() {
+      document.getElementById('profileImageInput').click();
+    }
+
+    function closeCropModal() {
+      document.getElementById('cropModal').classList.add('hidden');
+      if (croppieInstance) {
+        croppieInstance.destroy();
+        croppieInstance = null;
+      }
+    }
+
+    async function uploadCroppedImage() {
+      if (!croppieInstance || !window.currentUserEmail) return;
+
+      try {
+        const blob = await croppieInstance.result({
+          type: 'blob',
+          size: { width: 400, height: 400 },
+          format: 'jpeg',
+          quality: 0.9
+        });
+
+        const file = new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+        closeCropModal();
+
+        // This calls the uploadProfileImage from myclass.js (Cloudinary)
+        if (window.uploadProfileImage) {
+          await window.uploadProfileImage(file, window.currentUserEmail);
+        }
+
+      } catch (error) {
+        console.error('❌ Error uploading cropped image:', error);
+        showErrorNotification('Failed to upload image: ' + error.message);
+      }
+    }
+
+    // Handle file selection
+    document.getElementById('profileImageInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showErrorNotification('Please select an image file');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        showErrorNotification('Image size must be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        document.getElementById('cropModal').classList.remove('hidden');
+
+        const el = document.getElementById('cropContainer');
+        el.innerHTML = '';
+
+        croppieInstance = new Croppie(el, {
+          viewport: { width: 220, height: 220, type: 'circle' },
+          boundary: { width: 300, height: 300 },
+          showZoomer: true,
+          enableOrientation: true
+        });
+
+        croppieInstance.bind({
+          url: event.target.result
+        });
+      };
+      reader.readAsDataURL(file);
+
+      e.target.value = '';
+    });
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('show');
+      document.getElementById('sidebarOverlay').classList.toggle('show');
+    }
+
+    function switchTab(tabName, element) {
+      document.getElementById('todaySection').classList.add('hidden');
+      document.getElementById('subjectsSection').classList.add('hidden');
+      document.getElementById('completedSection').classList.add('hidden');
+
+      const targetSection = document.getElementById(tabName + 'Section');
+      if (targetSection) targetSection.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      if (element) {
+        element.classList.add('active');
+      } else {
+        const btnId = tabName === 'completed' ? 'nav-completed' : (tabName === 'subjects' ? 'nav-subjects' : 'nav-today');
+        document.getElementById(btnId)?.classList.add('active');
+      }
+    }
+
+    // Handle hash routing on load
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.substring(1);
+      if (hash === 'subjects') {
+        switchTab('subjects');
+      } else if (hash === 'history') {
+        switchTab('completed');
+      }
+    });
+
+    // Handle hash change without reload
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash.substring(1);
+      if (hash === 'subjects') {
+        switchTab('subjects');
+      } else if (hash === 'history') {
+        switchTab('completed');
+      } else if (hash === 'home' || !hash) {
+        switchTab('today');
+      }
+    });
+
+    function viewAttendance() {
+      window.location.href = 'view-attendance.html';
+    }
+
+    function logout() {
+      if (window.firebaseAuth && window.firebaseSignOut) {
+        window.firebaseSignOut(window.firebaseAuth)
+          .then(() => window.location.href = 'login.html')
+          .catch(() => window.location.href = 'login.html');
+      }
+    }
+
+    // Notification System
+    function showSuccessNotification(message) {
+      const existing = document.getElementById('successNotification');
+      if (existing) existing.remove();
+
+      const existingOverlay = document.getElementById('notificationOverlay');
+      if (existingOverlay) existingOverlay.remove();
+
+      const notification = document.createElement('div');
+      notification.id = 'successNotification';
+      notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.8);
+        background: #10B981;
+        color: white;
+        padding: 24px 32px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(16, 185, 129, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        min-width: 280px;
+        max-width: 90%;
+        font-family: 'Poppins', sans-serif;
+        animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        text-align: center;
+      `;
+
+      notification.innerHTML = `
+        <div style="
+          width: 64px;
+          height: 64px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: checkPulse 0.6s ease-out;
+        ">
+          <span class="material-symbols-rounded" style="
+            font-size: 36px;
+            color: white;
+            font-variation-settings: 'FILL' 1;
+          ">check_circle</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+          <h3 style="font-size: 20px; font-weight: 700; margin: 0; line-height: 1.2;">Success!</h3>
+          <p style="font-size: 15px; font-weight: 500; margin: 0; opacity: 0.95; line-height: 1.4;">${message}</p>
+        </div>
+      `;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'notificationOverlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 99998;
+        animation: fadeIn 0.3s ease-out;
+      `;
+
+      if (!document.getElementById('notification-styles')) {
+        const styleSheet = document.createElement('style');
+        styleSheet.id = 'notification-styles';
+        styleSheet.textContent = `
+          @keyframes popIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          }
+          @keyframes popOut {
+            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+          }
+          @keyframes checkPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+          }
+        `;
+        document.head.appendChild(styleSheet);
+      }
+
+      document.body.appendChild(overlay);
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.style.animation = 'popOut 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+        overlay.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => {
+          notification.remove();
+          overlay.remove();
+        }, 300);
+      }, 2000);
+    }
+
+    function showErrorNotification(message) {
+      const existing = document.getElementById('errorNotification');
+      if (existing) existing.remove();
+
+      const existingOverlay = document.getElementById('notificationOverlay');
+      if (existingOverlay) existingOverlay.remove();
+
+      const notification = document.createElement('div');
+      notification.id = 'errorNotification';
+      notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.8);
+        background: #EF4444;
+        color: white;
+        padding: 24px 32px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(239, 68, 68, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        min-width: 280px;
+        max-width: 90%;
+        font-family: 'Poppins', sans-serif;
+        animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        text-align: center;
+      `;
+
+      notification.innerHTML = `
+        <div style="
+          width: 64px;
+          height: 64px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: checkPulse 0.6s ease-out;
+        ">
+          <span class="material-symbols-rounded" style="
+            font-size: 36px;
+            color: white;
+            font-variation-settings: 'FILL' 1;
+          ">error</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+          <h3 style="font-size: 20px; font-weight: 700; margin: 0; line-height: 1.2;">Error!</h3>
+          <p style="font-size: 15px; font-weight: 500; margin: 0; opacity: 0.95; line-height: 1.4;">${message}</p>
+        </div>
+      `;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'notificationOverlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 99998;
+        animation: fadeIn 0.3s ease-out;
+      `;
+
+      document.body.appendChild(overlay);
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.style.animation = 'popOut 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+        overlay.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => {
+          notification.remove();
+          overlay.remove();
+        }, 300);
+      }, 2000);
+    }
+
+    // Edit Name Functions
+    function showEditNameModal() {
+      const modal = document.getElementById('editNameModal');
+      const input = document.getElementById('editNameInput');
+      const currentName = document.getElementById('sidebarUserName').textContent;
+
+      input.value = currentName;
+      modal.classList.remove('hidden');
+      input.focus();
+    }
+
+    function closeEditNameModal() {
+      document.getElementById('editNameModal').classList.add('hidden');
+    }
+
+    async function updateName() {
+      const newName = document.getElementById('editNameInput').value.trim();
+
+      if (!newName) {
+        showErrorNotification('Please enter a valid name');
+        return;
+      }
+
+      if (!window.currentUserEmail) {
+        showErrorNotification('User email not found. Please refresh the page.');
+        return;
+      }
+
+      try {
+        // Use global userData from myclass.js
+        const fuid = (typeof userData !== 'undefined' && userData.firebaseUid) ? userData.firebaseUid : null;
+
+        console.log('✏️ Sending name update request:', {
+          email: window.currentUserEmail,
+          newName,
+          firebaseUid: fuid
+        });
+
+        const response = await fetch(`${API_BASE_URL}/teacher/profile/${encodeURIComponent(window.currentUserEmail)}/name`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: newName,
+            firebaseUid: fuid
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          console.log('✅ Name updated in database:', data.teacher.name);
+
+          // Update global userData state
+          if (typeof userData !== 'undefined') {
+            userData.userName = newName;
+          }
+
+          // Update UI
+          if (elements.headerUserName) elements.headerUserName.textContent = newName;
+          if (elements.sidebarUserName) elements.sidebarUserName.textContent = newName;
+
+          // Fallback UI update if elements aren't in elements object correctly
+          document.getElementById('headerUserName').textContent = newName;
+          document.getElementById('sidebarUserName').textContent = newName;
+
+          closeEditNameModal();
+          showSuccessNotification('Name updated successfully!');
+        } else {
+          throw new Error(data.error || 'Failed to update name');
+        }
+
+      } catch (error) {
+        console.error('❌ Error updating name:', error);
+        showErrorNotification('Failed to update name: ' + error.message);
+      }
+    }
+
+    // Expose functions globally
+    window.triggerImageUpload = triggerImageUpload;
+    window.closeCropModal = closeCropModal;
+    window.uploadCroppedImage = uploadCroppedImage;
+    window.toggleMenu = toggleMenu;
+    window.switchTab = switchTab;
+    window.viewAttendance = viewAttendance;
+    window.logout = logout;
+    window.showSuccessNotification = showSuccessNotification;
+    window.showErrorNotification = showErrorNotification;
+    window.showEditNameModal = showEditNameModal;
+    window.closeEditNameModal = closeEditNameModal;
+    window.updateName = updateName;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker registered'))
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
+    }
+  </script>
+
+</body>
+
+</html>
