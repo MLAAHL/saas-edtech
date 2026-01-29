@@ -70,46 +70,42 @@ app.use('/api/promotion', strictLimiter);
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Always allow requests with no origin (mobile apps, curl, Postman, etc.)
+    // Allow requests with no origin (mobile apps, curl, health checks, etc.)
     if (!origin) {
       return callback(null, true);
     }
 
-    // Explicitly allowed origins
     const allowedOrigins = [
-      "https://teachingstaff.netlify.app",
-      "https://dataentrymla.netlify.app",
-      "https://mlaahl.online",
-      "https://www.mlaahl.online",
+      // Local development
       "http://localhost:5000",
       "http://localhost:5500",
-      "http://127.0.0.1:5500"
+      "http://localhost:5501",
+      "http://localhost:5502",
+      "http://localhost:8001",
+      "http://localhost:8002",
+      "http://127.0.0.1:5000",
+      "http://127.0.0.1:5500",
+      "http://127.0.0.1:5501",
+      "http://127.0.0.1:5502",
+      "http://127.0.0.1:8001",
+      "http://127.0.0.1:8002",
+         "https://teachingstaff.netlify.app",
+      "https://dataentrymla.netlify.app",
+      "https://your-production-domain.com",
     ];
-
-    // Check if origin is in allowed list or matches patterns
-    if (allowedOrigins.includes(origin) ||
-      origin.endsWith('.netlify.app') ||
-      origin.includes('localhost') ||
-      origin.includes('127.0.0.1') ||
-      origin.includes('mlaahl.online')) {
-      return callback(null, true);
-    }
 
     // Add any custom allowed origins from environment
     if (process.env.ALLOWED_ORIGINS) {
-      const customOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
-      if (customOrigins.some(allowed => origin === allowed || origin.includes(allowed))) {
-        return callback(null, true);
-      }
+      const customOrigins = process.env.ALLOWED_ORIGINS.split(',');
+      allowedOrigins.push(...customOrigins);
     }
 
-    // In development, allow everything
-    if (!isProduction) {
-      return callback(null, true);
+    if (allowedOrigins.includes(origin) || !isProduction) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
-
-    console.warn(`⚠️ CORS blocked origin: ${origin}`);
-    callback(new Error('Not allowed by CORS'));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
