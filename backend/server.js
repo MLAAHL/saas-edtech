@@ -74,24 +74,31 @@ const corsOptions = {
     if (!origin) {
       return callback(null, true);
     }
+const allowedOrigins = [
+  // Local development
+  "http://localhost:5000",
+  "http://localhost:5500",
+  "http://localhost:5501",
+  "http://localhost:5502",
+  "http://localhost:8001",
+  "http://localhost:8002",
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5500",
+  "http://127.0.0.1:5501",
+  "http://127.0.0.1:5502",
+  "http://127.0.0.1:8001",
+  "http://127.0.0.1:8002",
 
-    const allowedOrigins = [
-      // Local development
-      "http://localhost:5000",
-      "http://localhost:5500",
-      "http://localhost:5501",
-      "http://localhost:5502",
-      "http://localhost:8001",
-      "http://localhost:8002",
-      "http://127.0.0.1:5000",
-      "http://127.0.0.1:5500",
-      "http://127.0.0.1:5501",
-      "http://127.0.0.1:5502",
-      "http://127.0.0.1:8001",
-      "http://127.0.0.1:8002",
-      "https://dataentrymla.netlify.app",
-      "https://your-production-domain.com",
-    ];
+  // Hosting environments (do not remove these, if valid):
+  "https://dataentrymla.netlify.app",
+  "https://your-production-domain.com", // Replace with your actual production domain
+  
+  // Teaching frontend
+  "https://mlaahl.online",
+
+  // Admin frontend
+  "https://admin.mlaahl.online",
+];
 
     // Add any custom allowed origins from environment
     if (process.env.ALLOWED_ORIGINS) {
@@ -344,3 +351,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 }); 
+
