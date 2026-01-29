@@ -69,44 +69,7 @@ app.use('/api/promotion', strictLimiter);
 // ============================================================================
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, health checks, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    const allowedOrigins = [
-      // Local development
-      "http://localhost:5000",
-      "http://localhost:5500",
-      "http://localhost:5501",
-      "http://localhost:5502",
-      "http://localhost:8001",
-      "http://localhost:8002",
-      "http://127.0.0.1:5000",
-      "http://127.0.0.1:5500",
-      "http://127.0.0.1:5501",
-      "http://127.0.0.1:5502",
-      "http://127.0.0.1:8001",
-      "http://127.0.0.1:8002",
-         "https://teachingstaff.netlify.app",
-      "https://dataentrymla.netlify.app",
-      "https://your-production-domain.com",
-    ];
-
-    // Add any custom allowed origins from environment
-    if (process.env.ALLOWED_ORIGINS) {
-      const customOrigins = process.env.ALLOWED_ORIGINS.split(',');
-      allowedOrigins.push(...customOrigins);
-    }
-
-    if (allowedOrigins.includes(origin) || !isProduction) {
-      callback(null, true);
-    } else {
-      console.warn(`⚠️ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow ALL origins
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
