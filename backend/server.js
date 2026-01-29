@@ -40,14 +40,14 @@ app.use(
             objectSrc: ["'none'"],
           },
         }
-      : false,
+      : false, // Disable CSP enforcement during development
   })
 );
 
-// Rate limiting
+// Rate limiting to prevent abuse
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 100 : 2000, // Dev limit higher
+  windowMs: 15 * 60 * 1000, // 15-minute window
+  max: isProduction ? 100 : 2000, // Allow more requests in Dev mode
   message: "Too many requests. Please try again later.",
 });
 app.use("/api", generalLimiter);
@@ -57,7 +57,9 @@ app.use("/api", generalLimiter);
 // ============================================================================
 const allowedOrigins = [
   "http://localhost:5000",
-  "https://mlaahl.online",
+  "http://127.0.0.1:5000",
+  "https://mlaahl.online", // Teaching frontend URL
+  "https://admin.mlaahl.online", // Admin frontend URL
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : []),
 ];
 
@@ -70,47 +72,55 @@ const corsOptions = {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  credentials: true,
+  credentials: true, // Allow cookies and credentials
 };
 app.use(cors(corsOptions));
 
 // ============================================================================
-// OTHER MIDDLEWARE
+// MIDDLEWARE
 // ============================================================================
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ============================================================================
-// MONGODB CONNECTION
+// MONGODB CONNECTION - Enhanced Setup
 // ============================================================================
 mongoose
   .connect(MONGODB_URI, { maxPoolSize: 20, serverSelectionTimeoutMS: 10000 })
-  .then(() => console.log("✅ MongoDB connected"))
+  .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
-    process.exit(1);
+    console.error("❌ MongoDB connection error:", err.message || err);
+    process.exit(1); // Exit application if database fails
   });
 
 // ============================================================================
 // REGISTER API ROUTES
 // ============================================================================
 const teacherRoutes = require("./routes/teacherRoutes");
-app.use("/api/teacher", teacherRoutes);
-// Add other routes...
+app.use("/api/teacher", teacherRoutes); // Ensure the teacher routes are properly imported
+// Add your other route imports here...
 
 // ============================================================================
-// ERROR HANDLERS
+// ERROR HANDLING MIDDLEWARE
 // ============================================================================
 app.use("/api/*", (req, res) => {
-  res.status(404).json({ success: false, error: "API endpoint not found" });
+  if (!isProduction) {
+    console.warn("⚠️ 404 - API endpoint not found:", req.originalUrl);
+  }
+  res.status(404).json({
+    success: false,
+    error: "API endpoint not found",
+    path: req.originalUrl,
+  });
 });
 
 app.use((err, req, res, next) => {
+  console.error("❌ Server error:", err.message || err);
   res.status(err.status || 500).json({
     success: false,
     error: err.message || "Internal server error",
-    stack: !isProduction ? err.stack : undefined,
+    stack: !isProduction ? err.stack : undefined, // Expose stack only in development mode
   });
 });
 
@@ -121,5 +131,6 @@ app.listen(PORT, () => {
   console.log("\n" + "=".repeat(70));
   console.log("🚀 SMART ATTENDANCE LMS - BACKEND SERVER");
   console.log("=".repeat(70));
-  console.log(`📡 Server:              http://localhost:${PORT}`);
+  console.log(`📡 Server running at: http://localhost:${PORT}`);
+  console.log(`🏥 Health Check endpoint: http://localhost:${PORT}/health`);
 });
