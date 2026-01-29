@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Attendance - Premium</title>
+
+  <link rel="icon" type="image/png" href="logo2.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2937">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Smart Attendance">
+  <link rel="apple-touch-icon" href="logo2.png">
+
+  <script src="js/config.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.04);
+      --primary-color: #6366F1;
+      --text-primary: #334155;
+      --text-secondary: #64748B;
+      --bg-accent: #F8FAFC;
+      --danger: #EF4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F8FAFC;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    .welcome-title,
+    .btn {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Subtle noise texture for premium feel */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* BACKGROUND SHAPES (Soft white/light gray movement) */
+    .ambient-light {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      z-index: -1;
+      opacity: 0.3;
+      animation: subtleMove 15s infinite alternate ease-in-out;
+    }
+
+    .light-1 {
+      top: -20%;
+      left: -10%;
+      width: 600px;
+      height: 600px;
+      background: rgba(99, 102, 241, 0.08);
+    }
+
+    .light-2 {
+      bottom: -20%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: rgba(139, 92, 246, 0.08);
+      animation-delay: -7s;
+    }
+
+    @keyframes subtleMove {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      100% {
+        transform: translate(30px, -30px) scale(1.05);
+      }
+    }
+
+    /* PREMIUM WHITE GLASS CARD */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      border-radius: 30px;
+      padding: 45px 35px;
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .welcome-title {
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: -1px;
+    }
+
+    .welcome-text {
+      font-size: 16px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .welcome-subtitle {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      line-height: 1.7;
+      font-weight: 400;
+    }
+
+    /* ILLUSTRATION CONTAINER */
+    .illustration {
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 45px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Subtle white glow */
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%);
+      border-radius: 50%;
+    }
+
+    .illustration-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      animation: float 5s ease-in-out infinite;
+      filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.08));
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-15px);
+      }
+    }
+
+    /* PREMIUM BUTTONS */
+    .btn-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 20px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.5px;
+    }
+
+    /* Primary: Indigo Gradient */
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px -5px rgba(99, 102, 241, 0.4);
+      background: #4F46E5;
+    }
+
+    .btn-primary:active {
+      transform: translateY(-1px);
+    }
+
+    /* Secondary: Pure White Glass Button */
+    .btn-secondary {
+      background: var(--glass-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-shadow);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: var(--glass-border);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    .btn-secondary:active {
+      transform: translateY(-1px);
+    }
+
+    /* BOTTOM INDICATOR - Minimal gray */
+    .bottom-indicator {
+      width: 60px;
+      height: 4px;
+      background: #D1D5DB;
+      border-radius: 10px;
+      margin: 35px auto 0;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 480px) {
+      .glass-card {
+        padding: 35px 25px;
+      }
+
+      .welcome-title {
+        font-size: 34px;
+      }
+
+      .illustration {
+        width: 180px;
+        height: 180px;
+        margin-bottom: 35px;
+      }
+    }
+
+    /* Enhanced hover effects for touch devices */
+    @media (hover: none) {
+      .btn:active {
+        transform: scale(0.98);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SPLASH SCREEN (shown while checking auth) -->
+  <div id="splash-screen" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #F8FAFC;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+  ">
+    <div style="text-align: center;">
+      <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; animation: pulse 1.5s ease-in-out infinite;">
+      <p style="margin-top: 16px; color: var(--text-secondary); font-family: 'Inter', sans-serif; font-size: 14px;">
+        Loading...</p>
+    </div>
+  </div>
+  <style>
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
+    }
+
+    .main-content {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .main-content.visible {
+      opacity: 1;
+    }
+  </style>
+
+  <div class="main-content" id="mainContent">
+    <div class="ambient-light light-1"></div>
+    <div class="ambient-light light-2"></div>
+
+    <div class="glass-card">
+      <h1 class="welcome-title">Welcome</h1>
+
+      <p class="welcome-text">Smart Attendance System</p>
+      <p class="welcome-subtitle">Experience seamless tracking. Initialize your profile or authenticate to proceed.</p>
+
+      <div class="illustration">
+        <img src="images/b2.png" alt="Welcome Illustration" class="illustration-image">
+      </div>
+
+      <div class="btn-container">
+        <button class="btn btn-primary" onclick="goToCreateProfile()">
+          Create Profile
+        </button>
+
+        <button class="btn btn-secondary" onclick="goToLogin()">
+          Log In
+        </button>
+      </div>
+
+      <div class="bottom-indicator"></div>
+    </div>
+  </div> <!-- End main-content -->
+
+  <!-- Firebase Auth Check (MUST BE FIRST) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Check auth state immediately
+    onAuthStateChanged(auth, (user) => {
+      const splash = document.getElementById('splash-screen');
+      const mainContent = document.getElementById('mainContent');
+
+      if (user) {
+        // User is logged in - redirect to myclass immediately
+        console.log('✅ User already authenticated, redirecting to myclass.html');
+        window.location.replace('myclass.html');
+      } else {
+        // User is not logged in - show welcome page
+        console.log('👋 No active session, showing welcome page');
+        if (splash) {
+          splash.style.opacity = '0';
+          setTimeout(() => splash.remove(), 300);
+        }
+        if (mainContent) {
+          mainContent.classList.add('visible');
+        }
+      }
+    });
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker registered'))
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
+    }
+
+    function goToCreateProfile() {
+      localStorage.setItem('isFirstTime', 'true');
+      window.location.href = 'login.html';
+    }
+
+    function goToLogin() {
+      localStorage.removeItem('isFirstTime');
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+
+</html>
