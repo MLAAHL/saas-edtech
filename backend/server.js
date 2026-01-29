@@ -89,19 +89,25 @@ const corsOptions = {
       "http://127.0.0.1:5502",
       "http://127.0.0.1:8001",
       "http://127.0.0.1:8002",
-      "https://saas-edtech.onrender.com",
+      // Production domains
       "https://dataentrymla.netlify.app",
       "https://teachingstaff.netlify.app",
       "https://mlaahl.online",
+      "https://www.mlaahl.online",
     ];
 
     // Add any custom allowed origins from environment
     if (process.env.ALLOWED_ORIGINS) {
-      const customOrigins = process.env.ALLOWED_ORIGINS.split(',');
+      const customOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
       allowedOrigins.push(...customOrigins);
     }
 
-    if (allowedOrigins.includes(origin) || !isProduction) {
+    // Check if origin matches any allowed origin
+    const isAllowed = allowedOrigins.some(allowed =>
+      origin === allowed || origin.startsWith(allowed)
+    );
+
+    if (isAllowed || !isProduction) {
       callback(null, true);
     } else {
       console.warn(`⚠️ CORS blocked origin: ${origin}`);
@@ -346,4 +352,3 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 }); 
-
