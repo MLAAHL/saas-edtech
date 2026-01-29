@@ -89,7 +89,7 @@ const corsOptions = {
       "http://127.0.0.1:5502",
       "http://127.0.0.1:8001",
       "http://127.0.0.1:8002",
-        "https://mlaahl.online"
+        "https://mlaahl.online",
       "https://dataentrymla.netlify.app",
       "https://your-production-domain.com",
     ];
@@ -345,3 +345,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 }); 
+
