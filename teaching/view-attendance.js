@@ -659,7 +659,10 @@ function setupEventListeners() {
   editAttendanceBtn.addEventListener('click', enableEditMode);
   saveAttendanceBtn.addEventListener('click', saveAttendance);
   cancelEditBtn.addEventListener('click', cancelEdit);
-  deleteAttendanceBtn.addEventListener('click', deleteAttendance);
+
+  if (deleteAttendanceBtn) {
+    deleteAttendanceBtn.addEventListener('click', deleteAttendance);
+  }
 
   if (deleteSessionBtn) {
     deleteSessionBtn.addEventListener('click', deleteSelectedSessions);
@@ -765,9 +768,9 @@ async function loadSingleDateView() {
       currentDateData = data;
       displaySingleDate(data);
 
-      editAttendanceBtn.classList.remove('hidden');
-      deleteAttendanceBtn.classList.remove('hidden');
-      exportExcelBtn.classList.add('hidden');
+      if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
+      if (deleteAttendanceBtn) deleteAttendanceBtn.classList.remove('hidden');
+      if (exportExcelBtn) exportExcelBtn.classList.add('hidden');
     } else {
       viewThead.innerHTML = '';
       viewTbody.innerHTML = `
@@ -779,9 +782,9 @@ async function loadSingleDateView() {
         </tr>
       `;
 
-      editAttendanceBtn.classList.add('hidden');
-      deleteAttendanceBtn.classList.add('hidden');
-      exportExcelBtn.classList.add('hidden');
+      if (editAttendanceBtn) editAttendanceBtn.classList.add('hidden');
+      if (deleteAttendanceBtn) deleteAttendanceBtn.classList.add('hidden');
+      if (exportExcelBtn) exportExcelBtn.classList.add('hidden');
       currentDateData = null;
     }
 
@@ -814,25 +817,25 @@ function switchViewMode(mode) {
   selectedSessions.clear();
 
   if (mode === 'full') {
-    fullRegisterBtn.classList.add('active');
-    singleDateBtn.classList.remove('active');
-    dateSelector.classList.add('hidden');
-    deleteAttendanceBtn.classList.add('hidden');
-    deleteSessionBtn.classList.add('hidden');
-    saveAttendanceBtn.classList.add('hidden');
-    cancelEditBtn.classList.add('hidden');
+    if (fullRegisterBtn) fullRegisterBtn.classList.add('active');
+    if (singleDateBtn) singleDateBtn.classList.remove('active');
+    if (dateSelector) dateSelector.classList.add('hidden');
+    if (deleteAttendanceBtn) deleteAttendanceBtn.classList.add('hidden');
+    if (deleteSessionBtn) deleteSessionBtn.classList.add('hidden');
+    if (saveAttendanceBtn) saveAttendanceBtn.classList.add('hidden');
+    if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
 
     if (registerData) {
       displayFullRegister();
-      exportExcelBtn.classList.remove('hidden');
-      editAttendanceBtn.classList.remove('hidden');
+      if (exportExcelBtn) exportExcelBtn.classList.remove('hidden');
+      if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
     }
   } else {
-    fullRegisterBtn.classList.remove('active');
-    singleDateBtn.classList.add('active');
-    dateSelector.classList.remove('hidden');
-    deleteSessionBtn.classList.add('hidden');
-    exportExcelBtn.classList.add('hidden');
+    if (fullRegisterBtn) fullRegisterBtn.classList.remove('active');
+    if (singleDateBtn) singleDateBtn.classList.add('active');
+    if (dateSelector) dateSelector.classList.remove('hidden');
+    if (deleteSessionBtn) deleteSessionBtn.classList.add('hidden');
+    if (exportExcelBtn) exportExcelBtn.classList.add('hidden');
 
     if (registerData) {
       loadSingleDateView();
@@ -1163,10 +1166,10 @@ function enableEditMode() {
     td.appendChild(checkbox);
   });
 
-  editAttendanceBtn.classList.add('hidden');
-  deleteAttendanceBtn.classList.add('hidden');
-  saveAttendanceBtn.classList.remove('hidden');
-  cancelEditBtn.classList.remove('hidden');
+  if (editAttendanceBtn) editAttendanceBtn.classList.add('hidden');
+  if (deleteAttendanceBtn) deleteAttendanceBtn.classList.add('hidden');
+  if (saveAttendanceBtn) saveAttendanceBtn.classList.remove('hidden');
+  if (cancelEditBtn) cancelEditBtn.classList.remove('hidden');
 
   showNotification('Edit mode enabled', 'info');
   console.log('✅ Edit mode enabled with checkboxes');
@@ -1239,10 +1242,10 @@ async function saveAttendance() {
         showNotification(`Successfully updated ${result.modified} record(s)`, 'success');
 
         isEditMode = false;
-        saveAttendanceBtn.classList.add('hidden');
-        cancelEditBtn.classList.add('hidden');
-        editAttendanceBtn.classList.remove('hidden');
-        deleteAttendanceBtn.classList.remove('hidden');
+        if (saveAttendanceBtn) saveAttendanceBtn.classList.add('hidden');
+        if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
+        if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
+        if (deleteAttendanceBtn) deleteAttendanceBtn.classList.remove('hidden');
 
         await loadSingleDateView();
       } else {
@@ -1336,16 +1339,16 @@ function cancelEdit() {
   viewTbody.innerHTML = originalData;
   isEditMode = false;
 
-  editAttendanceBtn.classList.remove('hidden');
+  if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
 
   if (currentViewMode === 'single' && currentDateData) {
-    deleteAttendanceBtn.classList.remove('hidden');
+    if (deleteAttendanceBtn) deleteAttendanceBtn.classList.remove('hidden');
   } else {
-    deleteAttendanceBtn.classList.add('hidden');
+    if (deleteAttendanceBtn) deleteAttendanceBtn.classList.add('hidden');
   }
 
-  saveAttendanceBtn.classList.add('hidden');
-  cancelEditBtn.classList.add('hidden');
+  if (saveAttendanceBtn) saveAttendanceBtn.classList.add('hidden');
+  if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
 
   showNotification('Edit cancelled', 'info');
   console.log('❌ Edit cancelled');
