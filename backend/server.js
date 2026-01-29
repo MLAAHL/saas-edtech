@@ -75,8 +75,20 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Allow all Netlify apps and localhost
-    if (origin.endsWith('.netlify.app') ||
+    // Explicitly allowed origins
+    const allowedOrigins = [
+      "https://teachingstaff.netlify.app",
+      "https://dataentrymla.netlify.app",
+      "https://mlaahl.online",
+      "https://www.mlaahl.online",
+      "http://localhost:5000",
+      "http://localhost:5500",
+      "http://127.0.0.1:5500"
+    ];
+
+    // Check if origin is in allowed list or matches patterns
+    if (allowedOrigins.includes(origin) ||
+      origin.endsWith('.netlify.app') ||
       origin.includes('localhost') ||
       origin.includes('127.0.0.1') ||
       origin.includes('mlaahl.online')) {
