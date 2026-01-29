@@ -68,43 +68,48 @@ app.use('/api/promotion', strictLimiter);
 // CORS CONFIGURATION
 // ============================================================================
 
+const cors = require("cors");
+
+const allowedOrigins = [
+  // Local development
+  "http://localhost:5000",
+  "http://localhost:5500",
+  "http://localhost:5501",
+  "http://localhost:5502",
+  "http://localhost:8001",
+  "http://localhost:8002",
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5500",
+  "http://127.0.0.1:5501",
+  "http://127.0.0.1:5502",
+  "http://127.0.0.1:8001",
+  "http://127.0.0.1:8002",
+
+  // Production domains
+  "https://mlaahl.online",
+  "https://dataentrymla.netlify.app",
+  "https://your-production-domain.com"
+];
+
+// Dynamically add custom allowed origins from the environment
+if (process.env.ALLOWED_ORIGINS) {
+  const customOrigins = process.env.ALLOWED_ORIGINS.split(",");
+  allowedOrigins.push(...customOrigins);
+}
+
+const isProduction = process.env.NODE_ENV === "production";
+
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, health checks, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    const allowedOrigins = [
-      // Local development
-      "http://localhost:5000",
-      "http://localhost:5500",
-      "http://localhost:5501",
-      "http://localhost:5502",
-      "http://localhost:8001",
-      "http://localhost:8002",
-      "http://127.0.0.1:5000",
-      "http://127.0.0.1:5500",
-      "http://127.0.0.1:5501",
-      "http://127.0.0.1:5502",
-      "http://127.0.0.1:8001",
-      "http://127.0.0.1:8002",
-        "https://mlaahl.online",
-      "https://dataentrymla.netlify.app",
-      "https://your-production-domain.com",
-    ];
-
-    // Add any custom allowed origins from environment
-    if (process.env.ALLOWED_ORIGINS) {
-      const customOrigins = process.env.ALLOWED_ORIGINS.split(',');
-      allowedOrigins.push(...customOrigins);
-    }
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps, curl, health checks)
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin) || !isProduction) {
-      callback(null, true);
+      // Allow all origins during development
+      callback(null, true); 
     } else {
       console.warn(`⚠️ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -118,14 +123,16 @@ const corsOptions = {
     "X-Requested-With"
   ],
   exposedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  preflightContinue: false
+  credentials: true, // Enable credentials support (cookies, tokens)
+  optionsSuccessStatus: 200, // For legacy browsers (IE11, etc.)
+  preflightContinue: false // Skip preflight requests if method matches
 };
 
+// Apply the CORS middleware
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
+// Handle preflight checks explicitly
+app.options("*", cors(corsOptions));
 // ============================================================================
 // MIDDLEWARE
 // ============================================================================
@@ -345,4 +352,5 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 }); 
+
 
