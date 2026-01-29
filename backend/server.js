@@ -5,132 +5,343 @@ const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-require("./config/firebase-admin");
+require('./config/firebase-admin');
 
 const app = express();
-app.set("trust proxy", 1); // Trust proxy for rate limiting
+app.set("trust proxy", 1); // Trust Render's proxy for rate limiting
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
-const isProduction = process.env.NODE_ENV === "production";
-
-// ============================================================================
-// ENVIRONMENT VALIDATION
-// ============================================================================
-if (!MONGODB_URI || !PORT || !process.env.FIREBASE_PROJECT_ID || !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_UPLOAD_PRESET) {
-  console.error("❌ Missing required environment variables. Check .env file.");
-  process.exit(1);
-}
+const isProduction = process.env.NODE_ENV === 'production';
 
 // ============================================================================
 // SECURITY MIDDLEWARE
 // ============================================================================
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: isProduction
-      ? {
-          useDefaults: true,
-          directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "https://trustedscripts.example.com"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https://trustedimages.example.com"],
-            connectSrc: ["'self'", "https://mlaahl.online", "https://admin.mlaahl.online"],
-            objectSrc: ["'none'"],
-          },
-        }
-      : false, // Disable CSP enforcement during development
-  })
-);
 
-// Rate limiting to prevent abuse
+// Helmet - Security Headers (XSS, Clickjacking, MIME sniffing protection)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
+
+// Rate Limiting - Prevent DoS attacks
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15-minute window
-  max: isProduction ? 100 : 2000, // Allow more requests in Dev mode
-  message: "Too many requests. Please try again later.",
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 100 : 1000, // 100 requests per 15 min in production
+  message: {
+    success: false,
+    error: 'Too many requests. Please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use("/api", generalLimiter);
+
+// Strict rate limit for sensitive operations
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: isProduction ? 20 : 100, // 20 requests per hour for sensitive ops
+  message: {
+    success: false,
+    error: 'Rate limit exceeded for this operation.',
+    retryAfter: '1 hour'
+  }
+});
+
+// AI/Chatbot specific limiter (Gemini API costs money)
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: isProduction ? 10 : 50, // 10 requests per minute
+  message: {
+    success: false,
+    error: 'AI rate limit exceeded. Please wait.',
+    retryAfter: '1 minute'
+  }
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/chatbot', aiLimiter);
+app.use('/api/ai-assistant', aiLimiter);
+app.use('/api/students/bulk/delete', strictLimiter);
+app.use('/api/promotion', strictLimiter);
 
 // ============================================================================
 // CORS CONFIGURATION
 // ============================================================================
-const allowedOrigins = [
-  "http://localhost:5000",
-  "http://127.0.0.1:5000",
-  "https://mlaahl.online", // Teaching frontend URL
-  "https://admin.mlaahl.online", // Admin frontend URL
-  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : []),
-];
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, health checks, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const allowedOrigins = [
+      // Local development
+      "http://localhost:5000",
+      "http://localhost:5500",
+      "http://localhost:5501",
+      "http://localhost:5502",
+      "http://localhost:8001",
+      "http://localhost:8002",
+      "http://127.0.0.1:5000",
+      "http://127.0.0.1:5500",
+      "http://127.0.0.1:5501",
+      "http://127.0.0.1:5502",
+      "http://127.0.0.1:8001",
+      "http://127.0.0.1:8002",
+        "https://mlaahl.online"
+      "https://dataentrymla.netlify.app",
+      "https://your-production-domain.com",
+    ];
+
+    // Add any custom allowed origins from environment
+    if (process.env.ALLOWED_ORIGINS) {
+      const customOrigins = process.env.ALLOWED_ORIGINS.split(',');
+      allowedOrigins.push(...customOrigins);
+    }
+
+    if (allowedOrigins.includes(origin) || !isProduction) {
       callback(null, true);
     } else {
       console.warn(`⚠️ CORS blocked origin: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
+      callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Allow cookies and credentials
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Cache-Control",
+    "Pragma",
+    "Expires",
+    "Accept",
+    "X-Requested-With"
+  ],
+  exposedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
+
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // ============================================================================
 // MIDDLEWARE
 // ============================================================================
+
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ============================================================================
-// MONGODB CONNECTION - Enhanced Setup
+// MONGODB CONNECTION
 // ============================================================================
+
 mongoose
-  .connect(MONGODB_URI, { maxPoolSize: 20, serverSelectionTimeoutMS: 10000 })
-  .then(() => console.log("✅ MongoDB connected successfully"))
+  .connect(MONGODB_URI, {
+    maxPoolSize: 20,
+    serverSelectionTimeoutMS: 5000,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("✅ MongoDB connected");
+    app.locals.db = mongoose.connection.db;
+  })
   .catch((err) => {
-    console.error("❌ MongoDB connection error:", err.message || err);
-    process.exit(1); // Exit application if database fails
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1);
   });
 
-// ============================================================================
-// REGISTER API ROUTES
-// ============================================================================
-const teacherRoutes = require("./routes/teacherRoutes");
-app.use("/api/teacher", teacherRoutes); // Ensure the teacher routes are properly imported
-// Add your other route imports here...
+// Database middleware
+app.use((req, res, next) => {
+  if (!req.app.locals.db && mongoose.connection.db) {
+    req.app.locals.db = mongoose.connection.db;
+  }
+  req.db = req.app.locals.db;
+  next();
+});
 
 // ============================================================================
-// ERROR HANDLING MIDDLEWARE
+// REQUEST LOGGER
 // ============================================================================
-app.use("/api/*", (req, res) => {
-  if (!isProduction) {
-    console.warn("⚠️ 404 - API endpoint not found:", req.originalUrl);
+
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path}`);
+  next();
+});
+
+// ============================================================================
+// LOAD ROUTE MODULES
+// ============================================================================
+
+const teacherRoutes = require("./routes/teacherRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+const studentsRoutes = require("./routes/students");
+const dashboardRoutes = require("./routes/dashboard");
+const reportsRoutes = require("./routes/reports");
+const viewAttendanceRoutes = require("./routes/viewAttendanceRoutes");
+const promotionRoutes = require("./routes/promotion");
+const aiAssistantRouter = require("./routes/ai-assistant");
+const chatbotRoutes = require("./routes/chatbot");
+const absenceNotificationRoutes = require("./routes/absenceNotificationRoutes");
+const authRoutes = require("./routes/auth");
+
+// ============================================================================
+// STANDALONE API ENDPOINTS
+// ============================================================================
+
+// Cloudinary config
+app.get("/api/config/cloudinary", (req, res) => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    return res.status(500).json({
+      success: false,
+      error: 'Cloudinary configuration not available'
+    });
   }
-  res.status(404).json({
-    success: false,
-    error: "API endpoint not found",
-    path: req.originalUrl,
+
+  res.json({
+    success: true,
+    config: { cloudName, uploadPreset }
   });
 });
 
+// App config
+app.get("/api/config/app", (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      appName: 'Smart Attendance',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      features: {
+        cloudinaryEnabled: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_UPLOAD_PRESET),
+        aiAssistantEnabled: !!process.env.GEMINI_API_KEY,
+        whatsappEnabled: !!(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN)
+      }
+    }
+  });
+});
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
+    database: mongoose.connection.db?.databaseName,
+    cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? "Configured" : "Not configured",
+    whatsapp: {
+      configured: !!(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN),
+      collegeName: process.env.COLLEGE_NAME || 'MLA ACADEMY',
+      collegePhone: process.env.COLLEGE_PHONE || '+91-1234567890',
+      collegeEmail: process.env.COLLEGE_EMAIL || 'office@mlaacademy.edu'
+    }
+  });
+});
+
+// API health check
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+    timestamp: new Date().toISOString(),
+    database: req.db ? "Connected" : "Disconnected"
+  });
+});
+
+// ============================================================================
+// REGISTER API ROUTES (Order Matters!)
+// ============================================================================
+
+// Specific routes first
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/students", studentsRoutes);
+app.use("/api/teacher", teacherRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/ai-assistant", aiAssistantRouter);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/auth", authRoutes);
+
+// ✅ PROMOTION ROUTES - BEFORE ATTENDANCE (Critical!)
+app.use("/api", promotionRoutes);
+
+// General routes last
+app.use("/api", attendanceRoutes);
+app.use("/api", absenceNotificationRoutes);
+app.use("/api", viewAttendanceRoutes);
+
+// ============================================================================
+// ERROR HANDLERS (Must be LAST!)
+// ============================================================================
+
+// 404 handler
+app.use('/api/*', (req, res) => {
+  console.log('⚠️ 404 - API endpoint not found:', req.originalUrl);
+  res.status(404).json({
+    success: false,
+    error: 'API endpoint not found',
+    path: req.originalUrl,
+    method: req.method
+  });
+});
+
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error("❌ Server error:", err.message || err);
+  console.error('❌ Server error:', err);
   res.status(err.status || 500).json({
     success: false,
-    error: err.message || "Internal server error",
-    stack: !isProduction ? err.stack : undefined, // Expose stack only in development mode
+    error: err.message || 'Internal server error',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
 // ============================================================================
 // START SERVER
 // ============================================================================
+
 app.listen(PORT, () => {
-  console.log("\n" + "=".repeat(70));
-  console.log("🚀 SMART ATTENDANCE LMS - BACKEND SERVER");
-  console.log("=".repeat(70));
-  console.log(`📡 Server running at: http://localhost:${PORT}`);
-  console.log(`🏥 Health Check endpoint: http://localhost:${PORT}/health`);
+  console.log('\n' + '='.repeat(70));
+  console.log('🚀 SMART ATTENDANCE LMS - BACKEND SERVER');
+  console.log('='.repeat(70));
+  console.log(`📡 Server:              http://localhost:${PORT}`);
+  console.log(`🏥 Health Check:        http://localhost:${PORT}/health`);
+  console.log(`📊 Dashboard:           http://localhost:${PORT}/api/dashboard/stats`);
+  console.log(`👥 Students:            http://localhost:${PORT}/api/students`);
+  console.log(`📚 Streams:             http://localhost:${PORT}/api/streams`);
+  console.log(`🎓 Promotion:           http://localhost:${PORT}/api/simple-promotion-preview/BCA`);
+  console.log(`👨‍🏫 Teacher:             http://localhost:${PORT}/api/teacher`);
+  console.log('='.repeat(70));
+  console.log('✅ All routes registered\n');
 });
+
+// ============================================================================
+// GRACEFUL SHUTDOWN
+// ============================================================================
+
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down...');
+  await mongoose.connection.close();
+  console.log('✅ MongoDB closed');
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 SIGTERM received...');
+  await mongoose.connection.close();
+  console.log('✅ MongoDB closed');
+  process.exit(0);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
+}); 
