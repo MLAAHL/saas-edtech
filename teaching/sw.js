@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-attendance-teaching-v1';
+const CACHE_NAME = 'smart-attendance-teaching-v2';
 const ASSETS = [
     './',
     './index.html',
