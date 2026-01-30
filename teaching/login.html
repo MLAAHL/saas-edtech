@@ -44,10 +44,29 @@
     window.firebaseBrowserLocalPersistence = browserLocalPersistence;
     window.firebaseBrowserSessionPersistence = browserSessionPersistence;
 
-    // Check auth state immediately when Firebase loads
-    onAuthStateChanged(auth, (user) => {
+    // Function to hide splash and show login
+    function showLoginForm() {
       const splash = document.getElementById('splash-screen');
       const mainContent = document.getElementById('mainContent');
+
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 300);
+      }
+      if (mainContent) {
+        mainContent.classList.add('visible');
+      }
+    }
+
+    // Timeout fallback - show login form after 3 seconds if Firebase is slow
+    const splashTimeout = setTimeout(() => {
+      console.log('⏱️ Timeout reached, showing login form');
+      showLoginForm();
+    }, 3000);
+
+    // Check auth state immediately when Firebase loads
+    onAuthStateChanged(auth, (user) => {
+      clearTimeout(splashTimeout); // Cancel timeout since Firebase responded
 
       if (user) {
         // User is logged in - redirect to myclass immediately
@@ -56,13 +75,7 @@
       } else {
         // User is not logged in - show login form
         console.log('👋 No active session, showing login form');
-        if (splash) {
-          splash.style.opacity = '0';
-          setTimeout(() => splash.remove(), 300);
-        }
-        if (mainContent) {
-          mainContent.classList.add('visible');
-        }
+        showLoginForm();
       }
     });
   </script>
