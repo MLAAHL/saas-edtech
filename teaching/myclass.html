@@ -1122,7 +1122,7 @@
     }
 
     /* ==========================
-       NATIVE APP SPLASH SCREEN
+       SIMPLE LOADING SCREEN (Like Native App)
        ========================== */
     .loading-overlay {
       position: fixed;
@@ -1135,7 +1135,7 @@
       justify-content: center;
       align-items: center;
       z-index: 99999;
-      background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+      background: #F8FAFC;
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -1144,89 +1144,35 @@
     .loading-overlay .app-logo {
       width: 80px;
       height: 80px;
-      border-radius: 20px;
-      background: white;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      margin-bottom: 24px;
-      animation: logo-pulse 2s ease-in-out infinite;
+      margin-bottom: 16px;
     }
 
     .loading-overlay .app-logo img {
-      width: 56px;
-      height: 56px;
+      width: 80px;
+      height: 80px;
       object-fit: contain;
     }
 
-    .loading-overlay .app-name {
-      font-size: 22px;
-      font-weight: 700;
-      color: white;
-      font-family: 'Outfit', sans-serif;
-      margin-bottom: 8px;
-      letter-spacing: -0.5px;
-    }
-
-    .loading-overlay .app-tagline {
-      font-size: 13px;
+    .loading-overlay .loading-text {
+      font-size: 15px;
       font-weight: 500;
-      color: rgba(255, 255, 255, 0.8);
-      font-family: 'Inter', sans-serif;
-      margin-bottom: 40px;
-    }
-
-    .loading-spinner {
-      width: 32px;
-      height: 32px;
-      position: relative;
-    }
-
-    .loading-spinner::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: 3px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: instagram-spin 0.7s linear infinite;
-    }
-
-    .loading-text {
-      display: none;
-    }
-
-    @keyframes logo-pulse {
-      0%, 100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.05);
-      }
-    }
-
-    @keyframes instagram-spin {
-      to {
-        transform: rotate(360deg);
-      }
+      color: #6366F1;
+      font-family: 'Inter', -apple-system, sans-serif;
     }
 
     .loading-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
+      display: none;
     }
 
-    /* Ensure it covers notch/dynamic island on iPhone */
-    @supports (padding-top: env(safe-area-inset-top)) {
-      .loading-overlay {
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-      }
+    /* Hide unused elements */
+    .loading-overlay .app-name,
+    .loading-overlay .app-tagline,
+    .loading-overlay .loading-spinner {
+      display: none;
     }
 
     .loading-overlay.hidden {
@@ -1308,14 +1254,9 @@
 </head>
 
 <body>
-  <!-- Native App Splash Screen -->
+  <!-- Simple Loading Screen -->
   <div id="loadingOverlay" class="loading-overlay">
-    <div class="app-logo">
-      <img src="logo2.png" alt="Logo">
-    </div>
-    <div class="app-name">Smart Attendance</div>
-    <div class="app-tagline">Track attendance effortlessly</div>
-    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading...</div>
   </div>
 
   <!-- Hidden file input -->
