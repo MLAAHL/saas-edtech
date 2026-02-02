@@ -14,12 +14,23 @@
   <meta name="apple-mobile-web-app-title" content="Smart Attendance">
   <link rel="apple-touch-icon" href="logo2.png">
 
+  <!-- Preconnect to external domains -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  
   <script src="js/config.js"></script>
+  
+  <!-- Load fonts asynchronously with display=swap -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
-    rel="stylesheet">
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+  </noscript>
 
   <style>
     :root {
@@ -40,8 +51,19 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* Material Icons - hide text until font loads */
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded', sans-serif;
+      overflow: hidden;
+      width: 1em;
+      height: 1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #F8FAFC;
       min-height: 100vh;
       display: flex;
@@ -60,7 +82,7 @@
     h3,
     .welcome-title,
     .btn {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     /* Subtle noise texture for premium feel */
