@@ -71,12 +71,40 @@ router.get('/stats', async (req, res) => {
       req.db.collection('students').distinct('stream', { isActive: true })
     ]);
 
-    // ========== TODAY'S ATTENDANCE ==========
+    // ========== TODAY'S ATTENDANCE (Count unique students only) ==========
     let todayPresent = 0, todayTotal = 0;
+    const uniqueStudentsToday = new Set();
+    const uniqueTotalStudentsToday = new Map(); // Track unique stream+semester combinations
+
     todayAttendance.forEach(r => {
-      todayPresent += r.presentCount || r.studentsPresent?.length || 0;
-      todayTotal += r.totalStudents || 0;
+      const key = `${r.stream}-${r.semester}`;
+
+      // Count unique students present (by their IDs if available)
+      if (r.studentsPresent && Array.isArray(r.studentsPresent)) {
+        r.studentsPresent.forEach(studentId => {
+          uniqueStudentsToday.add(`${key}-${studentId}`);
+        });
+      } else {
+        // If no student IDs, just add present count for this unique class
+        if (!uniqueTotalStudentsToday.has(key)) {
+          todayPresent += r.presentCount || 0;
+        }
+      }
+
+      // Track unique total students per stream+semester (don't double count)
+      if (!uniqueTotalStudentsToday.has(key)) {
+        uniqueTotalStudentsToday.set(key, r.totalStudents || 0);
+      }
     });
+
+    // If we tracked unique student IDs, use that count
+    if (uniqueStudentsToday.size > 0) {
+      todayPresent = uniqueStudentsToday.size;
+    }
+
+    // Sum up unique totals
+    todayTotal = Array.from(uniqueTotalStudentsToday.values()).reduce((sum, val) => sum + val, 0);
+
     const todayAbsent = todayTotal - todayPresent;
     const todayRate = todayTotal > 0 ? Math.round((todayPresent / todayTotal) * 100) : 0;
 
@@ -103,14 +131,29 @@ router.get('/stats', async (req, res) => {
     });
     const attendanceRate = monthTotal > 0 ? Math.round((monthPresent / monthTotal) * 100) : 0;
 
-    // ========== TOP PERFORMING STREAMS ==========
+    // ========== TOP PERFORMING STREAMS (by Stream + Semester) ==========
     const streamStats = await req.db.collection('attendance').aggregate([
       { $match: { createdAt: { $gte: startOfMonth } } },
-      { $group: { _id: '$stream', totalPresent: { $sum: { $ifNull: ['$presentCount', 0] } }, totalStudents: { $sum: { $ifNull: ['$totalStudents', 0] } }, sessions: { $sum: 1 } } },
+      {
+        $group: {
+          _id: { stream: '$stream', semester: '$semester' },
+          totalPresent: { $sum: { $ifNull: ['$presentCount', 0] } },
+          totalStudents: { $sum: { $ifNull: ['$totalStudents', 0] } },
+          sessions: { $sum: 1 }
+        }
+      },
       { $match: { totalStudents: { $gt: 0 } } },
-      { $project: { stream: '$_id', rate: { $round: [{ $multiply: [{ $divide: ['$totalPresent', '$totalStudents'] }, 100] }, 0] }, sessions: 1 } },
+      {
+        $project: {
+          stream: '$_id.stream',
+          semester: '$_id.semester',
+          label: { $concat: ['$_id.stream', ' - Sem ', { $toString: '$_id.semester' }] },
+          rate: { $round: [{ $multiply: [{ $divide: ['$totalPresent', '$totalStudents'] }, 100] }, 0] },
+          sessions: 1
+        }
+      },
       { $sort: { rate: -1 } },
-      { $limit: 5 }
+      { $limit: 6 }
     ]).toArray();
 
     // ========== ALERTS ==========
@@ -124,7 +167,8 @@ router.get('/stats', async (req, res) => {
       alerts.push({ type: 'warning', icon: 'trending_down', title: 'Declining Trend', description: `${Math.abs(weeklyTrend)}% drop from last week`, severity: 'medium' });
     }
     if (lowStreams.length > 0) {
-      alerts.push({ type: 'alert', icon: 'error', title: `${lowStreams.length} Streams Below 75%`, description: lowStreams.slice(0, 2).map(s => s.stream).join(', '), severity: 'high' });
+      const lowClassLabels = lowStreams.slice(0, 3).map(s => s.label || `${s.stream} - Sem ${s.semester}`).join(', ');
+      alerts.push({ type: 'alert', icon: 'error', title: `${lowStreams.length} Classes Below 75%`, description: lowClassLabels, severity: 'high' });
     }
     if (todayRate >= 90) {
       alerts.push({ type: 'success', icon: 'check_circle', title: 'Great Attendance!', description: `${todayRate}% attendance today`, severity: 'low' });
@@ -140,35 +184,83 @@ router.get('/stats', async (req, res) => {
       { $sort: { count: -1 } }
     ]).toArray();
 
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const monthlyTrend = await req.db.collection('attendance').aggregate([
-      { $addFields: { dateObj: { $cond: { if: { $eq: [{ $type: '$date' }, 'string'] }, then: { $dateFromString: { dateString: '$date', onError: '$createdAt' } }, else: { $ifNull: ['$date', '$createdAt'] } } } } },
-      { $match: { dateObj: { $gte: sixMonthsAgo } } },
-      { $group: { _id: { year: { $year: '$dateObj' }, month: { $month: '$dateObj' } }, totalPresent: { $sum: { $ifNull: ['$presentCount', 0] } }, totalStudents: { $sum: { $ifNull: ['$totalStudents', 0] } } } },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
-    ]).toArray();
-
+    // Attendance Trend - SaaS Style (Daily for last 15 days) - Fixed to avoid duplicate counting
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const attendanceTrendLabels = [];
+    const attendanceTrendData = [];
+    const dailyDataMap = new Map();
 
-    // ========== BUILD RESPONSE ==========
-    // Build chart data with fallbacks for empty data
-    const attendanceTrendLabels = monthlyTrend.length > 0 
-      ? monthlyTrend.map(i => monthNames[i._id.month - 1]) 
-      : ['No Data'];
-    const attendanceTrendData = monthlyTrend.length > 0 
-      ? monthlyTrend.map(i => i.totalStudents > 0 ? Math.round((i.totalPresent / i.totalStudents) * 100) : 0) 
-      : [0];
-    const streamDistLabels = streamDistribution.length > 0 
-      ? streamDistribution.map(s => s._id || 'Unknown') 
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 14);
+    fifteenDaysAgo.setHours(0, 0, 0, 0);
+
+    // First, get all attendance records for last 15 days
+    const trendRecords = await req.db.collection('attendance').find({
+      $or: [
+        { date: { $gte: fifteenDaysAgo.toISOString().split('T')[0] } },
+        { createdAt: { $gte: fifteenDaysAgo } }
+      ]
+    }).toArray();
+
+    // Group by date, then by unique stream+semester (to avoid duplicate counting)
+    const dailyStats = new Map();
+
+    trendRecords.forEach(r => {
+      const dateStr = r.date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : null);
+      if (!dateStr) return;
+
+      const classKey = `${r.stream}-${r.semester}`;
+
+      if (!dailyStats.has(dateStr)) {
+        dailyStats.set(dateStr, new Map());
+      }
+
+      const dayData = dailyStats.get(dateStr);
+
+      // Only count the first record for each stream+semester per day (or accumulate unique students)
+      if (!dayData.has(classKey)) {
+        dayData.set(classKey, {
+          present: r.presentCount || r.studentsPresent?.length || 0,
+          total: r.totalStudents || 0
+        });
+      }
+    });
+
+    // Calculate daily percentages
+    dailyStats.forEach((classMap, dateStr) => {
+      let dayPresent = 0, dayTotal = 0;
+      classMap.forEach(({ present, total }) => {
+        dayPresent += present;
+        dayTotal += total;
+      });
+
+      const dateParts = dateStr.split('-');
+      const key = `${parseInt(dateParts[0])}-${parseInt(dateParts[1])}-${parseInt(dateParts[2])}`;
+      dailyDataMap.set(key, dayTotal > 0 ? Math.round((dayPresent / dayTotal) * 100) : 0);
+    });
+
+    // Fill in last 15 days
+    for (let i = 14; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      const y = d.getFullYear();
+
+      attendanceTrendLabels.push(`${day} ${monthNames[m - 1]}`);
+      attendanceTrendData.push(dailyDataMap.get(`${y}-${m}-${day}`) || 0);
+    }
+
+    const streamDistLabels = streamDistribution.length > 0
+      ? streamDistribution.map(s => s._id || 'Unknown')
       : ['No Streams'];
-    const streamDistData = streamDistribution.length > 0 
-      ? streamDistribution.map(s => s.count) 
+    const streamDistData = streamDistribution.length > 0
+      ? streamDistribution.map(s => s.count)
       : [0];
 
-    console.log('📊 Chart data prepared:', { 
-      attendanceTrend: { labels: attendanceTrendLabels, dataPoints: attendanceTrendData.length },
-      streamDistribution: { labels: streamDistLabels, dataPoints: streamDistData.length }
+    console.log('📊 Chart data prepared:', {
+      attendanceTrend: { labels: attendanceTrendLabels, data: attendanceTrendData },
+      streamDistribution: { labels: streamDistLabels, count: streamDistData.length }
     });
 
     const stats = {
@@ -178,7 +270,13 @@ router.get('/stats', async (req, res) => {
       subjectsSubtitle: `${totalSubjects} courses`, attendanceSubtitle: `This month`,
       todayOverview: { present: todayPresent, absent: todayAbsent, total: todayTotal, rate: todayRate, classesMarked: todayAttendance.length, date: today },
       weeklyComparison: { thisWeek: thisWeekRate, lastWeek: lastWeekRate, trend: weeklyTrend, thisWeekSessions: thisWeekAttendance.length, lastWeekSessions: lastWeekAttendance.length },
-      topPerformers: streamStats.slice(0, 4).map(s => ({ stream: s.stream || 'Unknown', rate: s.rate, sessions: s.sessions })),
+      topPerformers: streamStats.slice(0, 6).map(s => ({
+        stream: s.stream || 'Unknown',
+        semester: s.semester,
+        label: s.label || `${s.stream} - Sem ${s.semester}`,
+        rate: s.rate,
+        sessions: s.sessions
+      })),
       alerts: alerts.slice(0, 4),
       charts: {
         attendanceTrend: { labels: attendanceTrendLabels, data: attendanceTrendData },
@@ -433,6 +531,144 @@ router.get('/summary', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error fetching summary:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// ATTENDANCE TREND BY PERIOD (Week/Month/Year)
+// ============================================================================
+
+router.get('/attendance-trend', async (req, res) => {
+  try {
+    const period = req.query.period || 'month';
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    let daysToFetch, labelFormat;
+    
+    switch (period) {
+      case 'week':
+        daysToFetch = 7;
+        labelFormat = 'day'; // Show day names
+        break;
+      case 'year':
+        daysToFetch = 365;
+        labelFormat = 'month'; // Show month names
+        break;
+      case 'month':
+      default:
+        daysToFetch = 30;
+        labelFormat = 'date'; // Show dates
+        break;
+    }
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (daysToFetch - 1));
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Get all attendance records for the period
+    const trendRecords = await req.db.collection('attendance').find({
+      $or: [
+        { date: { $gte: startDate.toISOString().split('T')[0] } },
+        { createdAt: { $gte: startDate } }
+      ]
+    }).toArray();
+    
+    // Group by date
+    const dailyStats = new Map();
+    
+    trendRecords.forEach(r => {
+      const dateStr = r.date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : null);
+      if (!dateStr) return;
+      
+      const classKey = `${r.stream}-${r.semester}`;
+      
+      if (!dailyStats.has(dateStr)) {
+        dailyStats.set(dateStr, new Map());
+      }
+      
+      const dayData = dailyStats.get(dateStr);
+      
+      if (!dayData.has(classKey)) {
+        dayData.set(classKey, {
+          present: r.presentCount || r.studentsPresent?.length || 0,
+          total: r.totalStudents || 0
+        });
+      }
+    });
+    
+    // Calculate daily percentages
+    const dailyDataMap = new Map();
+    dailyStats.forEach((classMap, dateStr) => {
+      let dayPresent = 0, dayTotal = 0;
+      classMap.forEach(({ present, total }) => {
+        dayPresent += present;
+        dayTotal += total;
+      });
+      dailyDataMap.set(dateStr, dayTotal > 0 ? Math.round((dayPresent / dayTotal) * 100) : 0);
+    });
+    
+    const labels = [];
+    const data = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    if (labelFormat === 'month') {
+      // For year view - aggregate by month
+      const monthlyData = new Map();
+      
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const monthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        monthlyData.set(monthKey, { total: 0, count: 0 });
+      }
+      
+      dailyDataMap.forEach((rate, dateStr) => {
+        const [y, m] = dateStr.split('-').map(Number);
+        const key = `${y}-${m}`;
+        if (monthlyData.has(key)) {
+          const mData = monthlyData.get(key);
+          mData.total += rate;
+          mData.count += 1;
+        }
+      });
+      
+      monthlyData.forEach((mData, key) => {
+        const [y, m] = key.split('-').map(Number);
+        labels.push(monthNames[m - 1]);
+        data.push(mData.count > 0 ? Math.round(mData.total / mData.count) : 0);
+      });
+      
+    } else {
+      // For week/month view - show each day
+      for (let i = daysToFetch - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        if (labelFormat === 'day') {
+          labels.push(dayNames[d.getDay()]);
+        } else {
+          labels.push(`${d.getDate()} ${monthNames[d.getMonth()]}`);
+        }
+        
+        data.push(dailyDataMap.get(dateStr) || 0);
+      }
+    }
+    
+    console.log(`📊 Attendance trend (${period}):`, labels.length, 'data points');
+    
+    res.json({
+      success: true,
+      period,
+      trend: { labels, data }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching attendance trend:', error);
     res.status(500).json({
       success: false,
       error: error.message
