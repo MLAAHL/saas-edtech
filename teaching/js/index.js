@@ -829,8 +829,6 @@ async function moveQueueItemToCompleted() {
   }
 
   try {
-    console.log('🔄 Moving queue item to completed:', queueItemId);
-
     const deleteResponse = await fetch(`${API_BASE_URL}/teacher/queue/${queueItemId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
