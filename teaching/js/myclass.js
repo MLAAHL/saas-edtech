@@ -385,35 +385,31 @@ function loadUserInfo() {
     if (auth && onAuthStateChanged) {
       onAuthStateChanged(auth, async (user) => {
         if (user) {
+          hideLoadingOverlay();
           userData.userEmail = user.email;
           userData.firebaseUid = user.uid;
           window.currentUserEmail = user.email;
 
-          const teacherProfile = await fetchTeacherProfile(user.email);
+          // Load profile in background
+          fetchTeacherProfile(user.email).then(teacherProfile => {
+            if (teacherProfile) {
+              if (teacherProfile.name) {
+                userData.userName = teacherProfile.name;
+              } else {
+                userData.userName = user.displayName || user.email.split('@')[0];
+              }
 
-          if (teacherProfile) {
-            if (teacherProfile.name) {
-              userData.userName = teacherProfile.name;
+              if (teacherProfile.profileImageUrl) {
+                userData.profileImageUrl = teacherProfile.profileImageUrl;
+              }
             } else {
               userData.userName = user.displayName || user.email.split('@')[0];
             }
 
-            if (teacherProfile.profileImageUrl) {
-              userData.profileImageUrl = teacherProfile.profileImageUrl;
-            }
-          } else {
-            userData.userName = user.displayName || user.email.split('@')[0];
-          }
-
-          updateUserDisplay(userData.userName, userData.userEmail, userData.profileImageUrl);
-
-          console.log('✅ User authenticated:', {
-            name: userData.userName,
-            email: userData.userEmail,
-            hasProfileImage: !!userData.profileImageUrl
+            updateUserDisplay(userData.userName, userData.userEmail, userData.profileImageUrl);
           });
 
-          hideLoadingOverlay();
+          console.log('✅ User authenticated:', user.email);
           resolve(user);
         } else {
           console.log('⚠️ No user authenticated');
@@ -435,7 +431,7 @@ function loadUserInfo() {
 
 async function fetchStreamsFromDatabase() {
   try {
-    console.log('📚 Fetching streams from database.. .');
+    console.log('📚 Fetching streams from database...');
 
     const response = await fetch(`${API_BASE_URL}/streams`, {
       method: 'GET',
@@ -509,7 +505,7 @@ function populateStreamDropdowns() {
     return;
   }
 
-  console.log('🔄 Populating stream dropdown.. .');
+  console.log('🔄 Populating stream dropdown...');
 
   elements.createStreamContainer.innerHTML = '';
 
@@ -555,9 +551,9 @@ function injectDropdownStyles() {
       -webkit-appearance: none;
       -moz-appearance: none;
       width: 100%;
-      padding:  16px 18px;
+      padding: 16px 18px;
       margin: 0;
-      border:  1. 5px solid #E2E8F0;
+      border: 1.5px solid #E2E8F0;
       border-radius: 14px;
       background: white;
       font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -567,7 +563,7 @@ function injectDropdownStyles() {
       line-height: 1.5;
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      background-image: url("data:svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7. 5L10 12.5L15 7.5' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-image: url("data:svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 16px center;
       background-size: 20px 20px;
@@ -596,7 +592,7 @@ function injectDropdownStyles() {
     #createStreamContainer:active,
     #createSemester:active,
     #createSubject:active {
-      transform:  scale(0.98);
+      transform: scale(0.98);
       border-color: #3B82F6;
     }
     
@@ -625,8 +621,8 @@ function injectDropdownStyles() {
       50% { opacity: 0.6; }
     }
     
-    #createSubject: disabled {
-      animation: pulse 1. 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    #createSubject:disabled {
+      animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
     
     @media (max-width: 640px) {
@@ -671,7 +667,7 @@ function injectDropdownStyles() {
       font-family: 'Poppins', sans-serif;
     }
     
-    . form-group {
+    .form-group {
       margin-bottom: 20px;
     }
     
@@ -917,7 +913,7 @@ async function handleCreateSubject(e) {
 
 async function saveSubjectToDatabase(subjectData) {
   try {
-    console.log('💾 Saving subject to database.. .');
+    console.log('💾 Saving subject to database...');
 
     const response = await fetch(`${API_BASE_URL}/teacher/subjects`, {
       method: 'POST',
@@ -1032,7 +1028,7 @@ async function loadCompletedFromDatabase() {
       return;
     }
 
-    console.log('📥 Loading completed.. .');
+    console.log('📥 Loading completed...');
 
     const response = await fetch(
       `${API_BASE_URL}/teacher/completed?email=${encodeURIComponent(userData.userEmail)}`,
@@ -1396,49 +1392,10 @@ async function takeAttendance(itemId) {
   console.log('📝 Taking attendance for:', item);
 
   try {
-    showLoadingOverlay();
-
-    const originalQueue = [...attendanceQueue];
-    attendanceQueue = attendanceQueue.filter(q => q.id !== itemId);
-
-    const completedClass = {
-      id: Date.now().toString(),
-      stream: item.stream,
-      semester: item.semester,
-      subject: item.subject,
-      completedAt: new Date().toISOString(),
-      teacherEmail: userData.userEmail
-    };
-
-    console.log('💾 Saving to database... ', completedClass);
-
-    try {
-      await Promise.all([
-        saveQueueToDatabase(),
-        saveCompletedToDatabase(completedClass)
-      ]);
-
-      console.log('✅ Saved successfully');
-
-      completedClasses.push(completedClass);
-
-      updateQueueDisplay();
-      updateCompletedDisplay();
-
-    } catch (dbError) {
-      console.error('❌ Database save failed:', dbError);
-      attendanceQueue = originalQueue;
-      updateQueueDisplay();
-      hideLoadingOverlay();
-      showNotification('Failed to save changes', 'error');
-      return;
-    }
-
     const sessionData = {
       stream: item.stream,
       semester: item.semester,
       subject: item.subject,
-      completedId: completedClass.id,
       queueItemId: itemId,
       teacherEmail: userData.userEmail,
       teacherName: userData.userName,
@@ -1464,7 +1421,6 @@ async function takeAttendance(itemId) {
 
   } catch (error) {
     console.error('❌ Take attendance error:', error);
-    hideLoadingOverlay();
 
     await loadAllData();
     updateQueueDisplay();
@@ -1509,15 +1465,56 @@ function cancelCreateSubject() {
 // INITIALIZATION
 // ============================================================================
 
+// Cache for API responses
+const apiCache = {
+  data: {},
+  maxAge: 5 * 60 * 1000, // 5 minutes cache
+  
+  get(key) {
+    const cached = this.data[key];
+    if (cached && Date.now() - cached.timestamp < this.maxAge) {
+      console.log(`📦 Cache hit: ${key}`);
+      return cached.value;
+    }
+    return null;
+  },
+  
+  set(key, value) {
+    this.data[key] = { value, timestamp: Date.now() };
+  }
+};
+
+// Optimized fetch with caching
+async function cachedFetch(url, options = {}) {
+  const cacheKey = url;
+  const cached = apiCache.get(cacheKey);
+  if (cached && !options.noCache) return cached;
+  
+  const response = await fetch(url, options);
+  const data = await response.json();
+  
+  if (data.success !== false) {
+    apiCache.set(cacheKey, data);
+  }
+  return data;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Smart Attendance System - MyClass');
-  console.log('📅 Current Date and Time:  2025-12-19');
-  console.log('👤 Current User:  Itzzskim');
+  console.log('📅 Optimized Loading...');
 
+  // Inject styles immediately (non-blocking)
   injectDropdownStyles();
 
   try {
-    await loadUserInfo();
+    // Start loading user info (required first)
+    const userPromise = loadUserInfo();
+    
+    // Start preloading streams in parallel (doesn't need auth)
+    const streamsPromise = fetchStreamsFromDatabase();
+    
+    // Wait for user auth
+    await userPromise;
 
     if (!userData.userEmail) {
       showNotification('Please log in', 'warning');
@@ -1525,10 +1522,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    await fetchCloudinaryConfig();
-    await fetchStreamsFromDatabase();
-    await loadAllData();
+    // Load remaining data in parallel
+    await Promise.all([
+      streamsPromise, // Already started
+      fetchCloudinaryConfig(),
+      loadAllData()
+    ]);
 
+    // Update displays after all data is loaded
     updateQueueDisplay();
     updateSubjectsDisplay();
     updateCompletedDisplay();
