@@ -62,7 +62,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys
-                    .filter(key => !key.includes('v3'))
+                    .filter(key => !key.includes('v4'))
                     .map(key => {
                         console.log('🗑️ Deleting old cache:', key);
                         return caches.delete(key);
@@ -160,4 +160,5 @@ async function networkFirstWithTimeout(request, timeout) {
         throw error;
     }
 }
+
 
