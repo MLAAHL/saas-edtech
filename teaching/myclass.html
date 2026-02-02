@@ -14,15 +14,45 @@
   <meta name="apple-mobile-web-app-title" content="Smart Attendance">
   <link rel="apple-touch-icon" href="logo2.png">
 
+  <!-- Preconnect to external domains for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://mlaahl.online" crossorigin>
+  
+  <!-- Preload critical resources -->
+  <link rel="preload" href="js/config.js" as="script">
+  <link rel="preload" href="js/myclass.js" as="script">
+  <link rel="preload" href="firebase-config.js" as="script">
+
   <script src="js/config.js"></script>
+  
+  <!-- Load fonts with display=swap to prevent FOIT -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
-    rel="stylesheet">
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css">
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0"
+    media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css" media="print" onload="this.media='all'">
+  
+  <!-- Fallback fonts while loading -->
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+  </noscript>
 
   <style>
+    /* Material Icons - hide text until font loads */
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded', sans-serif;
+      overflow: hidden;
+      width: 1em;
+      height: 1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
     :root {
       --glass-bg: rgba(255, 255, 255, 0.45);
       --glass-border: rgba(255, 255, 255, 0.5);
@@ -1219,40 +1249,8 @@
     window.updateAvatar = updateAvatar;
     window.fetchTeacherProfile = fetchTeacherProfile;
 
-    // Auth state observer
-    onAuthStateChanged(auth, async (user) => {
-      const loadingOverlay = document.getElementById('loadingOverlay');
-
-      if (user && user.email) {
-        const email = user.email;
-        console.log('👤 User logged in:', email);
-
-        const teacherProfile = await fetchTeacherProfile(email);
-
-        let displayName = email.split('@')[0].replace(/[._]/g, ' ').split(' ')
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-        let profileImageUrl = null;
-
-        if (teacherProfile) {
-          if (teacherProfile.name) displayName = teacherProfile.name;
-          if (teacherProfile.profileImageUrl) profileImageUrl = teacherProfile.profileImageUrl;
-        }
-
-        updateAvatar(email, displayName, profileImageUrl);
-        updateUserInfo(displayName, email);
-
-        // Store email globally
-        window.currentUserEmail = email;
-
-        // Hide loading overlay
-        if (loadingOverlay) loadingOverlay.classList.add('hidden');
-
-      } else {
-        // Not authenticated - redirect to login immediately
-        window.location.replace('login.html');
-      }
-    });
+    // Console Welcome Message
+    console.log("%cSmart Attendance ✨", "color: #4F46E5; font-size: 24px; font-weight: bold;");
   </script>
 
 </head>
@@ -1710,29 +1708,29 @@
       const notification = document.createElement('div');
       notification.id = 'successNotification';
       notification.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.8);
-        background: #10B981;
-        color: white;
-        padding: 24px 32px;
-        border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(16, 185, 129, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
-        z-index: 99999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        min-width: 280px;
-        max-width: 90%;
-        font-family: 'Poppins', sans-serif;
-        animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        text-align: center;
-      `;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: #10B981;
+    color: white;
+    padding: 24px 32px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(16, 185, 129, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-width: 280px;
+    max-width: 90%;
+    font-family: 'Poppins', sans-serif;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    text-align: center;
+    `;
 
       notification.innerHTML = `
-        <div style="
+    <div style="
           width: 64px;
           height: 64px;
           background: rgba(255, 255, 255, 0.2);
@@ -1742,56 +1740,56 @@
           justify-content: center;
           animation: checkPulse 0.6s ease-out;
         ">
-          <span class="material-symbols-rounded" style="
+      <span class="material-symbols-rounded" style="
             font-size: 36px;
             color: white;
             font-variation-settings: 'FILL' 1;
           ">check_circle</span>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
-          <h3 style="font-size: 20px; font-weight: 700; margin: 0; line-height: 1.2;">Success!</h3>
-          <p style="font-size: 15px; font-weight: 500; margin: 0; opacity: 0.95; line-height: 1.4;">${message}</p>
-        </div>
-      `;
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+      <h3 style="font-size: 20px; font-weight: 700; margin: 0; line-height: 1.2;">Success!</h3>
+      <p style="font-size: 15px; font-weight: 500; margin: 0; opacity: 0.95; line-height: 1.4;">${message}</p>
+    </div>
+    `;
 
       const overlay = document.createElement('div');
       overlay.id = 'notificationOverlay';
       overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 99998;
-        animation: fadeIn 0.3s ease-out;
-      `;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99998;
+    animation: fadeIn 0.3s ease-out;
+    `;
 
       if (!document.getElementById('notification-styles')) {
         const styleSheet = document.createElement('style');
         styleSheet.id = 'notification-styles';
         styleSheet.textContent = `
-          @keyframes popIn {
-            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    @keyframes popIn {
+      from {opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    to {opacity: 1; transform: translate(-50%, -50%) scale(1); }
           }
-          @keyframes popOut {
-            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    @keyframes popOut {
+      from {opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to {opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
           }
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+    @keyframes fadeIn {
+      from {opacity: 0; }
+    to {opacity: 1; }
           }
-          @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
+    @keyframes fadeOut {
+      from {opacity: 1; }
+    to {opacity: 0; }
           }
-          @keyframes checkPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-          }
-        `;
+    @keyframes checkPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    `;
         document.head.appendChild(styleSheet);
       }
 
@@ -1818,29 +1816,29 @@
       const notification = document.createElement('div');
       notification.id = 'errorNotification';
       notification.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.8);
-        background: #EF4444;
-        color: white;
-        padding: 24px 32px;
-        border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(239, 68, 68, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
-        z-index: 99999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        min-width: 280px;
-        max-width: 90%;
-        font-family: 'Poppins', sans-serif;
-        animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        text-align: center;
-      `;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: #EF4444;
+    color: white;
+    padding: 24px 32px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(239, 68, 68, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-width: 280px;
+    max-width: 90%;
+    font-family: 'Poppins', sans-serif;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    text-align: center;
+    `;
 
       notification.innerHTML = `
-        <div style="
+    <div style="
           width: 64px;
           height: 64px;
           background: rgba(255, 255, 255, 0.2);
@@ -1850,30 +1848,30 @@
           justify-content: center;
           animation: checkPulse 0.6s ease-out;
         ">
-          <span class="material-symbols-rounded" style="
+      <span class="material-symbols-rounded" style="
             font-size: 36px;
             color: white;
             font-variation-settings: 'FILL' 1;
           ">error</span>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
-          <h3 style="font-size: 20px; font-weight: 700; margin: 0; line-height: 1.2;">Error!</h3>
-          <p style="font-size: 15px; font-weight: 500; margin: 0; opacity: 0.95; line-height: 1.4;">${message}</p>
-        </div>
-      `;
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+      <h3 style="font-size: 20px; font-weight: 700; margin: 0; line-height: 1.2;">Error!</h3>
+      <p style="font-size: 15px; font-weight: 500; margin: 0; opacity: 0.95; line-height: 1.4;">${message}</p>
+    </div>
+    `;
 
       const overlay = document.createElement('div');
       overlay.id = 'notificationOverlay';
       overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 99998;
-        animation: fadeIn 0.3s ease-out;
-      `;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99998;
+    animation: fadeIn 0.3s ease-out;
+    `;
 
       document.body.appendChild(overlay);
       document.body.appendChild(notification);
