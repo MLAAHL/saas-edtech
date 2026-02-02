@@ -329,16 +329,15 @@
     bottom: 0;
     background: #F8FAFC;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     z-index: 9999;
     transition: opacity 0.3s ease;
   ">
-    <div style="text-align: center;">
-      <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; animation: pulse 1.5s ease-in-out infinite;">
-      <p style="margin-top: 16px; color: var(--text-secondary); font-family: 'Inter', sans-serif; font-size: 14px;">
-        Loading...</p>
-    </div>
+    <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 16px;">
+    <p style="color: #6366F1; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;">
+      Loading...</p>
   </div>
   <style>
     @keyframes pulse {
