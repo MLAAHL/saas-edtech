@@ -1,6 +1,6 @@
-const CACHE_NAME = 'teaching-v3';
-const STATIC_CACHE = 'static-v3';
-const API_CACHE = 'api-v3';
+const CACHE_NAME = 'teaching-v4';
+const STATIC_CACHE = 'static-v4';
+const API_CACHE = 'api-v4';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -160,3 +160,4 @@ async function networkFirstWithTimeout(request, timeout) {
         throw error;
     }
 }
+
