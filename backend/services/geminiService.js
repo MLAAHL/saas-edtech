@@ -1,49 +1,58 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 require('dotenv').config();
 
-class GeminiService {
+class AIService {
   constructor() {
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    
-    // TRY 1: Use specific version "gemini-1.0-pro"
-    // If this fails, the only remaining option is your API Key permissions.
-    this.model = this.genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash", 
-      generationConfig: {
-        temperature: 0.2,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-      }
+    this.groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY
     });
     
+    // Using llama-3.3-70b-versatile - current working model
+    this.model = "llama-3.3-70b-versatile";
     this.maxRetries = 3;
     this.retryDelay = 2000;
   }
 
   async generateResponse(prompt) {
-    // ... (rest of your code stays the same)
     let lastError;
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const result = await this.model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
+        console.log(`🤖 Calling Groq Llama API (attempt ${attempt})...`);
+        
+        const completion = await this.groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful college AI assistant that helps with student information, attendance, and academic queries. Be concise and helpful."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          model: this.model,
+          temperature: 0.2,
+          max_tokens: 2048,
+        });
+        
+        console.log('✅ Groq API response received');
+        return completion.choices[0]?.message?.content || "No response generated";
       } catch (error) {
         lastError = error;
-        if (error.status === 503 || error.message.includes('429')) {
-           // ... retry logic
-           await this.sleep(this.retryDelay * attempt);
-           continue;
+        console.error(`❌ Groq API Error (attempt ${attempt}):`, error.message);
+        
+        if (error.status === 503 || error.status === 429 || error.message?.includes('rate')) {
+          console.log(`⚠️ Rate limited, retrying...`);
+          await this.sleep(this.retryDelay * attempt);
+          continue;
         }
-        console.error('Gemini API Error:', error.message);
-        throw new Error('Gemini Error: ' + error.message);
+        throw new Error('AI Error: ' + error.message);
       }
     }
-    throw new Error('Gemini API unavailable');
+    throw new Error('AI API unavailable after retries');
   }
 
   sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 }
 
-module.exports = new GeminiService();
+module.exports = new AIService();
