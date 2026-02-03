@@ -39,6 +39,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js" defer></script>
 
   <style>
+        html, body {
+          height: 100%;
+          overflow: auto;
+        }
     :root {
       --glass-bg: rgba(255, 255, 255, 0.45);
       --glass-border: rgba(255, 255, 255, 0.5);
@@ -72,7 +76,7 @@
     body {
       font-family: 'Inter', sans-serif;
       background: #F8FAFC;
-      height: 100dvh;
+      height: 100%;
       width: 100vw;
       overflow: auto;
       display: flex;
@@ -138,6 +142,7 @@
       position: relative;
       display: flex;
       flex-direction: column;
+      min-height: 0;
       overflow: auto;
     }
 
@@ -251,6 +256,7 @@
     /* MESSAGES LIST */
     .messages-list {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       /* Mobile default: large bottom padding for floating input */
       padding: 20px 16px 180px 16px;
