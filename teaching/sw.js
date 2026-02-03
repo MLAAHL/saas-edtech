@@ -1,6 +1,6 @@
-const CACHE_NAME = 'teaching-v5';
-const STATIC_CACHE = 'static-v5';
-const API_CACHE = 'api-v5';
+const CACHE_NAME = 'teaching-v6';
+const STATIC_CACHE = 'static-v6';
+const API_CACHE = 'api-v6';
 
 // Static assets to cache PERMANENTLY (never expire)
 const STATIC_ASSETS = [
@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys
-                    .filter(key => !key.includes('v5'))  // Delete ALL caches that are NOT v5
+                    .filter(key => !key.includes('v6'))  // Delete ALL caches that are NOT v5
                     .map(key => {
                         console.log('🗑️ Deleting old cache:', key);
                         return caches.delete(key);
@@ -194,3 +194,4 @@ async function networkFirstWithTimeout(request, timeout) {
         throw error;
     }
 }
+
