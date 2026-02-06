@@ -18,18 +18,25 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  
+
+  <!-- Preload logo for instant splash screen -->
+  <link rel="preload" href="logo2.png" as="image">
+
   <script src="js/config.js"></script>
-  
+
   <!-- Load fonts asynchronously with display=swap -->
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" media="print" onload="this.media='all'">
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0"
+    media="print" onload="this.media='all'">
   <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet">
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
   </noscript>
 
   <style>
@@ -334,7 +341,6 @@
     justify-content: center;
     z-index: 9999;
     transition: opacity 0.3s ease;
-    padding-bottom: 15vh;
   ">
     <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 16px;">
     <p style="color: #6366F1; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;">
@@ -402,10 +408,29 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // Check auth state immediately
-    onAuthStateChanged(auth, (user) => {
+    // Function to show welcome page
+    function showWelcomePage() {
       const splash = document.getElementById('splash-screen');
       const mainContent = document.getElementById('mainContent');
+
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 300);
+      }
+      if (mainContent) {
+        mainContent.classList.add('visible');
+      }
+    }
+
+    // Timeout fallback - show welcome page after 2 seconds if Firebase is slow
+    const splashTimeout = setTimeout(() => {
+      console.log('⏱️ Timeout reached, showing welcome page');
+      showWelcomePage();
+    }, 2000);
+
+    // Check auth state
+    onAuthStateChanged(auth, (user) => {
+      clearTimeout(splashTimeout); // Cancel timeout since Firebase responded
 
       if (user) {
         // User is logged in - redirect to myclass immediately
@@ -414,13 +439,7 @@
       } else {
         // User is not logged in - show welcome page
         console.log('👋 No active session, showing welcome page');
-        if (splash) {
-          splash.style.opacity = '0';
-          setTimeout(() => splash.remove(), 300);
-        }
-        if (mainContent) {
-          mainContent.classList.add('visible');
-        }
+        showWelcomePage();
       }
     });
   </script>
