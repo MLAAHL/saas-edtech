@@ -1,6 +1,10 @@
-const CACHE_NAME = 'teaching-v6';
-const STATIC_CACHE = 'static-v6';
-const API_CACHE = 'api-v6';
+const CACHE_NAME = 'teaching-v7';
+const STATIC_CACHE = 'static-v7';
+const API_CACHE = 'api-v7';
+
+// Cache limits to prevent memory bloat
+const MAX_API_CACHE_ENTRIES = 50;
+const API_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Static assets to cache PERMANENTLY (never expire)
 const STATIC_ASSETS = [
@@ -37,6 +41,50 @@ const CACHEABLE_API_PATTERNS = [
     '/api/teacher/completed'
 ];
 
+// ============================================================================
+// CACHE CLEANUP UTILITIES
+// ============================================================================
+
+// Trim cache to max entries (removes oldest first)
+async function trimCache(cacheName, maxEntries) {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+
+    if (keys.length > maxEntries) {
+        console.log(`🧹 Trimming ${cacheName}: ${keys.length} -> ${maxEntries} entries`);
+        const deleteCount = keys.length - maxEntries;
+        for (let i = 0; i < deleteCount; i++) {
+            await cache.delete(keys[i]);
+        }
+    }
+}
+
+// Clean old cache entries on startup
+async function cleanupOldCaches() {
+    console.log('🧹 Running cache cleanup...');
+
+    try {
+        // Trim API cache
+        await trimCache(API_CACHE, MAX_API_CACHE_ENTRIES);
+
+        // Clean up any orphaned/old caches
+        const cacheKeys = await caches.keys();
+        const oldCaches = cacheKeys.filter(key =>
+            !key.includes('v6') &&
+            (key.includes('teaching') || key.includes('static') || key.includes('api'))
+        );
+
+        for (const oldCache of oldCaches) {
+            console.log('🗑️ Deleting old cache:', oldCache);
+            await caches.delete(oldCache);
+        }
+
+        console.log('✅ Cache cleanup complete');
+    } catch (error) {
+        console.error('⚠️ Cache cleanup error:', error);
+    }
+}
+
 self.addEventListener('install', (event) => {
     console.log('📦 Service Worker installing...');
     event.waitUntil(
@@ -48,7 +96,7 @@ self.addEventListener('install', (event) => {
             caches.open(STATIC_CACHE).then(cache => {
                 // Cache external assets separately (may fail)
                 return Promise.allSettled(
-                    EXTERNAL_ASSETS.map(url => 
+                    EXTERNAL_ASSETS.map(url =>
                         fetch(url, { mode: 'cors' })
                             .then(response => cache.put(url, response))
                             .catch(() => console.log('⚠️ Could not cache:', url))
@@ -65,51 +113,53 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys
-                    .filter(key => !key.includes('v6'))  // Delete ALL caches that are NOT v5
+                    .filter(key => !key.includes('v7'))  // Delete ALL caches that are NOT v6
                     .map(key => {
                         console.log('🗑️ Deleting old cache:', key);
                         return caches.delete(key);
                     })
             );
-        }).then(() => self.clients.claim())
+        })
+            .then(() => cleanupOldCaches())  // Run cleanup after cache migration
+            .then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
-    
+
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
-    
+
     // Handle API requests with stale-while-revalidate (NO EXPIRY - always show cached first)
     if (url.pathname.includes('/api/')) {
-        const shouldCache = CACHEABLE_API_PATTERNS.some(pattern => 
+        const shouldCache = CACHEABLE_API_PATTERNS.some(pattern =>
             url.pathname.includes(pattern)
         );
-        
+
         if (shouldCache) {
             event.respondWith(staleWhileRevalidate(event.request, API_CACHE));
             return;
         }
-        
+
         // For other API calls, network first with timeout
         event.respondWith(networkFirstWithTimeout(event.request, 5000));
         return;
     }
-    
+
     // Handle Google Fonts - cache first (permanent)
-    if (url.hostname.includes('fonts.googleapis.com') || 
+    if (url.hostname.includes('fonts.googleapis.com') ||
         url.hostname.includes('fonts.gstatic.com')) {
         event.respondWith(cacheFirstPermanent(event.request, STATIC_CACHE));
         return;
     }
-    
+
     // Handle static assets - cache first (permanent)
     if (url.origin === location.origin) {
         event.respondWith(cacheFirstPermanent(event.request, STATIC_CACHE));
         return;
     }
-    
+
     // Default: try cache, then network
     event.respondWith(
         caches.match(event.request).then(cached => {
@@ -126,7 +176,7 @@ async function cacheFirstPermanent(request, cacheName) {
         updateCacheInBackground(request, cacheName);
         return cached;
     }
-    
+
     try {
         const response = await fetch(request);
         if (response.ok) {
@@ -148,22 +198,26 @@ function updateCacheInBackground(request, cacheName) {
                 cache.put(request, response);
             });
         }
-    }).catch(() => {});
+    }).catch(() => { });
 }
 
 // Stale-while-revalidate strategy - ALWAYS returns cached first
 async function staleWhileRevalidate(request, cacheName) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
-    
+
     // Always fetch in background to update cache
-    const fetchPromise = fetch(request).then(response => {
+    const fetchPromise = fetch(request).then(async (response) => {
         if (response.ok) {
-            cache.put(request, response.clone());
+            await cache.put(request, response.clone());
+            // Periodically trim cache after updates (every ~10th call)
+            if (Math.random() < 0.1) {
+                trimCache(cacheName, MAX_API_CACHE_ENTRIES);
+            }
         }
         return response;
     }).catch(() => cached);
-    
+
     // Return cached IMMEDIATELY if available (even if weeks old)
     // Otherwise wait for network
     if (cached) {
@@ -177,16 +231,16 @@ async function networkFirstWithTimeout(request, timeout) {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
-        
+
         const response = await fetch(request, { signal: controller.signal });
         clearTimeout(timeoutId);
-        
+
         // Cache the response for offline use
         if (response.ok) {
             const cache = await caches.open(API_CACHE);
             cache.put(request, response.clone());
         }
-        
+
         return response;
     } catch (error) {
         const cached = await caches.match(request);
@@ -194,4 +248,3 @@ async function networkFirstWithTimeout(request, timeout) {
         throw error;
     }
 }
-
