@@ -18,14 +18,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://mlaahl.online" crossorigin>
-  
+
   <!-- Preload critical resources -->
+  <link rel="preload" href="logo2.png" as="image">
   <link rel="preload" href="js/config.js" as="script">
   <link rel="preload" href="js/myclass.js" as="script">
   <link rel="preload" href="firebase-config.js" as="script">
 
   <script src="js/config.js"></script>
-  
+
   <!-- Load fonts with display=swap to prevent FOIT -->
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
@@ -33,12 +34,16 @@
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0"
     media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css" media="print" onload="this.media='all'">
-  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css" media="print"
+    onload="this.media='all'">
+
   <!-- Fallback fonts while loading -->
   <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet">
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
   </noscript>
 
   <style>
@@ -52,7 +57,7 @@
       align-items: center;
       justify-content: center;
     }
-    
+
     :root {
       --glass-bg: rgba(255, 255, 255, 0.45);
       --glass-border: rgba(255, 255, 255, 0.5);
