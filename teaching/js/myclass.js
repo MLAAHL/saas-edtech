@@ -196,6 +196,112 @@ function showLoadingOverlay() {
 }
 
 // ============================================================================
+// STORAGE CLEANUP UTILITIES (Prevents slow loading over time)
+// ============================================================================
+
+const STORAGE_VERSION = 'v2';
+const MAX_COMPLETED_CLASSES = 100; // Keep only last 100 completed classes
+
+function cleanupLocalStorage() {
+  console.log('🧹 Running localStorage cleanup...');
+
+  try {
+    // Check storage version for migration
+    const storedVersion = localStorage.getItem('storageVersion');
+    if (storedVersion !== STORAGE_VERSION) {
+      console.log('📦 Storage version updated, clearing old data...');
+      // Clear potentially stale cached data
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        // Clear old cache keys but preserve essential auth/config
+        if (key && key.includes('cache_') || key.includes('temp_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      localStorage.setItem('storageVersion', STORAGE_VERSION);
+    }
+
+    // Log storage usage
+    let totalSize = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        totalSize += (localStorage.getItem(key) || '').length;
+      }
+    }
+    console.log(`📊 localStorage usage: ~${(totalSize / 1024).toFixed(1)} KB`);
+
+    console.log('✅ localStorage cleanup complete');
+  } catch (error) {
+    console.warn('⚠️ localStorage cleanup error:', error);
+  }
+}
+
+// Trim completed classes to prevent memory bloat
+function trimCompletedClasses() {
+  if (completedClasses.length > MAX_COMPLETED_CLASSES) {
+    console.log(`🧹 Trimming completed classes: ${completedClasses.length} -> ${MAX_COMPLETED_CLASSES}`);
+    // Sort by date (newest first) and keep only the max allowed
+    completedClasses.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+    completedClasses = completedClasses.slice(0, MAX_COMPLETED_CLASSES);
+  }
+}
+
+// Manual cache clear function (accessible from sidebar)
+async function clearAppCache() {
+  console.log('🧹 Manual cache clear requested...');
+
+  try {
+    showNotification('Clearing cache...', 'info');
+
+    // Clear Service Worker caches
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      for (const key of cacheKeys) {
+        console.log('🗑️ Deleting cache:', key);
+        await caches.delete(key);
+      }
+    }
+
+    // Clear localStorage cache entries (preserve auth data)
+    const keysToPreserve = ['staffType', 'storageVersion'];
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !keysToPreserve.includes(key) && !key.includes('firebase')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Unregister and re-register service worker
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log('🔄 Service worker unregistered');
+      }
+    }
+
+    showNotification('Cache cleared! Reloading...', 'success');
+
+    // Reload after a short delay to ensure user sees the notification
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+
+  } catch (error) {
+    console.error('❌ Cache clear error:', error);
+    showNotification('Failed to clear cache', 'error');
+  }
+}
+
+// Expose to window for HTML onclick
+window.clearAppCache = clearAppCache;
+
+// ============================================================================
 // CLOUDINARY CONFIGURATION
 // ============================================================================
 
@@ -1081,6 +1187,9 @@ async function loadAllData() {
       loadCompletedFromDatabase()
     ]);
 
+    // Trim completed classes to prevent memory bloat
+    trimCompletedClasses();
+
     console.log('✅ All data loaded:', {
       subjects: createdSubjects.length,
       queue: attendanceQueue.length,
@@ -1469,7 +1578,7 @@ function cancelCreateSubject() {
 const apiCache = {
   data: {},
   maxAge: 5 * 60 * 1000, // 5 minutes cache
-  
+
   get(key) {
     const cached = this.data[key];
     if (cached && Date.now() - cached.timestamp < this.maxAge) {
@@ -1478,7 +1587,7 @@ const apiCache = {
     }
     return null;
   },
-  
+
   set(key, value) {
     this.data[key] = { value, timestamp: Date.now() };
   }
@@ -1489,10 +1598,10 @@ async function cachedFetch(url, options = {}) {
   const cacheKey = url;
   const cached = apiCache.get(cacheKey);
   if (cached && !options.noCache) return cached;
-  
+
   const response = await fetch(url, options);
   const data = await response.json();
-  
+
   if (data.success !== false) {
     apiCache.set(cacheKey, data);
   }
@@ -1503,16 +1612,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Smart Attendance System - MyClass');
   console.log('📅 Optimized Loading...');
 
+  // Run cleanup immediately to free up storage (non-blocking)
+  cleanupLocalStorage();
+
   // Inject styles immediately (non-blocking)
   injectDropdownStyles();
 
   try {
     // Start loading user info (required first)
     const userPromise = loadUserInfo();
-    
+
     // Start preloading streams in parallel (doesn't need auth)
     const streamsPromise = fetchStreamsFromDatabase();
-    
+
     // Wait for user auth
     await userPromise;
 
