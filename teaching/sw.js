@@ -70,7 +70,7 @@ async function cleanupOldCaches() {
         // Clean up any orphaned/old caches
         const cacheKeys = await caches.keys();
         const oldCaches = cacheKeys.filter(key =>
-            !key.includes('v6') &&
+            !key.includes('v7') &&
             (key.includes('teaching') || key.includes('static') || key.includes('api'))
         );
 
@@ -113,7 +113,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys
-                    .filter(key => !key.includes('v7'))  // Delete ALL caches that are NOT v6
+                    .filter(key => !key.includes('v7'))  // Delete ALL caches that are NOT v7
                     .map(key => {
                         console.log('🗑️ Deleting old cache:', key);
                         return caches.delete(key);
@@ -130,6 +130,14 @@ self.addEventListener('fetch', (event) => {
 
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
+
+    // CRITICAL: Never intercept Firebase/gstatic requests - let them go directly to network
+    // This prevents auth delays caused by stale cached Firebase SDK
+    if (url.hostname.includes('gstatic.com') ||
+        url.hostname.includes('firebase') ||
+        url.hostname.includes('googleapis.com') && !url.hostname.includes('fonts.googleapis.com')) {
+        return; // Let browser handle natively
+    }
 
     // Handle API requests with stale-while-revalidate (NO EXPIRY - always show cached first)
     if (url.pathname.includes('/api/')) {
