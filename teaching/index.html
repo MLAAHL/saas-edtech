@@ -336,18 +336,26 @@
   <!-- SPLASH SCREEN (shown while checking auth) -->
   <div id="splash-screen" style="
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     background: #F8FAFC;
     z-index: 9999;
     transition: opacity 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    overflow: hidden;
   ">
     <div style="
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      -webkit-transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       text-align: center;
     ">
       <img src="logo2.png" alt="Logo"
@@ -419,8 +427,14 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
+    // Flag to prevent showing welcome page if redirecting
+    let isRedirecting = false;
+
     // Function to show welcome page
     function showWelcomePage() {
+      // Don't show welcome page if we're redirecting to myclass
+      if (isRedirecting) return;
+
       const splash = document.getElementById('splash-screen');
       const mainContent = document.getElementById('mainContent');
 
@@ -433,24 +447,16 @@
       }
     }
 
-    // Timeout fallback - show welcome page after 2 seconds if Firebase is slow
-    const splashTimeout = setTimeout(() => {
-      console.log('⏱️ Timeout reached, showing welcome page');
-      showWelcomePage();
-    }, 2000);
-
-    // Check auth state
+    // Check auth state - NO TIMEOUT, wait for Firebase to respond
     onAuthStateChanged(auth, (user) => {
-      clearTimeout(splashTimeout); // Cancel timeout since Firebase responded
-
       if (user) {
-        // User is logged in - keep splash screen and redirect immediately
-        // Don't call showWelcomePage() to prevent flash of login page
+        // User is logged in - set flag and redirect immediately
+        // Keep splash screen visible during redirect
+        isRedirecting = true;
         console.log('✅ User already authenticated, redirecting to myclass.html');
         window.location.replace('myclass.html');
-        return; // Stop execution, keep splash visible during redirect
       } else {
-        // User is not logged in - show welcome page
+        // User is definitely not logged in - show welcome page
         console.log('👋 No active session, showing welcome page');
         showWelcomePage();
       }
