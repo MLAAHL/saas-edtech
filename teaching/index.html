@@ -205,6 +205,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      text-align: center;
       /* Subtle white glow */
       background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%);
       border-radius: 50%;
@@ -213,7 +214,12 @@
     .illustration-image {
       width: 100%;
       height: 100%;
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
+      object-position: center center;
+      display: block;
+      margin: 0 auto;
       animation: float 5s ease-in-out infinite;
       filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.08));
     }
@@ -437,9 +443,11 @@
       clearTimeout(splashTimeout); // Cancel timeout since Firebase responded
 
       if (user) {
-        // User is logged in - redirect to myclass immediately
+        // User is logged in - keep splash screen and redirect immediately
+        // Don't call showWelcomePage() to prevent flash of login page
         console.log('✅ User already authenticated, redirecting to myclass.html');
         window.location.replace('myclass.html');
+        return; // Stop execution, keep splash visible during redirect
       } else {
         // User is not logged in - show welcome page
         console.log('👋 No active session, showing welcome page');
