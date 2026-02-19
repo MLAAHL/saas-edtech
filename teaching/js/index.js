@@ -570,20 +570,36 @@ async function loadStudentsFromDatabase(classInfo) {
     showLoadingState();
     console.log('📥 Loading students for:', classInfo);
 
-    // Load subject metadata first
+    // 1. Try to load from cache first for instant display
+    const cacheKey = `students_${classInfo.stream}_sem${classInfo.semester}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    let isCacheUsed = false;
+
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        // Use cache if it's less than 24 hours old
+        if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          console.log('⚡ Using cached student list');
+          allStudents = parsed.students;
+          displayStudents(allStudents);
+          isCacheUsed = true;
+        }
+      } catch (e) {
+        console.warn('Invalid cache data');
+      }
+    }
+
+    // Load subject metadata (in parallel with cache check)
     subjectMetadata = await loadSubjectMetadata(classInfo.stream, classInfo.semester, classInfo.subject);
 
     if (subjectMetadata) {
-      console.log('📖 Subject Details:', {
-        name: subjectMetadata.name,
-        type: subjectMetadata.subjectType,
-        isLanguage: subjectMetadata.isLanguageSubject,
-        languageType: subjectMetadata.languageType
-      });
+      console.log('📖 Subject Details:', subjectMetadata);
     }
 
+    // 2. Fetch fresh data from network (always update cache)
     const url = `${API_BASE_URL}/students/${encodeURIComponent(classInfo.stream)}/sem${classInfo.semester}`;
-    console.log('🔗 Full URL:', url);
+    console.log('🔗 Fetching fresh data:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -594,18 +610,25 @@ async function loadStudentsFromDatabase(classInfo) {
       }
     });
 
-    console.log('📦 Response status:', response.status);
-
     if (!response.ok) {
+      if (isCacheUsed) {
+        console.warn('⚠️ Network failed, but cache is being used.');
+        return; // Stay with cache
+      }
       throw new Error(`HTTP ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('📦 Parsed data:', data);
 
     if (data.success && data.students) {
       allStudents = data.students;
-      console.log(`📊 Total students loaded: ${allStudents.length}`);
+      console.log(`📊 Fresh students loaded: ${allStudents.length}`);
+
+      // Update cache
+      localStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        students: allStudents
+      }));
 
       // Populate dropdowns
       populateLanguageDropdown(allStudents);
@@ -622,24 +645,28 @@ async function loadStudentsFromDatabase(classInfo) {
         selectedElective
       );
 
+      // Only re-render if we didn't use cache, or if data might be different
+      // (For smoothness, we usually just re-render to be safe, or check for diffs)
       displayStudents(filteredStudents);
 
-      // If it's a language subject, auto-select and lock the language
+      // Lock language if needed
       if (subjectMetadata && subjectMetadata.isLanguageSubject && subjectMetadata.languageType) {
         if (languageSelect) {
           languageSelect.value = subjectMetadata.languageType;
           languageSelect.disabled = true;
-          console.log(`🔒 Language locked to: ${subjectMetadata.languageType}`);
         }
       }
     } else {
-      console.warn('⚠️ No students in response:', data);
-      displayStudents([]);
+      if (!isCacheUsed) {
+        displayStudents([]);
+      }
     }
 
   } catch (error) {
     console.error('❌ Error loading students:', error);
-    showErrorState(error.message || 'Failed to load students');
+    if (!localStorage.getItem(`students_${classInfo.stream}_sem${classInfo.semester}`)) {
+      showErrorState(error.message || 'Failed to load students');
+    }
   }
 }
 
