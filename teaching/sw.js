@@ -150,8 +150,8 @@ self.addEventListener('fetch', (event) => {
             return;
         }
 
-        // For other API calls, network first with timeout
-        event.respondWith(networkFirstWithTimeout(event.request, 5000));
+        // For other API calls, network first with timeout (Increased to 15s for slow networks)
+        event.respondWith(networkFirstWithTimeout(event.request, 15000));
         return;
     }
 
