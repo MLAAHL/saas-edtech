@@ -1,6 +1,6 @@
-const CACHE_NAME = 'teaching-v7';
-const STATIC_CACHE = 'static-v7';
-const API_CACHE = 'api-v7';
+const CACHE_NAME = 'teaching-v8';
+const STATIC_CACHE = 'static-v8';
+const API_CACHE = 'api-v8';
 
 // Cache limits to prevent memory bloat
 const MAX_API_CACHE_ENTRIES = 50;
@@ -113,7 +113,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys
-                    .filter(key => !key.includes('v7'))  // Delete ALL caches that are NOT v7
+                    .filter(key => !key.includes('v8'))  // Delete ALL caches that are NOT v7
                     .map(key => {
                         console.log('🗑️ Deleting old cache:', key);
                         return caches.delete(key);
@@ -256,3 +256,4 @@ async function networkFirstWithTimeout(request, timeout) {
         throw error;
     }
 }
+
