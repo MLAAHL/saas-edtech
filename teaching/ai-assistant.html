@@ -23,28 +23,32 @@
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
   <script src="js/config.js"></script>
-  
+
   <!-- Async font loading -->
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"
+    media="print" onload="this.media='all'" />
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" media="print" onload="this.media='all'" />
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
+    media="print" onload="this.media='all'" />
   <noscript>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </noscript>
-  
+
   <!-- Defer non-critical scripts -->
   <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/lib/marked.umd.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"
+    defer></script>
 
   <style>
-    html, body {
+    html,
+    body {
       height: 100vh;
       width: 100vw;
       overflow: hidden;
     }
-        
+
     :root {
       --glass-bg: rgba(255, 255, 255, 0.45);
       --glass-border: rgba(255, 255, 255, 0.5);
@@ -79,8 +83,11 @@
       font-family: 'Inter', sans-serif;
       background: #F8FAFC;
       height: 100vh;
+      height: 100dvh;
+      /* Mobile viewport fix */
       width: 100vw;
       overflow: hidden;
+      /* Keep hidden on body */
       display: flex;
       flex-direction: column;
       color: var(--text-primary);
@@ -116,6 +123,8 @@
       -webkit-backdrop-filter: blur(16px);
       z-index: 50;
       border-bottom: 1px solid var(--glass-border);
+      flex-shrink: 0;
+      /* Don't shrink header */
     }
 
     .header-title {
@@ -124,28 +133,13 @@
       color: var(--text);
     }
 
-    .profile-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #6366F1, #8B5CF6);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 14px;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-    }
-
     /* CHAT VIEW */
     .chat-view {
-      flex: 1 1 0;
+      flex: 1;
       position: relative;
       display: flex;
       flex-direction: column;
-      min-height: 0;
-      height: 100vh;
+      height: 100%;
       overflow: hidden;
     }
 
@@ -258,19 +252,20 @@
 
     /* MESSAGES LIST */
     .messages-list {
-      flex: 1 1 0;
-      min-height: 0;
-      height: 100%;
+      flex: 1;
+      width: 100%;
       overflow-y: auto;
-      /* Mobile default: large bottom padding for floating input */
-      padding: 20px 16px 180px 16px;
+      overflow-x: hidden;
+      padding: 20px 16px 140px 16px;
+      /* Extra bottom padding for input area */
       display: flex;
       flex-direction: column;
       gap: 24px;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s;
-      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      /* Smooth scroll on iOS */
     }
 
     .messages-list.active {
@@ -457,16 +452,17 @@
     /* INPUT BAR - MOBILE (Floating) */
     .input-container {
       position: absolute;
-      bottom: 110px;
-      /* Lifted for mobile nav */
+      bottom: 90px;
       left: 16px;
       right: 16px;
       z-index: 1010;
       transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      /* Ensure it stays above keyboard if possible, though strict implementation usually requires JS resize monitoring */
     }
 
     .input-box {
-      background: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.65);
+      /* Less transparent for readability */
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--glass-border);
@@ -475,7 +471,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      box-shadow: var(--glass-shadow);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
 
     .input-box:focus-within {
@@ -788,13 +784,11 @@
     let isFirst = true;
 
     function scrollToBottom() {
-      const doScroll = () => {
-        msgList.scrollTop = msgList.scrollHeight + 1000;
-      };
-      doScroll();
-      setTimeout(doScroll, 50);
-      setTimeout(doScroll, 150);
-      setTimeout(doScroll, 300);
+      if (msgList.lastElementChild) {
+        msgList.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } else {
+        msgList.scrollTop = msgList.scrollHeight;
+      }
     }
 
     function ask(txt) {
