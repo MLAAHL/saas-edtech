@@ -440,15 +440,22 @@
 
       if (splash) {
         splash.style.opacity = '0';
-        setTimeout(() => splash.remove(), 300);
+        splash.remove();
       }
       if (mainContent) {
         mainContent.classList.add('visible');
       }
     }
 
-    // Check auth state - NO TIMEOUT, wait for Firebase to respond
+    // Check auth state - WITH TIMEOUT fallback
+    const authTimeout = setTimeout(() => {
+      console.log('⚠️ Auth check timed out, redirecting to login.html');
+      window.location.replace('login.html');
+    }, 3000); // 3 seconds timeout
+
     onAuthStateChanged(auth, (user) => {
+      clearTimeout(authTimeout); // Cancel timeout if Firebase responds
+
       if (user) {
         // User is logged in - set flag and redirect immediately
         // Keep splash screen visible during redirect
