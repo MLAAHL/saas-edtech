@@ -14,21 +14,46 @@
   <meta name="apple-mobile-web-app-title" content="Smart Attendance">
   <link rel="apple-touch-icon" href="logo2.png">
 
+  <!-- Preconnect for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://mlaahl.online" crossorigin>
+  <link rel="preconnect" href="https://cdn.sheetjs.com" crossorigin>
+
   <script src="js/config.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Async font loading -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-  <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" media="print" onload="this.media='all'" />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </noscript>
+  <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js" defer></script>
 
   <style>
     :root {
-      --glass-bg: rgba(255, 255, 255, 0.65);
-      --glass-border: 1px solid rgba(255, 255, 255, 0.6);
-      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+      --glass-bg: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.04);
       --glass-blur: blur(16px);
+      --primary-color: #6366F1;
       --primary-gradient: linear-gradient(135deg, #6366F1, #8B5CF6);
-      --text-main: #1E293B;
-      --text-muted: #64748B;
+      --text-primary: #334155;
+      --text-secondary: #64748B;
+      --bg-accent: #F8FAFC;
+      --danger: #EF4444;
+    }
+
+    /* Material Icons - hide text until font loads */
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded', sans-serif;
+      overflow: hidden;
+      width: 1em;
+      height: 1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     * {
@@ -43,23 +68,28 @@
     }
 
     body {
-      font-family: 'Poppins', sans-serif;
-      background: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%),
-        linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%);
-      background-attachment: fixed;
-      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      background: #F8FAFC;
+      color: var(--text-primary);
       font-size: 14px;
       min-height: 100vh;
       padding-bottom: 40px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    .page-title {
+      font-family: 'Outfit', sans-serif;
     }
 
     /* HEADER */
     .page-header {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
       padding: 16px 24px;
       display: flex;
       align-items: center;
@@ -67,7 +97,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      box-shadow: var(--glass-shadow);
     }
 
     .page-title {
@@ -93,7 +123,7 @@
 
     .page-subtitle {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       font-weight: 500;
     }
 
@@ -120,7 +150,7 @@
 
     .btn-text {
       background: rgba(0, 0, 0, 0.05);
-      color: var(--text-muted);
+      color: var(--text-secondary);
     }
 
     .btn-success {

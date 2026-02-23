@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Attendance LMS — Commercial Proposal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            font-size: 10pt;
+            color: #2d2d2d;
+            line-height: 1.6;
+            background: white;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        /* HEADER BAR */
+        .header-bar {
+            background: #0D1B2A;
+            color: white;
+            padding: 20pt 24pt;
+            margin: -20mm;
+            margin-bottom: 20pt;
+            width: calc(100% + 40mm);
+        }
+
+
+        .header-bar h1 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 20pt;
+            font-weight: 700;
+            letter-spacing: 0.3pt;
+        }
+
+        .header-bar .sub {
+            font-size: 9pt;
+            font-weight: 300;
+            opacity: 0.7;
+            margin-top: 3pt;
+            letter-spacing: 0.5pt;
+        }
+
+        .header-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8.5pt;
+            color: #777;
+            padding-bottom: 10pt;
+            border-bottom: 0.5pt solid #ddd;
+            margin-bottom: 14pt;
+        }
+
+        /* HEADINGS */
+        h2 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 11.5pt;
+            color: #0D1B2A;
+            font-weight: 700;
+            margin-top: 16pt;
+            margin-bottom: 6pt;
+        }
+
+        /* TEXT */
+        p {
+            margin-bottom: 7pt;
+            color: #444;
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5pt 0 12pt;
+            font-size: 9.5pt;
+        }
+
+        th {
+            background: #0D1B2A;
+            color: white;
+            padding: 6pt 10pt;
+            text-align: left;
+            font-weight: 500;
+            font-size: 8.5pt;
+            letter-spacing: 0.3pt;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 5pt 10pt;
+            border-bottom: 0.5pt solid #e5e5e5;
+            color: #444;
+        }
+
+        tr:last-child td {
+            border-bottom: 1pt solid #ccc;
+        }
+
+        .highlight td {
+            background: #f0f3f8;
+            font-weight: 600;
+            color: #0D1B2A;
+        }
+
+        /* LIST */
+        .col-list {
+            columns: 2;
+            column-gap: 24pt;
+            list-style: none;
+            margin: 5pt 0 10pt;
+            padding: 0;
+        }
+
+        .col-list li {
+            padding: 3pt 0 3pt 12pt;
+            font-size: 9.5pt;
+            color: #444;
+            position: relative;
+            break-inside: avoid;
+        }
+
+        .col-list li::before {
+            content: "–";
+            position: absolute;
+            left: 0;
+            color: #0D1B2A;
+            font-weight: 700;
+        }
+
+        /* PRICE */
+        .price-section {
+            border: 1.5pt solid #0D1B2A;
+            padding: 16pt 20pt;
+            text-align: center;
+            margin: 12pt 0;
+        }
+
+        .price-section .label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 2pt;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .price-section .amount {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 26pt;
+            font-weight: 700;
+            color: #0D1B2A;
+            margin: 4pt 0;
+        }
+
+        .price-section .desc {
+            font-size: 9pt;
+            color: #777;
+        }
+
+        /* DIVIDER */
+        .divider {
+            border: none;
+            border-top: 0.5pt solid #ddd;
+            margin: 14pt 0;
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 20pt;
+            padding-top: 10pt;
+            border-top: 1pt solid #0D1B2A;
+            display: flex;
+            justify-content: space-between;
+            font-size: 8pt;
+            color: #999;
+        }
+
+        /* NOTE */
+        .note {
+            font-size: 8.5pt;
+            color: #888;
+            line-height: 1.5;
+            margin-top: 8pt;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                max-width: none;
+                font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            }
+
+            .header-bar {
+                margin: -20mm;
+                margin-bottom: 20pt;
+                width: calc(100% + 40mm);
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .highlight td {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .price-section {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            table {
+                page-break-inside: avoid;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .print-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #0D1B2A;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 10pt;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="print-btn no-print" onclick="window.print()">Save as PDF</button>
+
+    <div class="header-bar">
+        <h1>Smart Attendance LMS</h1>
+        <div class="sub">Digital Attendance & Academic Management Platform</div>
+    </div>
+
+    <div class="header-meta">
+        <span>Prepared for: <strong>MLA Academy of Higher Learning</strong></span>
+        <span>Date: 23 February 2026</span>
+        <span>Document: Commercial Proposal</span>
+    </div>
+
+    <h2>Overview</h2>
+    <p>
+        Smart Attendance LMS is a digital platform that automates attendance management, academic reporting,
+        and parent communication. The system is designed for use across all departments and streams within the
+        institution, accessible on any device without requiring application installation.
+    </p>
+
+    <h2>Capabilities</h2>
+    <ul class="col-list">
+        <li>Subject-wise digital attendance marking</li>
+        <li>Multi-stream and semester management</li>
+        <li>Language elective and combined class support</li>
+        <li>Attendance reports with percentage breakdowns</li>
+        <li>Student records management</li>
+        <li>Faculty management with subject assignments</li>
+        <li>Semester-end promotion with rollback</li>
+        <li>Mentor-student relationship tracking</li>
+        <li>Administrative dashboard with live statistics</li>
+        <li>Intelligent query assistant (natural language)</li>
+        <li>DLT-registered SMS alerts for parents</li>
+        <li>Push notifications for staff</li>
+        <li>Installable as mobile app (no app store required)</li>
+        <li>Role-based access with secure authentication</li>
+    </ul>
+
+    <h2>Users</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>User Group</th>
+                <th>Access</th>
+                <th>Functions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Teaching Staff</td>
+                <td>Teaching Portal</td>
+                <td>Mark attendance, view history, query assistant, notifications</td>
+            </tr>
+            <tr>
+                <td>Administrative Staff</td>
+                <td>Admin Portal</td>
+                <td>Student & faculty management, reports, promotions, notifications</td>
+            </tr>
+            <tr>
+                <td>Parents / Guardians</td>
+                <td>SMS</td>
+                <td>Automated absence alerts</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Operational Impact</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Current Process</th>
+                <th>With Smart Attendance LMS</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Manual attendance in registers</td>
+                <td>Digital attendance from any device</td>
+            </tr>
+            <tr>
+                <td>Hours spent compiling reports</td>
+                <td>Instant reports with automated calculations</td>
+            </tr>
+            <tr>
+                <td>No parent communication on absences</td>
+                <td>Automated SMS alerts via DLT service</td>
+            </tr>
+            <tr>
+                <td>Cannot identify low-attendance students</td>
+                <td>Query assistant answers in natural language</td>
+            </tr>
+            <tr>
+                <td>Manual semester promotion</td>
+                <td>Bulk promotion with preview and rollback</td>
+            </tr>
+            <tr>
+                <td>No centralized data view</td>
+                <td>Real-time dashboard across all streams</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Deliverables</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Teaching Staff Portal</td>
+                <td>Web application for attendance marking, history, and query assistant</td>
+            </tr>
+            <tr>
+                <td>Administrative Portal</td>
+                <td>Management portal — students, faculty, reports, promotions, notifications</td>
+            </tr>
+            <tr>
+                <td>Intelligent Query Assistant</td>
+                <td>Natural language system for instant access to institutional data</td>
+            </tr>
+            <tr>
+                <td>SMS Notification System</td>
+                <td>DLT-compliant automated alerts for parent communication</td>
+            </tr>
+            <tr>
+                <td>Push Notification System</td>
+                <td>Staff alerts delivered to browser and mobile</td>
+            </tr>
+            <tr>
+                <td>Backend Infrastructure</td>
+                <td>Scalable server application</td>
+            </tr>
+            <tr>
+                <td>Database</td>
+                <td>Cloud-hosted with existing student and faculty records pre-loaded</td>
+            </tr>
+            <tr>
+                <td>Deployment</td>
+                <td>Production server with SSL certificate and domain configuration</td>
+            </tr>
+            <tr>
+                <td>Training</td>
+                <td>Walkthrough session for administrative staff</td>
+            </tr>
+            <tr>
+                <td>Source Code</td>
+                <td>Complete source code with full intellectual property transfer</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Infrastructure</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Monthly Cost</th>
+                <th>Remarks</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Cloud Server (2 vCPU, 8 GB RAM, 100 GB SSD)</td>
+                <td>₹549</td>
+                <td>Paid directly by institution</td>
+            </tr>
+            <tr>
+                <td>Database & Services</td>
+                <td>₹0</td>
+                <td>Included in free-tier allocation</td>
+            </tr>
+            <tr class="highlight">
+                <td>Total</td>
+                <td>₹549/month</td>
+                <td>~₹6,588 per annum</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="note">No software license fees, subscriptions, or recurring software charges apply. The institution owns
+        100% of the software. The only recurring cost is the cloud server hosting paid directly to the provider.</p>
+
+    <h2>Market Comparison</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Alternative</th>
+                <th>Typical Cost</th>
+                <th>Recurring</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>College ERP System</td>
+                <td>₹3,00,000 – ₹10,00,000</td>
+                <td>Annual License + AMC</td>
+            </tr>
+            <tr>
+                <td>Custom Application (Agency)</td>
+                <td>₹2,00,000 – ₹5,00,000</td>
+                <td>Maintenance Contract</td>
+            </tr>
+            <tr>
+                <td>SaaS Platform</td>
+                <td>₹1,00,000 – ₹3,00,000/year</td>
+                <td>Renewed Annually</td>
+            </tr>
+            <tr>
+                <td>Native Mobile App (Android + iOS)</td>
+                <td>₹2,00,000 – ₹5,00,000</td>
+                <td>Updates & Maintenance</td>
+            </tr>
+            <tr class="highlight">
+                <td>Smart Attendance LMS</td>
+                <td>₹1,50,000 (One-Time)</td>
+                <td>Nil</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr class="divider">
+
+    <h2>Investment</h2>
+
+    <div class="price-section">
+        <div class="label">One-Time Project Cost</div>
+        <div class="amount">₹1,50,000</div>
+        <div class="desc">One-time payment · No license fee · Full ownership transfer</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Term</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Payment</td>
+                <td>One-time, all-inclusive</td>
+            </tr>
+            <tr>
+                <td>Accepted Modes</td>
+                <td>Bank Transfer / NEFT / RTGS / UPI / Cheque</td>
+            </tr>
+            <tr>
+                <td>Ownership</td>
+                <td>100% transferred to the institution</td>
+            </tr>
+            <tr>
+                <td>Recurring Fee</td>
+                <td>Nil</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <span>Prepared by: Skanda</span>
+        <span>23 February 2026</span>
+        <span>Confidential</span>
+    </div>
+
+</body>
+
+</html>

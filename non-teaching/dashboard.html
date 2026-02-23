@@ -7,31 +7,36 @@
   <title>Dashboard - Smart Attendance</title>
   <link rel="icon" type="image/png" href="logo2.png" />
   <script src="js/config.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --glass-bg: rgba(255, 255, 255, 0.4);
-      --glass-border: rgba(255, 255, 255, 0.5);
-      --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-      --primary-color: #6366F1;
+      --primary: #0F172A;
+      --primary-light: #1E293B;
+      --accent: #10B981;
       --text-primary: #0F172A;
-      --text-secondary: #475569;
+      --text-secondary: #64748B;
+      --bg-body: #F8FAFC;
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --danger: #EF4444;
+      --success: #10B981;
     }
 
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: 'Outfit', sans-serif;
     }
 
     body {
-      font-family: 'Poppins', sans-serif;
-      background: #F1F5F9;
-      display: flex;
+      background: #f0f4f1;
       height: 100vh;
+      display: flex;
       overflow: hidden;
       color: var(--text-primary);
     }
@@ -144,18 +149,17 @@
     }
 
     .nav-item.active {
-      background: #0F172A;
-      color: white;
+      background: #C6E9D2;
+      color: #1B5E2F;
       font-weight: 600;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
     }
 
     .nav-item.active .material-symbols-rounded {
-      color: white;
+      color: #1B5E2F;
     }
 
     .nav-item.active:hover {
-      background: #1E293B;
+      background: #B8E0C8;
     }
 
     .sidebar-footer {
@@ -168,12 +172,12 @@
       align-items: center;
       height: 48px;
       border-radius: 12px;
-      background: rgba(239, 68, 68, 0.06);
-      color: #EF4444;
+      background: transparent;
+      color: #9CA3AF;
       border: none;
       cursor: pointer;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       font-family: inherit;
       transition: all 0.25s ease;
       overflow: hidden;
@@ -181,7 +185,8 @@
     }
 
     .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.12);
+      background: #FEF2F2;
+      color: #DC4F4F;
     }
 
     .logout-btn .material-symbols-rounded {
@@ -210,6 +215,32 @@
       flex-direction: column;
       overflow: hidden;
       position: relative;
+      background: #FFFFFF;
+    }
+
+    /* Green gradient rising from bottom */
+    .main-content::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 55%;
+      background: linear-gradient(to bottom, rgba(198, 233, 210, 0) 0%, rgba(198, 233, 210, 0.35) 50%, rgba(198, 233, 210, 0.55) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .main-content::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 35%;
+      height: 30%;
+      background: radial-gradient(ellipse at top right, rgba(198, 233, 210, 0.35) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     /* ========== HEADER ========== */
@@ -501,7 +532,7 @@
       <div class="logo">
         <img src="logo2.png" alt="Logo">
       </div>
-      <div class="brand-name">Smart Attendance</div>
+      <div class="brand-name">MLA AHL</div>
     </div>
     <nav class="nav-menu">
       <a href="dashboard.html" class="nav-item active">
@@ -523,6 +554,18 @@
       <a href="ai-assistant.html" class="nav-item">
         <span class="material-symbols-rounded">auto_awesome</span>
         <span>AI Assistant</span>
+      </a>
+      <a href="teachers.html" class="nav-item">
+        <span class="material-symbols-rounded">person</span>
+        <span>Teachers</span>
+      </a>
+      <a href="mentorship.html" class="nav-item">
+        <span class="material-symbols-rounded">school</span>
+        <span>Mentors</span>
+      </a>
+      <a href="msg.html" class="nav-item" id="nav-whatsapp">
+        <span class="material-symbols-rounded">chat</span>
+        <span>WhatsApp</span>
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -599,9 +642,9 @@
               <div class="card-subtitle">Overview of student attendance</div>
             </div>
             <div class="time-filter">
-              <button class="time-btn">Week</button>
-              <button class="time-btn active">Month</button>
-              <button class="time-btn">Year</button>
+              <button class="time-btn" data-period="week" onclick="setChartPeriod('week')">Week</button>
+              <button class="time-btn active" data-period="month" onclick="setChartPeriod('month')">Month</button>
+              <button class="time-btn" data-period="year" onclick="setChartPeriod('year')">Year</button>
             </div>
           </div>
           <div class="chart-container">
@@ -737,12 +780,7 @@
     async function fetchTeacherProfile(email) {
       try {
         console.log('👤 Fetching teacher profile for:', email);
-        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
+        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
         if (!response.ok) {
           console.warn(`⚠️ Teacher profile fetch failed: ${response.status}`);
           return null;
@@ -841,10 +879,49 @@
   </script>
   <!-- Dashboard Core Script -->
   <script>
-    // Reference global API URL (set by Firebase module script)
-    const dashboardApiUrl = window.APP_CONFIG.API_BASE_URL;
+    // Reference global API URL (set by Firebase module script or config.js)
+    const dashboardApiUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
+      ? window.APP_CONFIG.API_BASE_URL
+      : 'http://localhost:5000/api';
+
+    if (!window.APP_CONFIG) {
+      console.warn('⚠️ APP_CONFIG missing, using default localhost URL');
+    }
     console.log('📊 Dashboard API URL:', dashboardApiUrl);
     let attendanceChart, streamChart;
+    let currentPeriod = 'month'; // Default period
+
+    // Period button handler
+    function setChartPeriod(period) {
+      currentPeriod = period;
+      // Update button styles
+      document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.period === period) {
+          btn.classList.add('active');
+        }
+      });
+      // Reload chart data with new period
+      loadAttendanceTrendData(period);
+    }
+
+    // Load attendance trend data for specific period
+    async function loadAttendanceTrendData(period) {
+      try {
+        const timestamp = new Date().getTime();
+        const res = await fetch(`${dashboardApiUrl}/dashboard/attendance-trend?period=${period}&t=${timestamp}`);
+        const data = await res.json();
+        if (data.success && data.trend && attendanceChart) {
+          attendanceChart.data.labels = data.trend.labels || [];
+          attendanceChart.data.datasets[0].data = data.trend.data || [];
+          attendanceChart.update();
+          console.log(`✅ Chart updated for ${period}:`, data.trend.labels?.length, 'data points');
+        }
+      } catch (error) {
+        console.error('❌ Error loading trend data:', error);
+      }
+    }
+
     function setVal(id, val) {
       const el = document.getElementById(id);
       if (el) {
@@ -946,11 +1023,11 @@
                   display: true,
                   ticks: {
                     color: '#64748B',
-                    font: { size: 10, family: 'Poppins' },
-                    padding: 10,
-                    autoSkip: true,
-                    maxTicksLimit: 10,
-                    maxRotation: 0
+                    font: { size: 9, family: 'Poppins' },
+                    padding: 8,
+                    autoSkip: false,
+                    maxRotation: 45,
+                    minRotation: 0
                   },
                   grid: { display: false, drawBorder: false }
                 }
@@ -1160,13 +1237,7 @@
       setVal("attendanceRate", "...");
       try {
         const timestamp = new Date().getTime();
-        const res = await fetch(`${dashboardApiUrl}/dashboard/stats?t=${timestamp}`, {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        });
+        const res = await fetch(`${dashboardApiUrl}/dashboard/stats?t=${timestamp}`);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         }
@@ -1280,6 +1351,8 @@
           if (stats.charts) {
             console.log('📊 Received chart data from API:', stats.charts);
             updateCharts(stats.charts);
+            // Also load trend data for current period (default: month)
+            loadAttendanceTrendData(currentPeriod);
           } else {
             console.warn('⚠️ No chart data in API response');
           }
@@ -1326,6 +1399,21 @@
         if (refreshIcon) refreshIcon.style.animation = 'none';
       }
     }
+    // ============================================================================
+    // INITIALIZATION
+    // ============================================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🚀 Dashboard Initializing...');
+      loadDashboardData();
+
+      // Setup refresh button listener if element exists
+      const refreshBtn = document.getElementById('refreshDashboard');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshDashboardData);
+      }
+    });
+
   </script>
 </body>
 

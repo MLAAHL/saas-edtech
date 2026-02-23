@@ -364,17 +364,14 @@ async function restoreState() {
     currentStream = state.stream;
 
     await loadSemesters(state.stream);
-    await sleep(150);
     semesterSelect.value = state.semester;
     currentSemester = state.semester;
 
     await loadSubjects(state.stream, state.semester);
-    await sleep(150);
     subjectSelect.value = state.subject;
     currentSubject = state.subject;
 
     console.log('✅ State restored successfully');
-    await sleep(200);
 
     // Load the register first
     await loadRegister();

@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance LMS — Project Proposal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --primary: #1a1a2e;
+            --primary-light: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --text: #1a1a2e;
+            --text-light: #4a5568;
+            --text-muted: #718096;
+            --bg: #ffffff;
+            --bg-light: #f7fafc;
+            --bg-table: #f8fafd;
+            --border: #e2e8f0;
+            --border-light: #edf2f7;
+            --green: #10b981;
+            --blue: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 15mm 18mm;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            font-size: 10.5pt;
+            line-height: 1.6;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* COVER PAGE */
+        .cover-page {
+            page-break-after: always;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cover-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--highlight));
+        }
+
+        .cover-page::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--highlight));
+        }
+
+        .cover-badge {
+            display: inline-block;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 8px 24px;
+            font-size: 9pt;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+
+        .cover-title {
+            font-size: 36pt;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1.15;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .cover-title span {
+            color: var(--highlight);
+        }
+
+        .cover-subtitle {
+            font-size: 14pt;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-bottom: 60px;
+            max-width: 500px;
+        }
+
+        .cover-meta {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .cover-meta-item {
+            text-align: center;
+        }
+
+        .cover-meta-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .cover-meta-value {
+            font-size: 11pt;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .cover-line {
+            width: 60px;
+            height: 3px;
+            background: var(--highlight);
+            margin: 30px auto;
+            border-radius: 2px;
+        }
+
+        .cover-footer {
+            position: absolute;
+            bottom: 40px;
+            font-size: 8.5pt;
+            color: var(--text-muted);
+        }
+
+        /* CONTENT PAGES */
+        .page {
+            page-break-after: always;
+            padding: 0;
+        }
+
+        .page:last-child {
+            page-break-after: auto;
+        }
+
+        /* SECTION HEADERS */
+        .section-number {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-size: 12pt;
+            font-weight: 700;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 6px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h2 {
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--accent);
+            margin-top: 22px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 14px;
+            margin-bottom: 6px;
+        }
+
+        p {
+            margin-bottom: 10px;
+            color: var(--text-light);
+        }
+
+        .lead {
+            font-size: 11pt;
+            color: var(--text-light);
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            font-size: 9.5pt;
+        }
+
+        thead th {
+            background: var(--primary);
+            color: white;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        thead th:first-child {
+            border-radius: 6px 0 0 0;
+        }
+
+        thead th:last-child {
+            border-radius: 0 6px 0 0;
+        }
+
+        tbody td {
+            padding: 7px 12px;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-light);
+        }
+
+        tbody tr:nth-child(even) {
+            background: var(--bg-table);
+        }
+
+        tbody tr:last-child td:first-child {
+            border-radius: 0 0 0 6px;
+        }
+
+        tbody tr:last-child td:last-child {
+            border-radius: 0 0 6px 0;
+        }
+
+        .table-highlight td {
+            font-weight: 700;
+            color: var(--primary);
+            background: #eef2ff !important;
+        }
+
+        /* CHECK MARKS */
+        .check {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        /* HIGHLIGHT BOX */
+        .highlight-box {
+            background: linear-gradient(135deg, #eef2ff, #f0f4ff);
+            border-left: 4px solid var(--accent);
+            padding: 14px 18px;
+            border-radius: 0 8px 8px 0;
+            margin: 14px 0;
+            font-size: 10pt;
+        }
+
+        .highlight-box strong {
+            color: var(--primary);
+        }
+
+        .highlight-box.warning {
+            background: linear-gradient(135deg, #fff5f5, #fff0f0);
+            border-left-color: var(--highlight);
+        }
+
+        .highlight-box.success {
+            background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+            border-left-color: var(--green);
+        }
+
+        /* ARCHITECTURE BOX */
+        .arch-box {
+            background: var(--primary);
+            color: #cbd5e0;
+            padding: 20px 24px;
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5pt;
+            line-height: 1.7;
+            margin: 14px 0;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .arch-box .accent {
+            color: #63b3ed;
+        }
+
+        .arch-box .highlight {
+            color: #fc8181;
+        }
+
+        .arch-box .green {
+            color: #68d391;
+        }
+
+        /* STATS ROW */
+        .stats-row {
+            display: flex;
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 22pt;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1.2;
+        }
+
+        .stat-value.red {
+            color: var(--highlight);
+        }
+
+        .stat-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        /* FEATURE GRID */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 12px 0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg-light);
+            border-radius: 6px;
+            font-size: 9.5pt;
+        }
+
+        .feature-icon {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            background: var(--green);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10pt;
+            font-weight: 700;
+            margin-top: 1px;
+        }
+
+        .feature-text {
+            color: var(--text-light);
+        }
+
+        .feature-text strong {
+            color: var(--primary);
+        }
+
+        /* PRICING SECTION */
+        .price-card {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .price-card .price-label {
+            font-size: 10pt;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+
+        .price-card .price-amount {
+            font-size: 36pt;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .price-card .price-sub {
+            font-size: 11pt;
+            opacity: 0.8;
+        }
+
+        .price-card .price-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding: 4px 16px;
+            font-size: 9pt;
+            margin-top: 14px;
+            font-weight: 600;
+        }
+
+        /* COMPARISON */
+        .comparison-bar {
+            margin: 8px 0;
+        }
+
+        .comparison-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            margin-bottom: 4px;
+        }
+
+        .comparison-track {
+            height: 8px;
+            background: var(--border-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .comparison-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: var(--accent);
+        }
+
+        .comparison-fill.red {
+            background: var(--highlight);
+        }
+
+        .comparison-fill.green {
+            background: var(--green);
+        }
+
+        /* CHECKLIST */
+        .checklist {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+
+        .checklist li {
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 10pt;
+            color: var(--text-light);
+        }
+
+        .checklist li:last-child {
+            border-bottom: none;
+        }
+
+        .checklist .icon {
+            font-size: 13pt;
+        }
+
+        /* FOOTER */
+        .page-footer {
+            margin-top: 30px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 8pt;
+            color: var(--text-muted);
+        }
+
+        /* TWO COLUMNS */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* NOT INCLUDED */
+        .not-included td:nth-child(1) {
+            color: var(--highlight);
+            font-weight: 500;
+        }
+
+        /* PRINT SPECIFIC */
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+
+            .cover-page {
+                height: 265mm;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page {
+                page-break-after: always;
+            }
+        }
+
+        /* PRINT BUTTON */
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 11pt;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            font-family: 'Inter', sans-serif;
+            transition: transform 0.2s;
+        }
+
+        .print-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- PRINT BUTTON -->
+    <button class="print-btn no-print" onclick="window.print()">📄 Save as PDF (Ctrl+P)</button>
+
+    <!-- ==================== COVER PAGE ==================== -->
+    <div class="cover-page">
+        <div class="cover-badge">Project Proposal</div>
+        <h1 style="border: none; font-size: 36pt; justify-content: center; padding: 0; margin-bottom: 12px;">
+            Smart Attendance <span style="color: var(--highlight);">LMS</span>
+        </h1>
+        <p class="cover-subtitle">
+            Complete College Management Platform with AI-Powered Intelligence, WhatsApp Notifications & Progressive Web
+            App
+        </p>
+        <div class="cover-line"></div>
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <div class="cover-meta-label">Prepared For</div>
+                <div class="cover-meta-value">MLA Academy of Higher Learning</div>
+            </div>
+            <div class="cover-meta-item">
+                <div class="cover-meta-label">Date</div>
+                <div class="cover-meta-value">23 February 2026</div>
+            </div>
+        </div>
+        <div style="margin-top: 50px;" class="cover-meta">
+            <div class="cover-meta-item">
+                <div class="cover-meta-label">Prepared By</div>
+                <div class="cover-meta-value">Skanda</div>
+            </div>
+            <div class="cover-meta-item">
+                <div class="cover-meta-label">Development Period</div>
+                <div class="cover-meta-value">7 Months</div>
+            </div>
+            <div class="cover-meta-item">
+                <div class="cover-meta-label">Document Type</div>
+                <div class="cover-meta-value">Commercial Proposal</div>
+            </div>
+        </div>
+        <div class="cover-footer">Confidential — For internal review only</div>
+    </div>
+
+    <!-- ==================== PAGE 1: EXECUTIVE SUMMARY ==================== -->
+    <div class="page">
+        <h1><span class="section-number">1</span> Executive Summary</h1>
+        <p class="lead">
+            Smart Attendance LMS is a <strong>complete, production-ready college management platform</strong>
+            custom-built
+            for MLA Academy of Higher Learning. The system replaces manual attendance tracking, student management,
+            and communication processes with a modern, AI-powered digital solution.
+        </p>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value">43,700+</div>
+                <div class="stat-label">Lines of Code</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">110+</div>
+                <div class="stat-label">Source Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">17</div>
+                <div class="stat-label">API Modules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">7</div>
+                <div class="stat-label">Months Dev Time</div>
+            </div>
+        </div>
+
+        <p>The platform consists of <strong>two web portals</strong> (Teaching Staff & Administrative Staff), a
+            <strong>Node.js backend with 17 API modules</strong>, an <strong>AI-powered chatbot</strong> with natural
+            language understanding, <strong>WhatsApp Business notifications</strong>, <strong>push
+                notifications</strong>, and is designed as a <strong>Progressive Web App (PWA)</strong> — meaning it
+            works like a native mobile app without requiring Play Store or App Store listings.</p>
+
+        <h2>System Architecture</h2>
+        <div class="arch-box"><span
+                class="accent">┌─────────────────────────────────────────────────────────────┐</span>
+            <span class="accent">│</span> <span class="highlight">SMART ATTENDANCE LMS</span> <span
+                class="accent">│</span>
+            <span class="accent">├───────────────────────┬─────────────────────────────────────┤</span>
+            <span class="accent">│</span> <span class="green">Teaching Staff</span> <span class="accent">│</span> <span
+                class="green">Non-Teaching / Admin Staff</span> <span class="accent">│</span>
+            <span class="accent">│</span> Portal (PWA) <span class="accent">│</span> Portal (PWA) <span
+                class="accent">│</span>
+            <span class="accent">├───────────────────────┴─────────────────────────────────────┤</span>
+            <span class="accent">│</span> <span class="green">Node.js + Express.js Backend (17 APIs)</span> <span
+                class="accent">│</span>
+            <span class="accent">├──────────────┬──────────────┬───────────────────────────────┤</span>
+            <span class="accent">│</span> MongoDB <span class="accent">│</span> Firebase <span class="accent">│</span>
+            <span class="highlight">External Integrations</span> <span class="accent">│</span>
+            <span class="accent">│</span> Atlas (DB) <span class="accent">│</span> Auth & FCM <span
+                class="accent">│</span> • WhatsApp Business API <span class="accent">│</span>
+            <span class="accent">│</span> <span class="accent">│</span> <span class="accent">│</span> • Google Gemini AI
+            <span class="accent">│</span>
+            <span class="accent">│</span> <span class="accent">│</span> <span class="accent">│</span> • Groq Llama AI
+            <span class="accent">│</span>
+            <span class="accent">│</span> <span class="accent">│</span> <span class="accent">│</span> • Cloudinary
+            (Images) <span class="accent">│</span>
+            <span class="accent">│</span> <span class="accent">│</span> <span class="accent">│</span> • reCAPTCHA v3
+            <span class="accent">│</span>
+            <span class="accent">└──────────────┴──────────────┴───────────────────────────────┘</span>
+        </div>
+
+        <h2>Technology Stack</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Layer</th>
+                    <th>Technology</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Backend Server</strong></td>
+                    <td>Node.js + Express.js</td>
+                </tr>
+                <tr>
+                    <td><strong>Database</strong></td>
+                    <td>MongoDB Atlas (Cloud-hosted)</td>
+                </tr>
+                <tr>
+                    <td><strong>Authentication</strong></td>
+                    <td>Firebase Authentication + Admin SDK</td>
+                </tr>
+                <tr>
+                    <td><strong>AI / NLP Engine</strong></td>
+                    <td>Google Gemini AI + Groq (Llama) — Dual Provider</td>
+                </tr>
+                <tr>
+                    <td><strong>WhatsApp API</strong></td>
+                    <td>Meta WhatsApp Business Cloud API</td>
+                </tr>
+                <tr>
+                    <td><strong>Push Notifications</strong></td>
+                    <td>Firebase Cloud Messaging (FCM)</td>
+                </tr>
+                <tr>
+                    <td><strong>Image Management</strong></td>
+                    <td>Cloudinary</td>
+                </tr>
+                <tr>
+                    <td><strong>Bot Protection</strong></td>
+                    <td>Google reCAPTCHA v3</td>
+                </tr>
+                <tr>
+                    <td><strong>Security</strong></td>
+                    <td>Helmet, CORS, Rate Limiting, Input Validation</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend</strong></td>
+                    <td>HTML5, CSS3, JavaScript (Progressive Web App)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== PAGE 2: FEATURES – TEACHING ==================== -->
+    <div class="page">
+        <h1><span class="section-number">2</span> Complete Feature List</h1>
+
+        <h2>2.1 Teaching Staff Portal</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Feature</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>Secure Login</strong></td>
+                    <td>Firebase Authentication with reCAPTCHA protection</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>My Classes Dashboard</strong></td>
+                    <td>View assigned subjects, streams, and semesters at a glance</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>Mark Attendance</strong></td>
+                    <td>Subject-wise daily attendance with student checklist</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>Multi-Record Support</strong></td>
+                    <td>Mark attendance multiple times per day for the same subject</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td><strong>Language Subject Support</strong></td>
+                    <td>Separate handling for Hindi, Kannada, Sanskrit language groups</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td><strong>Elective / Combined Classes</strong></td>
+                    <td>Support for cross-stream and elective subject attendance</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td><strong>View Attendance History</strong></td>
+                    <td>Filter and view past attendance records with detailed breakdowns</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td><strong>AI Assistant Chatbot</strong></td>
+                    <td>Ask questions in natural language — "How many students in BCA Sem 4?"</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td><strong>PWA (Installable App)</strong></td>
+                    <td>Install on phone/tablet like a native app, works offline</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td><strong>Push Notifications</strong></td>
+                    <td>Receive reminders and updates via browser/phone notifications</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2.2 Non-Teaching / Administrative Staff Portal</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Feature</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>Admin Dashboard</strong></td>
+                    <td>Overview with total students, teachers, streams, and recent activity</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>Student Management</strong></td>
+                    <td>Add, edit, delete, search, and filter students by stream/semester</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>Teacher Management</strong></td>
+                    <td>Add, edit, delete teachers with subject assignments</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>Stream & Subject Management</strong></td>
+                    <td>Configure streams (BCA, BCOM, BBA, etc.), semesters, and subjects</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td><strong>Attendance Reports</strong></td>
+                    <td>Per-student, per-subject attendance matrix with percentage calculations</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td><strong>Student Promotion System</strong></td>
+                    <td>Bulk promote students to next semester with preview and undo capability</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td><strong>Mentorship System</strong></td>
+                    <td>Assign and manage student-mentor relationships</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td><strong>Enrollment Management</strong></td>
+                    <td>Handle elective and combined class enrollments</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td><strong>Messaging & Notifications</strong></td>
+                    <td>Send WhatsApp and push notifications to parents/students</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td><strong>AI Assistant Chatbot</strong></td>
+                    <td>Natural language queries on any student/attendance data</td>
+                </tr>
+                <tr>
+                    <td>11</td>
+                    <td><strong>Debug & Monitoring</strong></td>
+                    <td>System health monitoring and data verification</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2.3 AI / NLP Engine — Unique Feature</h2>
+        <div class="highlight-box">
+            <strong>5,000+ lines of custom Natural Language Processing code</strong> — This is the core intelligence of
+            the platform.
+            Users can ask questions in plain English and get accurate answers from the database.
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Capability</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Natural Language Processing</strong></td>
+                    <td>5,000+ lines of custom NLP code</td>
+                </tr>
+                <tr>
+                    <td><strong>Intent Detection</strong></td>
+                    <td>15+ intents — student info, attendance, counts, subjects, etc.</td>
+                </tr>
+                <tr>
+                    <td><strong>Entity Extraction</strong></td>
+                    <td>Detects student names, streams, semesters, dates, teacher names</td>
+                </tr>
+                <tr>
+                    <td><strong>Fuzzy Name Matching</strong></td>
+                    <td>Handles spelling mistakes using Levenshtein Distance algorithm</td>
+                </tr>
+                <tr>
+                    <td><strong>MongoDB Query Generation</strong></td>
+                    <td>Converts English questions into database queries automatically</td>
+                </tr>
+                <tr>
+                    <td><strong>Dual AI Provider</strong></td>
+                    <td>Groq (Llama) as primary + Google Gemini as backup — zero downtime</td>
+                </tr>
+                <tr>
+                    <td><strong>Contextual Responses</strong></td>
+                    <td>Generates natural, formatted answers with tables and summaries</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== PAGE 3: BACKEND + SECURITY ==================== -->
+    <div class="page">
+        <h2>2.4 Backend API System — 17 Modules</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>API Module</th>
+                    <th>Endpoints</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>Authentication</strong></td>
+                    <td>3+</td>
+                    <td>Firebase token verification, login management</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>Attendance</strong></td>
+                    <td>8+</td>
+                    <td>CRUD operations, multi-record, language support</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>View Attendance</strong></td>
+                    <td>6+</td>
+                    <td>Advanced filtering, history, search</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>Students</strong></td>
+                    <td>10+</td>
+                    <td>Full CRUD, bulk operations, search, filtering</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td><strong>Teachers</strong></td>
+                    <td>8+</td>
+                    <td>CRUD, subject assignment, schedule management</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td><strong>Streams</strong></td>
+                    <td>6+</td>
+                    <td>Stream/semester/subject configuration</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td><strong>Dashboard</strong></td>
+                    <td>5+</td>
+                    <td>Statistics, analytics, activity feed</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td><strong>Reports</strong></td>
+                    <td>4+</td>
+                    <td>Student-subject attendance reports</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td><strong>Promotion</strong></td>
+                    <td>5+</td>
+                    <td>Preview, execute, undo semester promotions</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td><strong>Mentorship</strong></td>
+                    <td>4+</td>
+                    <td>Assign, remove, search mentees</td>
+                </tr>
+                <tr>
+                    <td>11</td>
+                    <td><strong>Enrollments</strong></td>
+                    <td>5+</td>
+                    <td>Subject enrollment, combined classes</td>
+                </tr>
+                <tr>
+                    <td>12</td>
+                    <td><strong>AI Assistant</strong></td>
+                    <td>3+</td>
+                    <td>NLP query processing, intent detection</td>
+                </tr>
+                <tr>
+                    <td>13</td>
+                    <td><strong>Chatbot</strong></td>
+                    <td>2+</td>
+                    <td>LLM-powered conversational queries</td>
+                </tr>
+                <tr>
+                    <td>14</td>
+                    <td><strong>Push Notifications</strong></td>
+                    <td>6+</td>
+                    <td>FCM push, topic-based, batch, reminders</td>
+                </tr>
+                <tr>
+                    <td>15</td>
+                    <td><strong>WhatsApp Alerts</strong></td>
+                    <td>3+</td>
+                    <td>Absence alerts, summaries via WhatsApp</td>
+                </tr>
+                <tr>
+                    <td>16</td>
+                    <td><strong>Firebase Users</strong></td>
+                    <td>3+</td>
+                    <td>User management via Firebase Admin</td>
+                </tr>
+                <tr>
+                    <td>17</td>
+                    <td><strong>reCAPTCHA</strong></td>
+                    <td>1+</td>
+                    <td>Bot protection verification</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2.5 Security Features</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Implementation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Authentication</strong></td>
+                    <td>Firebase Auth (email/password with token verification)</td>
+                </tr>
+                <tr>
+                    <td><strong>API Protection</strong></td>
+                    <td>Firebase Admin token verification middleware</td>
+                </tr>
+                <tr>
+                    <td><strong>Rate Limiting</strong></td>
+                    <td>100 req/15 min (general), 20 req/hr (sensitive operations)</td>
+                </tr>
+                <tr>
+                    <td><strong>Bot Protection</strong></td>
+                    <td>Google reCAPTCHA v3</td>
+                </tr>
+                <tr>
+                    <td><strong>HTTP Security</strong></td>
+                    <td>Helmet.js (XSS, clickjacking, MIME sniffing protection)</td>
+                </tr>
+                <tr>
+                    <td><strong>CORS</strong></td>
+                    <td>Whitelisted origins only</td>
+                </tr>
+                <tr>
+                    <td><strong>Input Validation</strong></td>
+                    <td>Express Validator on all user inputs</td>
+                </tr>
+                <tr>
+                    <td><strong>Compression</strong></td>
+                    <td>Gzip compression for all API responses</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2.6 Progressive Web App (PWA)</h2>
+        <div class="highlight-box success">
+            <strong>The system works like a mobile app — without App Store or Play Store.</strong> Users can install it
+            directly from the browser on any device. This eliminates the need for separate native app development, which
+            alone would cost ₹2,00,000 - ₹5,00,000.
+        </div>
+        <div class="feature-grid">
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>Installable</strong> — Works from home screen like a native app</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>Offline Support</strong> — Service Workers cache essential resources
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>No App Store Fees</strong> — No Google/Apple approval or fees</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>Auto-Updates</strong> — Always up-to-date, no manual updates</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>Push Notifications</strong> — Real notifications on phone</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>Fast Loading</strong> — Cached resources load instantly</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PAGE 4: MARKET VALUE ==================== -->
+    <div class="page">
+        <h1><span class="section-number">3</span> Market Value Analysis</h1>
+        <p class="lead">The following comparison shows what similar solutions cost in the Indian market today.</p>
+
+        <h2>3.1 Industry Pricing for Similar Products</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product / Approach</th>
+                    <th>Market Cost (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ERP Software with Attendance Module</td>
+                    <td>₹3,00,000 – ₹10,00,000</td>
+                </tr>
+                <tr>
+                    <td>Custom Attendance App (Agency Built)</td>
+                    <td>₹2,00,000 – ₹5,00,000</td>
+                </tr>
+                <tr>
+                    <td>SaaS Attendance System (Annual License)</td>
+                    <td>₹1,00,000 – ₹3,00,000 / year</td>
+                </tr>
+                <tr>
+                    <td>Freelancer (Full-Stack Developer, India)</td>
+                    <td>₹1,50,000 – ₹3,50,000</td>
+                </tr>
+                <tr>
+                    <td>AI Chatbot Development (Standalone)</td>
+                    <td>₹1,00,000 – ₹2,00,000</td>
+                </tr>
+                <tr>
+                    <td>Native Mobile App (Android + iOS)</td>
+                    <td>₹2,00,000 – ₹5,00,000</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>3.2 Development Effort Breakdown (at Industry Rates)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Effort (Days)</th>
+                    <th>Market Rate (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Backend API (17 modules, 15,000+ LOC)</td>
+                    <td>25 – 30</td>
+                    <td>₹75,000 – ₹1,50,000</td>
+                </tr>
+                <tr>
+                    <td>AI / NLP Engine (5,000+ LOC)</td>
+                    <td>15 – 20</td>
+                    <td>₹75,000 – ₹1,60,000</td>
+                </tr>
+                <tr>
+                    <td>Teaching Staff Portal (PWA)</td>
+                    <td>12 – 15</td>
+                    <td>₹36,000 – ₹75,000</td>
+                </tr>
+                <tr>
+                    <td>Admin Portal (6 pages, full CRUD)</td>
+                    <td>15 – 18</td>
+                    <td>₹45,000 – ₹90,000</td>
+                </tr>
+                <tr>
+                    <td>Database Design & Data Migration</td>
+                    <td>5 – 7</td>
+                    <td>₹15,000 – ₹35,000</td>
+                </tr>
+                <tr>
+                    <td>WhatsApp + Push Notification Integration</td>
+                    <td>5 – 7</td>
+                    <td>₹20,000 – ₹42,000</td>
+                </tr>
+                <tr>
+                    <td>Security & PWA Implementation</td>
+                    <td>3 – 5</td>
+                    <td>₹9,000 – ₹25,000</td>
+                </tr>
+                <tr>
+                    <td>Testing & Debugging</td>
+                    <td>5 – 7</td>
+                    <td>₹15,000 – ₹35,000</td>
+                </tr>
+                <tr class="table-highlight">
+                    <td><strong>Total (Market Rate)</strong></td>
+                    <td><strong>85 – 110 days</strong></td>
+                    <td><strong>₹2,90,000 – ₹6,12,000</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>3.3 Visual Comparison</h2>
+        <div class="comparison-bar">
+            <div class="comparison-label"><span><strong>Market Rate (Agency)</strong></span><span>₹5,00,000</span></div>
+            <div class="comparison-track">
+                <div class="comparison-fill" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div class="comparison-bar">
+            <div class="comparison-label"><span><strong>Market Rate (Freelancer)</strong></span><span>₹3,00,000</span>
+            </div>
+            <div class="comparison-track">
+                <div class="comparison-fill" style="width: 60%;"></div>
+            </div>
+        </div>
+        <div class="comparison-bar">
+            <div class="comparison-label"><span><strong>SaaS License (3 Years)</strong></span><span>₹3,00,000+</span>
+            </div>
+            <div class="comparison-track">
+                <div class="comparison-fill red" style="width: 60%;"></div>
+            </div>
+        </div>
+        <div class="comparison-bar">
+            <div class="comparison-label"><span><strong>This Proposal</strong></span><span
+                    style="color: var(--green); font-weight: 700;">₹1,50,000</span></div>
+            <div class="comparison-track">
+                <div class="comparison-fill green" style="width: 30%;"></div>
+            </div>
+        </div>
+
+        <div class="highlight-box success" style="margin-top: 20px;">
+            <strong>Savings: ₹1,50,000 – ₹4,50,000</strong> compared to market rates.
+            The college receives a product worth ₹3-6 lakhs at a fraction of the cost, with full ownership and zero
+            recurring license fees.
+        </div>
+    </div>
+
+    <!-- ==================== PAGE 5: INFRASTRUCTURE ==================== -->
+    <div class="page">
+        <h1><span class="section-number">4</span> Infrastructure & Hosting</h1>
+
+        <h2>4.1 Recommended Server Setup</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Plan</th>
+                    <th>Monthly Cost</th>
+                    <th>Paid By</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Hostinger VPS</strong></td>
+                    <td>KVM 1</td>
+                    <td>₹399/month</td>
+                    <td>College</td>
+                </tr>
+                <tr>
+                    <td><strong>MongoDB Atlas</strong></td>
+                    <td>Free Tier (M0)</td>
+                    <td>₹0</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td><strong>Firebase</strong></td>
+                    <td>Free Tier (Spark)</td>
+                    <td>₹0</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td><strong>Cloudinary</strong></td>
+                    <td>Free Tier</td>
+                    <td>₹0</td>
+                    <td>—</td>
+                </tr>
+                <tr class="table-highlight">
+                    <td><strong>Total Monthly</strong></td>
+                    <td></td>
+                    <td><strong>~₹399</strong></td>
+                    <td><strong>College</strong></td>
+                </tr>
+                <tr class="table-highlight">
+                    <td><strong>Total Yearly</strong></td>
+                    <td></td>
+                    <td><strong>~₹4,800</strong></td>
+                    <td><strong>College</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>4.2 Hostinger KVM 1 VPS Specifications</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Specification</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>vCPU</strong></td>
+                    <td>1 Core</td>
+                </tr>
+                <tr>
+                    <td><strong>RAM</strong></td>
+                    <td>4 GB</td>
+                </tr>
+                <tr>
+                    <td><strong>Storage</strong></td>
+                    <td>50 GB NVMe SSD</td>
+                </tr>
+                <tr>
+                    <td><strong>Bandwidth</strong></td>
+                    <td>4 TB / month</td>
+                </tr>
+                <tr>
+                    <td><strong>Operating System</strong></td>
+                    <td>Ubuntu Linux</td>
+                </tr>
+                <tr>
+                    <td><strong>Supported Capacity</strong></td>
+                    <td>500 – 2,000+ concurrent users</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight-box">
+            The VPS account will be created under <strong>the college's name</strong>. The college pays Hostinger
+            directly.
+            There is no middleman or third-party dependency.
+        </div>
+
+        <h1 style="margin-top: 30px;"><span class="section-number">5</span> Deliverables</h1>
+
+        <h2>5.1 What is Included</h2>
+        <ul class="checklist">
+            <li><span class="icon">✅</span> Complete source code (frontend + backend)</li>
+            <li><span class="icon">✅</span> Teaching Staff Portal (Progressive Web App)</li>
+            <li><span class="icon">✅</span> Non-Teaching / Admin Portal</li>
+            <li><span class="icon">✅</span> AI Chatbot with NLP Engine (5,000+ LOC)</li>
+            <li><span class="icon">✅</span> WhatsApp Business Notification System</li>
+            <li><span class="icon">✅</span> Firebase Push Notification System</li>
+            <li><span class="icon">✅</span> Database with existing student data pre-loaded</li>
+            <li><span class="icon">✅</span> VPS deployment and server configuration</li>
+            <li><span class="icon">✅</span> SSL certificate setup (HTTPS security)</li>
+            <li><span class="icon">✅</span> Domain configuration (if available)</li>
+            <li><span class="icon">✅</span> Admin training session (1–2 hours)</li>
+            <li><span class="icon">✅</span> <strong>100% ownership — no licensing, no royalties, forever</strong></li>
+            <li><span class="icon">✅</span> <strong>No monthly software fees</strong></li>
+            <li><span class="icon">✅</span> <strong>3 months post-delivery support (bug fixes)</strong></li>
+        </ul>
+
+        <h2>5.2 What is Not Included</h2>
+        <table class="not-included">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>VPS hosting fees</td>
+                    <td>College pays Hostinger directly (~₹399/month)</td>
+                </tr>
+                <tr>
+                    <td>WhatsApp message charges</td>
+                    <td>Per-message cost by Meta, pay-as-you-use</td>
+                </tr>
+                <tr>
+                    <td>Domain name (if needed)</td>
+                    <td>~₹500–1,000/year, college purchases directly</td>
+                </tr>
+                <tr>
+                    <td>New feature development</td>
+                    <td>Can be discussed separately after delivery</td>
+                </tr>
+                <tr>
+                    <td>Support beyond 3 months</td>
+                    <td>Can be discussed separately</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== PAGE 6: PRICING ==================== -->
+    <div class="page">
+        <h1><span class="section-number">6</span> Commercial Proposal</h1>
+
+        <div class="price-card">
+            <div class="price-label">One-Time Project Cost</div>
+            <div class="price-amount">₹1,50,000</div>
+            <div class="price-sub">All-inclusive • No monthly fees • No license • Full ownership</div>
+            <div class="price-tag">ONE-TIME PAYMENT • LIFETIME OWNERSHIP</div>
+        </div>
+
+        <h2>What This Includes</h2>
+        <div class="feature-grid">
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>2 Complete Web Portals</strong> (Teaching + Admin)</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>AI-Powered Chatbot</strong> with NLP Engine</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>WhatsApp Notifications</strong> to parents</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>Push Notifications</strong> via Firebase</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>PWA Mobile App</strong> — no app store needed</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>17 Backend API Modules</strong></div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>VPS Deployment</strong> + SSL + Domain Setup</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✓</div>
+                <div class="feature-text"><strong>3 Months Free Support</strong></div>
+            </div>
+        </div>
+
+        <h2>Payment Terms</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Payment Type</strong></td>
+                    <td>One-time, all-inclusive</td>
+                </tr>
+                <tr>
+                    <td><strong>Payment Mode</strong></td>
+                    <td>Bank Transfer / UPI / Cheque</td>
+                </tr>
+                <tr>
+                    <td><strong>Delivery Timeline</strong></td>
+                    <td>Within 1 week of payment confirmation</td>
+                </tr>
+                <tr>
+                    <td><strong>Support Period</strong></td>
+                    <td>3 months from delivery date</td>
+                </tr>
+                <tr>
+                    <td><strong>Monthly Fees</strong></td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td><strong>License Fees</strong></td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td><strong>Ownership</strong></td>
+                    <td>100% transferred to the college</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h1 style="margin-top: 30px;"><span class="section-number">7</span> Summary</h1>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Market Value</strong></td>
+                    <td>₹3,00,000 – ₹6,00,000</td>
+                </tr>
+                <tr class="table-highlight">
+                    <td><strong>Proposed Price</strong></td>
+                    <td><strong>₹1,50,000 (One-Time)</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Savings</strong></td>
+                    <td>₹1,50,000 – ₹4,50,000 (50–75% below market)</td>
+                </tr>
+                <tr>
+                    <td><strong>Monthly Software Cost</strong></td>
+                    <td>₹0</td>
+                </tr>
+                <tr>
+                    <td><strong>Monthly Hosting</strong></td>
+                    <td>₹399 (paid directly to Hostinger)</td>
+                </tr>
+                <tr>
+                    <td><strong>Ownership</strong></td>
+                    <td>100% with the college, forever</td>
+                </tr>
+                <tr>
+                    <td><strong>Development Time</strong></td>
+                    <td>7 months</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Code</strong></td>
+                    <td>43,700+ lines across 110+ files</td>
+                </tr>
+                <tr>
+                    <td><strong>AI Capabilities</strong></td>
+                    <td>Natural Language Chatbot with Dual AI</td>
+                </tr>
+                <tr>
+                    <td><strong>Mobile App</strong></td>
+                    <td>PWA — installable, no app store needed</td>
+                </tr>
+                <tr>
+                    <td><strong>Communication</strong></td>
+                    <td>WhatsApp + Push Notifications</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid var(--border);">
+            <p style="font-size: 10pt; color: var(--text-muted); margin-bottom: 4px;">This proposal is prepared by</p>
+            <p style="font-size: 14pt; font-weight: 700; color: var(--primary); margin-bottom: 4px;">Skanda</p>
+            <p style="font-size: 9pt; color: var(--text-muted);">23 February 2026</p>
+            <p style="font-size: 8pt; color: var(--text-muted); margin-top: 20px;">Confidential — Prepared exclusively
+                for MLA Academy of Higher Learning</p>
+        </div>
+    </div>
+
+</body>
+
+</html>

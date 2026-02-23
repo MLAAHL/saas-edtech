@@ -14,14 +14,31 @@
   <meta name="apple-mobile-web-app-title" content="Smart Attendance">
   <link rel="apple-touch-icon" href="logo2.png">
 
-  <script src="js/config.js"></script>
+  <!-- Preconnect for faster loading -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://mlaahl.online" crossorigin>
+
+  <!-- Preload logo for instant splash screen -->
+  <link rel="preload" href="logo2.png" as="image">
+
+  <script src="js/config.js"></script>
+
+  <!-- Async font loading -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
-    rel="stylesheet" />
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'" />
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0"
+    media="print" onload="this.media='all'" />
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+  </noscript>
 
   <script type="module">
     import { firebaseConfig } from './firebase-config.js';
@@ -58,11 +75,11 @@
       }
     }
 
-    // Timeout fallback - show login form after 3 seconds if Firebase is slow
+    // Timeout fallback - show login form after 2 seconds if Firebase is slow
     const splashTimeout = setTimeout(() => {
       console.log('⏱️ Timeout reached, showing login form');
       showLoginForm();
-    }, 3000);
+    }, 2000);
 
     // Check auth state immediately when Firebase loads
     onAuthStateChanged(auth, (user) => {
@@ -90,6 +107,17 @@
       --text-secondary: #64748B;
       --bg-accent: #F8FAFC;
       --danger: #EF4444;
+    }
+
+    /* Material Icons - hide text until font loads */
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded', sans-serif;
+      overflow: hidden;
+      width: 1em;
+      height: 1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     * {
@@ -348,21 +376,24 @@
   <!-- SPLASH SCREEN (shown while checking auth) -->
   <div id="splash-screen" style="
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: #F8FAFC;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 9999;
     transition: opacity 0.3s ease;
   ">
-    <div style="text-align: center;">
-      <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; animation: pulse 1.5s ease-in-out infinite;">
-      <p style="margin-top: 16px; color: var(--text-secondary); font-family: 'Inter', sans-serif; font-size: 14px;">
-        Checking session...</p>
+    <div style="
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    ">
+      <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 16px;">
+      <p style="color: #6366F1; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; margin: 0;">
+        Loading...</p>
     </div>
   </div>
 

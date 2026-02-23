@@ -9,8 +9,9 @@
 
   <link rel="icon" type="image/png" href="logo2.png" />
   <script src="js/config.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.0.0/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -19,13 +20,16 @@
 
   <style>
     :root {
-      --glass-bg: rgba(255, 255, 255, 0.7);
-      --glass-border: #E2E8F0;
-      --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-      --primary-color: #0F172A;
-      --accent-color: #6366F1;
-      --text-primary: #1E293B;
+      --primary: #0F172A;
+      --primary-light: #1E293B;
+      --accent: #10B981;
+      --text-primary: #0F172A;
       --text-secondary: #64748B;
+      --bg-body: #F8FAFC;
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --danger: #EF4444;
+      --success: #10B981;
       --ai-bubble-bg: rgba(255, 255, 255, 0.8);
       --user-bubble-bg: #F8FAFC;
     }
@@ -34,17 +38,18 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: 'Outfit', sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      font-family: 'Poppins', sans-serif;
-      background: radial-gradient(circle at top right, #EEF2FF, #F8FAFC);
-      display: flex;
+      background: #f0f4f1;
       height: 100vh;
+      display: flex;
       overflow: hidden;
       color: var(--text-primary);
     }
+
 
     /* ========== GLASS SIDEBAR ========== */
     .sidebar {
@@ -154,18 +159,17 @@
     }
 
     .nav-item.active {
-      background: #0F172A;
-      color: white;
+      background: #C6E9D2;
+      color: #1B5E2F;
       font-weight: 600;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
     }
 
     .nav-item.active .material-symbols-rounded {
-      color: white;
+      color: #1B5E2F;
     }
 
     .nav-item.active:hover {
-      background: #1E293B;
+      background: #B8E0C8;
     }
 
     .sidebar-footer {
@@ -178,12 +182,12 @@
       align-items: center;
       height: 48px;
       border-radius: 12px;
-      background: rgba(239, 68, 68, 0.06);
-      color: #EF4444;
+      background: transparent;
+      color: #9CA3AF;
       border: none;
       cursor: pointer;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       font-family: inherit;
       transition: all 0.25s ease;
       overflow: hidden;
@@ -191,7 +195,8 @@
     }
 
     .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.12);
+      background: #FEF2F2;
+      color: #DC4F4F;
     }
 
     .logout-btn .material-symbols-rounded {
@@ -213,6 +218,7 @@
       opacity: 1;
     }
 
+
     /* ========== MAIN CONTENT ========== */
     .main-content {
       flex: 1;
@@ -220,7 +226,32 @@
       flex-direction: column;
       overflow: hidden;
       position: relative;
-      min-height: 0;
+      background: #FFFFFF;
+    }
+
+    /* Green gradient rising from bottom */
+    .main-content::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 55%;
+      background: linear-gradient(to bottom, rgba(198, 233, 210, 0) 0%, rgba(198, 233, 210, 0.35) 50%, rgba(198, 233, 210, 0.55) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .main-content::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 35%;
+      height: 30%;
+      background: radial-gradient(ellipse at top right, rgba(198, 233, 210, 0.35) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     /* ========== COMPACT HEADER ========== */
@@ -244,7 +275,7 @@
     }
 
     .page-title-section h1 .material-symbols-rounded {
-      color: var(--primary-color);
+      color: var(--primary);
       font-size: 24px;
     }
 
@@ -255,7 +286,7 @@
       padding: 3px 10px 3px 3px;
       background: rgba(255, 255, 255, 0.3);
       backdrop-filter: blur(10px);
-      border: 1px solid var(--glass-border);
+      border: 1px solid rgba(255, 255, 255, 0.8);
       border-radius: 40px;
       cursor: pointer;
       transition: all 0.3s;
@@ -396,7 +427,7 @@
       border-radius: 20px;
       font-size: 15px;
       line-height: 1.6;
-      border: 1px solid var(--glass-border);
+      border: 1px solid rgba(255, 255, 255, 0.8);
     }
 
     .user-bubble {
@@ -420,10 +451,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--primary-color);
+      color: var(--primary);
       font-size: 18px;
       flex-shrink: 0;
-      border: 1px solid var(--glass-border);
+      border: 1px solid rgba(255, 255, 255, 0.8);
     }
 
     /* ========== MARKDOWN STYLING ========== */
@@ -511,7 +542,7 @@
     .send-btn {
       width: 36px;
       height: 36px;
-      background: var(--primary-color);
+      background: var(--primary);
       color: white;
       border: none;
       border-radius: 10px;
@@ -629,7 +660,7 @@
 
     .table-dropdown-item:hover {
       background: #F8FAFC;
-      color: var(--primary-color);
+      color: var(--primary);
     }
 
     .table-dropdown-item .material-symbols-rounded {
@@ -678,7 +709,7 @@
       <div class="logo">
         <img src="logo2.png" alt="Logo">
       </div>
-      <div class="brand-name">Smart Attendance</div>
+      <div class="brand-name">MLA AHL</div>
     </div>
     <nav class="nav-menu">
       <a href="dashboard.html" class="nav-item">
@@ -700,6 +731,18 @@
       <a href="ai-assistant.html" class="nav-item active">
         <span class="material-symbols-rounded">auto_awesome</span>
         <span>AI Assistant</span>
+      </a>
+      <a href="teachers.html" class="nav-item">
+        <span class="material-symbols-rounded">person</span>
+        <span>Teachers</span>
+      </a>
+      <a href="mentorship.html" class="nav-item">
+        <span class="material-symbols-rounded">school</span>
+        <span>Mentors</span>
+      </a>
+      <a href="msg.html" class="nav-item" id="nav-whatsapp">
+        <span class="material-symbols-rounded">chat</span>
+        <span>WhatsApp</span>
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -921,11 +964,12 @@
           const content = typeof marked !== 'undefined' ? marked.parse(data.answer) : data.answer;
           addAIMsg(content);
         } else {
-          addAIMsg('Sorry, I encountered an error processing your request.');
+          addAIMsg(`Error: ${data.error || 'Server processed request but returned an error.'}`);
         }
       } catch (e) {
         if (document.getElementById('typing')) document.getElementById('typing').remove();
-        addAIMsg('Connection failed. Please ensure the backend is running.');
+        console.error("Chat error:", e);
+        addAIMsg(`Connection failed: ${e.message}. Please check if the backend is running.`);
       }
     }
 
