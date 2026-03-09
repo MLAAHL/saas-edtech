@@ -639,23 +639,51 @@ async function processBulkUpload() {
                 return;
             }
 
+            console.log("📊 Raw Row 1:", JSON.stringify(jsonData[0]));
+
+            const getVal = (row, possibleKeys) => {
+                const keys = Object.keys(row);
+                for (let key of possibleKeys) {
+                    const normalizedTargetKey = key.replace(/[\s_.-]/g, '').toLowerCase();
+                    const match = keys.find(k => k.replace(/[\s_.-]/g, '').toLowerCase() === normalizedTargetKey);
+                    if (match && row[match] !== undefined && row[match] !== null && String(row[match]).trim() !== '') {
+                        return String(row[match]).trim();
+                    }
+                }
+                return '';
+            };
+
             const students = jsonData.map(row => ({
-                studentID: row.studentID || row.StudentID || row.ID || '',
-                name: row.name || row.Name || '',
-                parentPhone: row.parentPhone || row.ParentPhone || row.Phone || '',
-                languageSubject: row.languageSubject || row.LanguageSubject || row.Language || '',
-                electiveSubject: row.electiveSubject || row.ElectiveSubject || row.Elective || '',
+                studentID: getVal(row, ['studentID', 'ID', 'Student ID', 'student id', 'USN']),
+                name: getVal(row, ['name', 'names', 'Student Name', 'fullname']),
+                parentPhone: getVal(row, ['parentPhone', 'Phone', 'Mobile']),
+                languageSubject: getVal(row, ['languageSubject', 'Language']),
+                electiveSubject: getVal(row, ['electiveSubject', 'Elective']),
                 stream: stream,
                 semester: parseInt(semester),
                 academicYear: new Date().getFullYear(),
                 isActive: true
             }));
 
+            console.log("🚀 Mapped Students to Send (First Row):", JSON.stringify(students[0]));
+            console.log(`📊 Validating locally: ${students.filter(s => s.studentID && s.name).length} / ${students.length} are valid`);
+
             const response = await fetch(`${API_BASE_URL}/students/bulk`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ students })
             });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error("❌ Server Response Error:", response.status, text);
+                try {
+                    const parsed = JSON.parse(text);
+                    throw new Error(parsed.error || parsed.message || 'Server error');
+                } catch (e) {
+                    throw new Error(text || 'Bad Request');
+                }
+            }
 
             const result = await response.json();
 
@@ -676,7 +704,7 @@ async function processBulkUpload() {
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('❌ Error processing file. Please check the file format.');
+            alert('❌ Error: ' + (error.message || 'Error processing file. Please check the file format.'));
         } finally {
             showLoading(false);
         }
