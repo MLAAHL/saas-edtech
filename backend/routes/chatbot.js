@@ -58,6 +58,12 @@ function formatAttendanceReport(data) {
     response += `\n⚠️ **Focus on ${worst.subject}** — needs ${needed} more classes to reach 75%.`;
   }
 
+  // Add Suggestions
+  const rawName = student.studentName || student.name || '';
+  const stuName = rawName ? rawName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'this student';
+
+  response += `\n\n**💡 Suggested Follow-ups:**\n- *Who is ${stuName}'s mentor?*\n- *Show ${stuName}'s subjects*\n- *Compare ${stuName} with average*`;
+
   return response;
 }
 
@@ -67,6 +73,7 @@ function formatAttendanceReport(data) {
 // ============================================================================
 
 router.post('/chat', async (req, res) => {
+
   try {
     // Accept both 'message' and 'question', plus conversation history
     const { message, question, history } = req.body;
@@ -97,32 +104,38 @@ router.post('/chat', async (req, res) => {
       // Search through assistant responses for names
       const assistantMsgs = conversationHistory.filter(m => m.role === 'assistant');
       if (assistantMsgs.length > 0) {
-        const lastReply = assistantMsgs[assistantMsgs.length - 1].content || '';
-
-        // Try to extract name from AI response patterns
+        // Try to extract name from AI response patterns (scan backwards through recent bot messages)
         const namePatterns = [
-          /(?:student\s+(?:record\s+)?(?:for|named?)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/,
-          /\*\*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\*\*/,
-          /(?:Name|Student):\s*(.+?)(?:\n|$)/,
-          /found\s+(?:the\s+)?(?:student\s+)?(?:record\s+for\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-          /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is a|is an|teaches|is currently|is enrolled|has an?)/i,
-          /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'s\s+(?:profile|attendance|report|details)/i,
+          /Name:\s*(?:\*\*)?([a-zA-Z\s]+?)(?:\*\*)?(?:\n|$)/i,
+          /Student:\s*(?:\*\*)?([a-zA-Z\s]+?)(?:\*\*)?(?:\n|$)/i,
+          /(?:student\s+(?:record\s+)?(?:for|named?|is)\s*)(?:\*\*)?([a-zA-Z\s]+?)(?:\*\*)?(?=\.|,|\n| The| the| They| they| He| he| She| she| it| is| was|$)/i,
+          /found\s+(?:the\s+)?(?:student\s+)?(?:record\s+for\s+)?(?:\*\*)?([a-zA-Z\s]+?)(?:\*\*)?(?=\.|,|\n| The| the| They| they| He| he| She| she| it| is| was|$)/i,
+          /^(?:\*\*)?([a-zA-Z\s]+?)(?:\*\*)?\s+(?:is a|is an|teaches|is currently|is enrolled|has an?)/i,
+          /(?:\*\*)?([a-zA-Z\s]+?)(?:\*\*)?'s\s+(?:profile|attendance|report|details)/i,
+          /\*\*([a-zA-Z\s]+?)\*\*/,
         ];
 
-        const skipWords = ['The', 'Here', 'This', 'However', 'Based', 'Unfortunately', 'Overall', 'Dear', 'Please', 'Today', 'Since', 'Smart', 'Error', 'Student', 'Teacher', 'MLA', 'Academy', 'I', 'As', 'There', 'No', 'What'];
+        const skipWords = ['the', 'here', 'this', 'however', 'based', 'unfortunately', 'overall', 'dear', 'please', 'today', 'since', 'smart', 'error', 'student', 'teacher', 'mla', 'academy', 'i', 'as', 'there', 'no', 'what', 'error:'];
 
-        for (const p of namePatterns) {
-          const m = lastReply.match(p);
-          if (m && m[1] && m[1].length > 2 && !skipWords.includes(m[1].split(' ')[0])) {
-            lastPersonName = m[1].trim();
-            // Determine type
-            if (lastReply.toLowerCase().includes('teacher') || lastReply.toLowerCase().includes('faculty') || lastReply.toLowerCase().includes('teaches') || lastReply.toLowerCase().includes('email')) {
-              lastPersonType = 'teacher';
-            } else {
-              lastPersonType = 'student';
+        // Scan up to 3 previous assistant messages to recover context if the very last one was an error/no-results
+        for (let i = assistantMsgs.length - 1; i >= Math.max(0, assistantMsgs.length - 3); i--) {
+          const replyText = assistantMsgs[i].content || '';
+
+          let foundInThisMessage = false;
+          for (const p of namePatterns) {
+            const m = replyText.match(p);
+            if (m && m[1] && m[1].length > 2 && !skipWords.includes(m[1].split(' ')[0].toLowerCase())) {
+              lastPersonName = m[1].trim();
+              if (replyText.toLowerCase().includes('teacher') || replyText.toLowerCase().includes('faculty') || replyText.toLowerCase().includes('teaches') || replyText.toLowerCase().includes('email')) {
+                lastPersonType = 'teacher';
+              } else {
+                lastPersonType = 'student';
+              }
+              foundInThisMessage = true;
+              break;
             }
-            break;
           }
+          if (foundInThisMessage) break;
         }
       }
 
@@ -141,8 +154,8 @@ router.post('/chat', async (req, res) => {
 
       console.log(`📌 Context: lastPerson="${lastPersonName}", type="${lastPersonType}"`);
 
-      // STEP B: Resolve pronouns (his, her, he, she, their, them)
-      const hasPronoun = /\b(his|her|he|she|their|them|this student|this teacher|that student|that teacher)\b/i.test(lowerQuery);
+      // STEP B: Resolve pronouns (his, her, he, she, their, them, this, that)
+      const hasPronoun = /\b(his|her|he|she|their|them|this student|this teacher|that student|that teacher|this|that)\b/i.test(lowerQuery);
 
       if (hasPronoun && lastPersonName) {
         // Replace pronouns with the actual name
@@ -164,7 +177,7 @@ router.post('/chat', async (req, res) => {
           // Generic: replace pronoun with name
           resolved = lowerQuery
             .replace(/\b(his|her|their)\b/gi, `${lastPersonName}'s`)
-            .replace(/\b(he|she|them|this student|this teacher|that student|that teacher)\b/gi, lastPersonName);
+            .replace(/\b(he|she|them|this student|this teacher|that student|that teacher|this|that)\b/gi, lastPersonName);
         }
 
         resolvedQuery = resolved;
@@ -201,30 +214,68 @@ router.post('/chat', async (req, res) => {
 
       // STEP D: Handle affirmative responses (yes, sure, ok, yeah)
       const affirmatives = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'yea', 'ya', 'y', 'please', 'go ahead', 'do it'];
-      if (affirmatives.includes(lowerQuery.replace(/[!.?,]/g, '').trim()) && lastPersonName) {
-        // Check what the AI last suggested
-        const lastAI = (conversationHistory.filter(m => m.role === 'assistant').pop()?.content || '').toLowerCase();
+      if (affirmatives.includes(lowerQuery.replace(/[!.?,]/g, '').trim())) {
+        // Check what the AI last suggested from the structured history
+        const lastMsg = conversationHistory.filter(m => m.role === 'assistant').pop();
+        const lastAI = lastMsg?.content || '';
 
-        if (lastAI.includes('attendance') || lastAI.includes('report') || lastAI.includes('academic performance')) {
-          resolvedQuery = `Show attendance report for ${lastPersonName}`;
-        } else if (lastAI.includes('subject') || lastAI.includes('class')) {
-          resolvedQuery = `Show subjects for ${lastPersonName}`;
-        } else if (lastAI.includes('detail') || lastAI.includes('more info')) {
-          resolvedQuery = `Show details for ${lastPersonName}`;
-        } else {
-          resolvedQuery = `Show attendance report for ${lastPersonName}`;
+        // If the backend sent structured suggestions and frontend stored them
+        if (lastMsg && lastMsg.suggestions && lastMsg.suggestions.length > 0) {
+          resolvedQuery = lastMsg.suggestions[0];
+          console.log(`🔄 Affirmative resolved to dynamic JSON suggestion: "${userQuery}" -> "${resolvedQuery}"`);
+        } else if (lastPersonName) {
+          // Fallback standard affirmative logic
+          const lastAILower = lastAI.toLowerCase();
+          if (lastAILower.includes('attendance') || lastAILower.includes('report') || lastAILower.includes('academic performance')) {
+            resolvedQuery = `Show attendance report for ${lastPersonName}`;
+          } else if (lastAILower.includes('subject') || lastAILower.includes('class')) {
+            resolvedQuery = `Show subjects for ${lastPersonName}`;
+          } else if (lastAILower.includes('detail') || lastAILower.includes('more info')) {
+            resolvedQuery = `Show details for ${lastPersonName}`;
+          } else {
+            resolvedQuery = `Show attendance report for ${lastPersonName}`;
+          }
+          console.log(`🔄 Affirmative resolved with fallback: "${userQuery}" -> "${resolvedQuery}"`);
         }
-        console.log(`🔄 Affirmative resolved: "${userQuery}" -> "${resolvedQuery}"`);
       }
     }
 
     // Handle simple greetings without API call
-    const greetings = ['hi', 'hello', 'hey', 'hii', 'hiii', 'good morning', 'good afternoon', 'good evening'];
+    const greetings = ['hi', 'hello', 'hey', 'hii', 'hiii', 'good morning', 'good afternoon', 'good evening', 'namaste', 'yo', 'sup', 'howdy'];
     if (greetings.includes(lowerQuery) || greetings.some(g => lowerQuery === g + '!' || lowerQuery === g + '.')) {
       return res.json({
         success: true,
-        answer: "Hi there! I'm your college AI assistant. I can help you with student and teacher information, attendance, subjects, and various college statistics. How can I assist you today?",
+        answer: "Hello! I'm your MLA Academy AI assistant. I can help you with:\n\n- **Student search** — Find students by name, ID, or stream\n- **Attendance reports** — Detailed attendance breakdown per subject\n- **Teacher info** — Teacher details, subjects they teach\n- **Statistics** — Counts, comparisons, and analytics\n\nWhat would you like to know?",
         queryInfo: { collection: null, operation: null, explanation: 'Greeting response' }
+      });
+    }
+
+    // Handle thank you / goodbye without API call
+    const thankPatterns = ['thank', 'thanks', 'thank you', 'thankyou', 'thx', 'ty', 'great', 'awesome', 'perfect', 'got it', 'understood', 'cool', 'nice'];
+    if (thankPatterns.some(p => lowerQuery === p || lowerQuery === p + '!' || lowerQuery === p + '.')) {
+      return res.json({
+        success: true,
+        answer: "You're welcome! Feel free to ask me anything else about students, attendance, teachers, or subjects.",
+        queryInfo: { collection: null, operation: null, explanation: 'Thank you response' }
+      });
+    }
+
+    const goodbyePatterns = ['bye', 'goodbye', 'good bye', 'see you', 'see ya', 'later', 'cya', 'take care'];
+    if (goodbyePatterns.some(p => lowerQuery === p || lowerQuery === p + '!' || lowerQuery === p + '.')) {
+      return res.json({
+        success: true,
+        answer: "Goodbye! Have a great day. I'm always here when you need help with academic queries.",
+        queryInfo: { collection: null, operation: null, explanation: 'Goodbye response' }
+      });
+    }
+
+    // Handle help requests
+    const helpPatterns = ['help', 'help me', 'what can you do', 'what do you do', 'how to use', 'commands', 'features'];
+    if (helpPatterns.some(p => lowerQuery === p || lowerQuery === p + '?' || lowerQuery === p + '!')) {
+      return res.json({
+        success: true,
+        answer: "## How I Can Help\n\nHere are some things you can ask me:\n\n### Student Queries\n- \"Find student Amrutha\" or \"Who is Rahul?\"\n- \"List BCA semester 5 students\"\n- \"How many students in BBA?\"\n\n### Attendance\n- \"Amrutha's attendance\" or \"Attendance report for Rahul\"\n- \"Today's classes\" or \"Attendance on 15-01-2026\"\n- \"Students with low attendance\"\n- \"Who was absent today?\"\n\n### Teachers & Subjects\n- \"List all teachers\" or \"Who teaches Computer Science?\"\n- \"BCA semester 5 subjects\"\n- \"Who is the mentor for Amrutha?\"\n\n### Analytics\n- \"Most attended subjects\"\n- \"Students with 100% attendance\"\n- \"Compare BCA vs BBA attendance\"",
+        queryInfo: { collection: null, operation: null, explanation: 'Help response' }
       });
     }
 
@@ -243,22 +294,22 @@ router.post('/chat', async (req, res) => {
 
       // Use conversation history for context-aware responses
       const conversationalResponse = await geminiService.generateResponseWithHistory(`
-You are a friendly college AI assistant. The user said: "${userQuery}"
+You are the AI assistant for MLA Academy of Higher Learning. The user said: "${userQuery}"
 
-IMPORTANT: Today's date is ${dateStr}. Only mention the date if the user asks about it. Do NOT include date/time in every response.
+Context: Today is ${dateStr}, ${timeStr}. Only mention date/time if the user asks about it.
 
-Respond warmly and naturally. If it's a greeting, greet them and briefly mention what you can help with.
+You handle academic queries about:
+- Student records (search by name, ID, stream, semester)
+- Attendance reports and analytics
+- Teacher information and subjects
+- College statistics and comparisons
 
-You can help with:
-- Finding students by name, ID, stream, or semester
-- Viewing subjects for different streams and semesters  
-- Generating detailed attendance reports for students
-- Checking attendance records for specific dates
-- Getting statistics about students, teachers, and subjects
-- Viewing teacher information and their subjects
-
-Keep your response brief, friendly, and helpful (2-3 sentences max).
-DO NOT use emojis - use simple text only.
+INSTRUCTIONS:
+- Keep responses concise (2-3 sentences for general chat)
+- If the user asks something you can help with, guide them with a specific example query
+- If it's a general knowledge question unrelated to the college, politely say you specialize in academic queries
+- DO NOT use emojis
+- Be professional but warm
       `, conversationHistory);
 
       return res.json({
@@ -690,8 +741,9 @@ DO NOT use emojis - use simple text only.
 
       if (isIndividualReport) {
         // Use the code-based attendance report formatter - 100% accurate
-        naturalResponse = formatAttendanceReport(queryResults);
+        naturalResponse = formatAttendanceReport(queryResults, userQuery);
         console.log('✅ Used code-based attendance report formatter (no AI hallucination)');
+
 
       } else {
         // Use queryGenerator's code-based formatters
@@ -725,9 +777,22 @@ DO NOT use emojis - use simple text only.
       resultCount = 1;
     }
 
+    let extractedSuggestions = [];
+    if (naturalResponse) {
+      const suggestionsMatch = naturalResponse.match(/\n\n\*\*💡 Suggested Follow-ups:\*\*\n([\s\S]*)$/);
+      if (suggestionsMatch && suggestionsMatch[1]) {
+        const bullets = suggestionsMatch[1].match(/-\s\*(.+?)\*/g);
+        if (bullets) {
+          extractedSuggestions = bullets.map(b => b.replace(/^-\s\*/, '').replace(/\*$/, '').trim());
+        }
+        naturalResponse = naturalResponse.replace(/\n\n\*\*💡 Suggested Follow-ups:\*\*\n([\s\S]*)$/, '');
+      }
+    }
+
     res.json({
       success: true,
       answer: (naturalResponse || 'I processed your query but could not generate a response. Please try again.').trim(),
+      suggestions: extractedSuggestions,
       queryInfo: {
         collection: queryInfo.collection,
         operation: queryInfo.operation,
