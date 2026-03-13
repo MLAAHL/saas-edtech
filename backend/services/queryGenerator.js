@@ -13,7 +13,9 @@ const { ObjectId } = require('mongodb');
 // ============================================================================
 
 function parseDateFromQuery(question) {
-  // Match formats: DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, "today", "yesterday"
+  const lowerQ = question.toLowerCase();
+
+  // Match formats: DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD
   const datePatterns = [
     /(\d{2})-(\d{2})-(\d{4})/,  // DD-MM-YYYY
     /(\d{2})\/(\d{2})\/(\d{4})/, // DD/MM/YYYY
@@ -24,25 +26,69 @@ function parseDateFromQuery(question) {
     const match = question.match(pattern);
     if (match) {
       if (pattern === datePatterns[2]) {
-        // Already YYYY-MM-DD
         return match[0];
       } else {
-        // Convert DD-MM-YYYY or DD/MM/YYYY to YYYY-MM-DD
         return `${match[3]}-${match[2]}-${match[1]}`;
       }
     }
   }
 
   // Check for "today"
-  if (question.toLowerCase().includes('today')) {
+  if (lowerQ.includes('today')) {
     return new Date().toISOString().split('T')[0];
   }
 
   // Check for "yesterday"
-  if (question.toLowerCase().includes('yesterday')) {
+  if (lowerQ.includes('yesterday')) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday.toISOString().split('T')[0];
+  }
+
+  // Check for "day before yesterday"
+  if (lowerQ.includes('day before yesterday')) {
+    const d = new Date();
+    d.setDate(d.getDate() - 2);
+    return d.toISOString().split('T')[0];
+  }
+
+  // Check for relative days: "last monday", "last friday", etc.
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const lastDayMatch = lowerQ.match(/last\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i);
+  if (lastDayMatch) {
+    const targetDay = dayNames.indexOf(lastDayMatch[1].toLowerCase());
+    const now = new Date();
+    const currentDay = now.getDay();
+    let daysAgo = currentDay - targetDay;
+    if (daysAgo <= 0) daysAgo += 7;
+    now.setDate(now.getDate() - daysAgo);
+    return now.toISOString().split('T')[0];
+  }
+
+  // Check for month name + day: "Jan 15", "March 5", "15 Jan", "5th March"
+  const months = {
+    jan: '01', january: '01', feb: '02', february: '02', mar: '03', march: '03',
+    apr: '04', april: '04', may: '05', jun: '06', june: '06', jul: '07', july: '07',
+    aug: '08', august: '08', sep: '09', september: '09', oct: '10', october: '10',
+    nov: '11', november: '11', dec: '12', december: '12'
+  };
+
+  // "Jan 15" or "January 15" or "Jan 15, 2026"
+  const monthDayMatch = lowerQ.match(/(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?/i);
+  if (monthDayMatch) {
+    const monthNum = months[monthDayMatch[1].toLowerCase()];
+    const day = monthDayMatch[2].padStart(2, '0');
+    const year = monthDayMatch[3] || new Date().getFullYear().toString();
+    return `${year}-${monthNum}-${day}`;
+  }
+
+  // "15 Jan" or "15th January" or "15 Jan 2026"
+  const dayMonthMatch = lowerQ.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?/i);
+  if (dayMonthMatch) {
+    const monthNum = months[dayMonthMatch[2].toLowerCase()];
+    const day = dayMonthMatch[1].padStart(2, '0');
+    const year = dayMonthMatch[3] || new Date().getFullYear().toString();
+    return `${year}-${monthNum}-${day}`;
   }
 
   return null;
@@ -66,6 +112,7 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
     if (words.length > 1) {
       smartStudentNameRegex = words.map(w => `(?=.*${w})`).join('');
     }
+
   }
 
   const query = [
@@ -75,17 +122,11 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
         "isActive": true
       }
     },
-    {
-      "$limit": 1
-    },
+    { "$limit": 1 },
     {
       "$lookup": {
         "from": "attendance",
-        "let": {
-          "studentID": "$studentID",
-          "stream": "$stream",
-          "semester": "$semester"
-        },
+        "let": { "studentID": "$studentID", "stream": "$stream", "semester": "$semester" },
         "pipeline": [
           {
             "$match": {
@@ -103,13 +144,7 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
               "_id": "$subject",
               "totalClasses": { "$sum": 1 },
               "attended": {
-                "$sum": {
-                  "$cond": [
-                    { "$in": ["$$studentID", "$studentsPresent"] },
-                    1,
-                    0
-                  ]
-                }
+                "$sum": { "$cond": [{ "$in": ["$$studentID", "$studentsPresent"] }, 1, 0] }
               }
             }
           },
@@ -153,24 +188,18 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
         "as": "languageSubjects"
       }
     },
-    // Build a set of language subject names for filtering
     {
       "$addFields": {
         "langSubjectNames": { "$map": { "input": "$languageSubjects", "as": "ls", "in": { "$toUpper": "$$ls.name" } } },
         "studentLangUpper": { "$toUpper": { "$ifNull": ["$languageSubject", ""] } }
       }
     },
-    {
-      "$unwind": "$attendance"
-    },
-    // Filter: keep subject if it's NOT a language subject OR if it matches student's enrolled language
+    { "$unwind": "$attendance" },
     {
       "$match": {
         "$expr": {
           "$or": [
-            // Not a language subject — always include
             { "$not": { "$in": [{ "$toUpper": "$attendance.subject" }, "$langSubjectNames"] } },
-            // IS a language subject AND matches the student's enrolled language
             { "$eq": [{ "$toUpper": "$attendance.subject" }, "$studentLangUpper"] }
           ]
         }
@@ -181,12 +210,7 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
         "newRoot": {
           "$mergeObjects": [
             "$attendance",
-            {
-              "studentName": "$name",
-              "studentID": "$studentID",
-              "stream": "$stream",
-              "semester": "$semester"
-            }
+            { "studentName": "$name", "studentID": "$studentID", "stream": "$stream", "semester": "$semester" }
           ]
         }
       }
@@ -200,6 +224,100 @@ function buildStudentAttendanceQuery(studentName, specificDate = null) {
     explanation: `Complete attendance report for ${studentName}${specificDate ? ` on ${specificDate}` : ''}`
   };
 }
+
+function buildStudentComparisonQuery(studentName) {
+  console.log(`🎯 [Comparison Query] Student: ${studentName} vs Class Average`);
+
+  let smartStudentNameRegex = studentName;
+  if (studentName.includes(' ') && !studentName.includes('(?=')) {
+    const words = studentName.split(/\s+/).filter(w => w.length > 0);
+    if (words.length > 1) {
+      smartStudentNameRegex = words.map(w => `(?=.*${w})`).join('');
+    }
+  }
+
+  const query = [
+    {
+      "$match": {
+        "name": { "$regex": smartStudentNameRegex, "$options": "i" },
+        "isActive": true
+      }
+    },
+    { "$limit": 1 },
+    {
+      "$lookup": {
+        "from": "attendance",
+        "let": { "studentID": "$studentID", "stream": "$stream", "semester": "$semester" },
+        "pipeline": [
+          {
+            "$match": {
+              "$expr": {
+                "$and": [
+                  { "$eq": ["$stream", "$$stream"] },
+                  { "$eq": ["$semester", "$$semester"] }
+                ]
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": "$subject",
+              "totalClasses": { "$sum": 1 },
+              "totalPresentInClass": { "$sum": "$presentCount" },
+              "totalStudentsInClass": { "$sum": "$totalStudents" },
+              "attended": {
+                "$sum": { "$cond": [{ "$in": ["$$studentID", "$studentsPresent"] }, 1, 0] }
+              }
+            }
+          },
+          {
+            "$project": {
+              "subject": "$_id",
+              "totalClasses": 1,
+              "classesAttended": "$attended",
+              "attendancePercentage": {
+                "$cond": [
+                  { "$gt": ["$totalClasses", 0] },
+                  { "$multiply": [{ "$divide": ["$attended", "$totalClasses"] }, 100] },
+                  0
+                ]
+              },
+              "classAverage": {
+                "$cond": [
+                  { "$gt": ["$totalStudentsInClass", 0] },
+                  { "$multiply": [{ "$divide": ["$totalPresentInClass", "$totalStudentsInClass"] }, 100] },
+                  0
+                ]
+              },
+              "_id": 0
+            }
+          }
+        ],
+        "as": "attendance"
+      }
+    },
+    { "$unwind": "$attendance" },
+    {
+      "$replaceRoot": {
+        "newRoot": {
+          "$mergeObjects": [
+            "$attendance",
+            { "studentName": "$name", "studentID": "$studentID", "stream": "$stream", "semester": "$semester" }
+          ]
+        }
+      }
+    }
+  ];
+
+  return {
+    collection: "students",
+    operation: "aggregate",
+    query: query,
+    explanation: `Attendance comparison for ${studentName} against class average`
+  };
+}
+
+
 
 
 // ============================================================================
@@ -274,12 +392,12 @@ async function executeQuery(queryInfo) {
 
         // Use provided projection or default to full projection for the collection
         let useProjection = projection || fullProjections[collection] || null;
-        
+
         // FORCE: Always include mentorEmail in student projections so we can resolve mentor name
         if (collection === 'students' && useProjection && !useProjection.mentorEmail) {
           useProjection = { ...useProjection, mentorEmail: 1 };
         }
-        
+
         results = useProjection
           ? await coll.find(query).project(useProjection).toArray()
           : await coll.find(query).toArray();
@@ -418,9 +536,45 @@ async function generateMongoQuery(question) {
   // =========== HELPER: DETECT STREAM ===========
   function detectStream(text) {
     const lowerText = text.toLowerCase();
-    // Check for "BCom A&F" pattern first
-    const bcomAFMatch = text.match(/bcom\s*a\s*&?\s*f/i);
-    if (bcomAFMatch) return "BCom A&F";
+
+    // Dictionary for synonyms and common misspellings
+    const streamSynonyms = {
+      'bachelor of commerce': 'BCOM',
+      'b.com': 'BCOM',
+      'bcom a and f': 'BCom A&F',
+      'bcom a&f': 'BCom A&F',
+      'bachelor of computer applications': 'BCA',
+      'computer applications': 'BCA',
+      'b.c.a': 'BCA',
+      'bachelor of business administration': 'BBA',
+      'business administration': 'BBA',
+      'b.b.a': 'BBA',
+      'master of computer applications': 'MCA',
+      'm.c.a': 'MCA',
+      'master of business administration': 'MBA',
+      'm.b.a': 'MBA',
+      'bachelor of data analytics': 'BDA',
+      'data analytics': 'BDA',
+      'bachelor of science': 'BSC',
+      'b.sc': 'BSC',
+      'bachelor of arts': 'BA',
+      'b.a': 'BA',
+      'bachelor of technology': 'BTECH',
+      'b.tech': 'BTECH',
+      'master of technology': 'MTECH',
+      'm.tech': 'MTECH',
+      'master of science': 'MSC',
+      'm.sc': 'MSC',
+      'master of arts': 'MA',
+      'm.a': 'MA'
+    };
+
+    // Check synonyms first
+    for (const [synonym, streamCode] of Object.entries(streamSynonyms)) {
+      if (lowerText.includes(synonym)) {
+        return streamCode;
+      }
+    }
 
     const knownStreams = ['bca', 'bba', 'bcom', 'mca', 'mba', 'bda', 'bsc', 'ba', 'btech', 'mtech', 'msc', 'ma'];
     const streamPatterns = lowerText.match(/\b([a-z]{2,5})\b/gi) || [];
@@ -1299,22 +1453,74 @@ async function generateMongoQuery(question) {
     };
   }
 
-  // =========== PRE-BUILT TEMPLATE: LIST STUDENTS BY STREAM/SEMESTER ===========
-  // Catch patterns like: "list students from BDA sem 6", "show all BCA students", "students in BBA semester 3"
-  if (lowerQuestion.match(/(?:list|show|get|all|find)\s*(?:all\s*)?(?:the\s*)?students?|students?\s+(?:from|in|of)/i)) {
-    console.log(`🎯 [Quick Match] Student list query detected`);
+  // =========== PRE-BUILT TEMPLATE: TOP/BOTTOM N STUDENTS BY ATTENDANCE ===========
+  const topBottomMatch = lowerQuestion.match(/(?:top|best|highest)\s*(\d+)?\s*(?:students?|performers?|attendance)/i);
+  if (topBottomMatch) {
+    const limit = parseInt(topBottomMatch[1]) || 10;
+    console.log(`🎯 [Quick Match] Top ${limit} students by attendance`);
 
-    const studentQuery = { isActive: true };
-    if (detectedStream) studentQuery.stream = { $regex: `^${detectedStream}$`, $options: 'i' };
-    if (detectedSemester) studentQuery.semester = detectedSemester;
-
-    console.log(`📍 Student Query - Stream: ${detectedStream || 'ALL'}, Semester: ${detectedSemester || 'ALL'}`);
+    const matchFilter = { isActive: true };
+    if (detectedStream) matchFilter.stream = { $regex: `^${detectedStream}$`, $options: 'i' };
+    if (detectedSemester) matchFilter.semester = detectedSemester;
 
     return {
       collection: "students",
-      operation: "find",
-      query: studentQuery,
-      explanation: `Students${detectedStream ? ` in ${detectedStream}` : ''}${detectedSemester ? ` Semester ${detectedSemester}` : ''}`
+      operation: "aggregate",
+      query: [
+        { "$match": matchFilter },
+        {
+          "$lookup": {
+            "from": "attendance",
+            "let": { "studentID": "$studentID", "stream": "$stream", "semester": "$semester" },
+            "pipeline": [
+              { "$match": { "$expr": { "$and": [{ "$eq": ["$stream", "$$stream"] }, { "$eq": ["$semester", "$$semester"] }] } } },
+              { "$group": { "_id": null, "totalClasses": { "$sum": 1 }, "attended": { "$sum": { "$cond": [{ "$in": ["$$studentID", "$studentsPresent"] }, 1, 0] } } } }
+            ],
+            "as": "stats"
+          }
+        },
+        { "$unwind": { "path": "$stats", "preserveNullAndEmptyArrays": false } },
+        { "$addFields": { "attendancePercentage": { "$cond": [{ "$gt": ["$stats.totalClasses", 0] }, { "$multiply": [{ "$divide": ["$stats.attended", "$stats.totalClasses"] }, 100] }, 0] } } },
+        { "$sort": { "attendancePercentage": -1 } },
+        { "$limit": limit },
+        { "$project": { "name": 1, "studentID": 1, "stream": 1, "semester": 1, "attendancePercentage": { "$round": ["$attendancePercentage", 1] }, "classesAttended": "$stats.attended", "totalClasses": "$stats.totalClasses" } }
+      ],
+      explanation: `Top ${limit} students by attendance${detectedStream ? ` in ${detectedStream}` : ''}${detectedSemester ? ` Sem ${detectedSemester}` : ''}`
+    };
+  }
+
+  const bottomMatch = lowerQuestion.match(/(?:bottom|worst|lowest)\s*(\d+)?\s*(?:students?|performers?|attendance)/i);
+  if (bottomMatch) {
+    const limit = parseInt(bottomMatch[1]) || 10;
+    console.log(`🎯 [Quick Match] Bottom ${limit} students by attendance`);
+
+    const matchFilter = { isActive: true };
+    if (detectedStream) matchFilter.stream = { $regex: `^${detectedStream}$`, $options: 'i' };
+    if (detectedSemester) matchFilter.semester = detectedSemester;
+
+    return {
+      collection: "students",
+      operation: "aggregate",
+      query: [
+        { "$match": matchFilter },
+        {
+          "$lookup": {
+            "from": "attendance",
+            "let": { "studentID": "$studentID", "stream": "$stream", "semester": "$semester" },
+            "pipeline": [
+              { "$match": { "$expr": { "$and": [{ "$eq": ["$stream", "$$stream"] }, { "$eq": ["$semester", "$$semester"] }] } } },
+              { "$group": { "_id": null, "totalClasses": { "$sum": 1 }, "attended": { "$sum": { "$cond": [{ "$in": ["$$studentID", "$studentsPresent"] }, 1, 0] } } } }
+            ],
+            "as": "stats"
+          }
+        },
+        { "$unwind": { "path": "$stats", "preserveNullAndEmptyArrays": false } },
+        { "$addFields": { "attendancePercentage": { "$cond": [{ "$gt": ["$stats.totalClasses", 0] }, { "$multiply": [{ "$divide": ["$stats.attended", "$stats.totalClasses"] }, 100] }, 0] } } },
+        { "$sort": { "attendancePercentage": 1 } },
+        { "$limit": limit },
+        { "$project": { "name": 1, "studentID": 1, "stream": 1, "semester": 1, "attendancePercentage": { "$round": ["$attendancePercentage", 1] }, "classesAttended": "$stats.attended", "totalClasses": "$stats.totalClasses" } }
+      ],
+      explanation: `Bottom ${limit} students by attendance${detectedStream ? ` in ${detectedStream}` : ''}${detectedSemester ? ` Sem ${detectedSemester}` : ''}`
     };
   }
 
@@ -1385,6 +1591,51 @@ async function generateMongoQuery(question) {
     };
   }
 
+  // =========== PRE-BUILT TEMPLATE: LIST STUDENTS BY STREAM/SEMESTER ===========
+  // Catch patterns like: "list students from BDA sem 6", "show all BCA students", "students in BBA semester 3"
+  if (lowerQuestion.match(/^(?:list|show|get|all|find)\s*(?:all\s*)?(?:the\s*)?students?|students?\s+(?:from|in|of)\s+/i)) {
+    console.log(`🎯 [Quick Match] Student list query detected`);
+
+    const studentQuery = { isActive: true };
+    if (detectedStream) studentQuery.stream = { $regex: `^${detectedStream}$`, $options: 'i' };
+    if (detectedSemester) studentQuery.semester = detectedSemester;
+
+    console.log(`📍 Student Query - Stream: ${detectedStream || 'ALL'}, Semester: ${detectedSemester || 'ALL'}`);
+
+    return {
+      collection: "students",
+      operation: "find",
+      query: studentQuery,
+      explanation: `Students${detectedStream ? ` in ${detectedStream}` : ''}${detectedSemester ? ` Semester ${detectedSemester}` : ''}`
+    };
+  }
+
+
+
+
+  // =========== PRE-BUILT TEMPLATE: RECENT CLASSES ===========
+  if (lowerQuestion.match(/recent\s*(?:classes|sessions|lectures)|last\s*(?:\d+\s*)?(?:classes|sessions|lectures)/i)) {
+    const limitMatch = lowerQuestion.match(/last\s*(\d+)/i);
+    const limit = limitMatch ? parseInt(limitMatch[1]) : 10;
+    console.log(`🎯 [Quick Match] Recent ${limit} classes`);
+
+    const matchFilter = {};
+    if (detectedStream) matchFilter.stream = { $regex: `^${detectedStream}$`, $options: 'i' };
+    if (detectedSemester) matchFilter.semester = detectedSemester;
+
+    return {
+      collection: "attendance",
+      operation: "aggregate",
+      query: [
+        { "$match": matchFilter },
+        { "$sort": { "date": -1 } },
+        { "$limit": limit },
+        { "$project": { "_id": 0, "date": 1, "time": 1, "subject": 1, "stream": 1, "semester": 1, "teacherName": 1, "presentCount": 1, "totalStudents": 1, "absentCount": 1 } }
+      ],
+      explanation: `Last ${limit} classes conducted${detectedStream ? ` for ${detectedStream}` : ''}${detectedSemester ? ` Sem ${detectedSemester}` : ''}`
+    };
+  }
+
   // =========== PRE-BUILT TEMPLATE: DATE-BASED ATTENDANCE ===========
   if (parsedDate || lowerQuestion.includes('today') || lowerQuestion.includes('yesterday')) {
     const dateToUse = parsedDate || (lowerQuestion.includes('yesterday')
@@ -1429,30 +1680,59 @@ async function generateMongoQuery(question) {
   // =========== PRE-BUILT TEMPLATE: STUDENT ATTENDANCE REPORT ===========
   // Catch patterns like: "attendance of X", "report for X", "Arvind's attendance", 
   // "how many classes has Arvind attended", "classes attended by Arvind", "pruthvi m u attendance"
-  const studentAttendanceRegex = /(?:attendance|report|how\s+many\s+classes|classes(?:\s+attended)?).*?(?:of|for|by|student|has)\s+([^?.]+)|([^?.]+?)(?:'s?\s+|\s+)(?:attendance|report|classes)(?:\s+report)?/i;
-  const attendanceMatch = lowerQuestion.match(studentAttendanceRegex);
+
+  // 1. SPECIFIC COMPARISON EXTRACTOR (Highest Priority)
+  const compMatch = lowerQuestion.match(/(?:compare|versus|vs|check)\s+([a-zA-Z0-9\s]+?)\s+(?:with|to|against|and)?\s*(?:average|mean|class|overall)/i) ||
+    lowerQuestion.match(/average\s+vs\s+([a-zA-Z0-9\s]+?)(?:\?|$)/i);
+
+  if (compMatch && compMatch[1]) {
+    const sName = compMatch[1].trim().replace(/^(?:the|student|named|his|her|this)\s+/i, '');
+    if (sName.length > 2 && !['bca', 'bba', 'bcom', 'sem', 'semester', 'today', 'all'].includes(sName.toLowerCase())) {
+      console.log(`🎯 [Quick Match] Student comparison query for: ${sName}`);
+      return buildStudentComparisonQuery(sName);
+    }
+  }
+
+  let studentName = null;
+  // Patterns like "attendance of X", "report for X"
+  const match1 = lowerQuestion.match(/(?:attendance|report|classes|sessions).*?(?:of|for|by|student|named?|has)\s+([a-zA-Z0-9\s]+?)(?:\?|$)/i);
+  // Patterns like "X's attendance", "X report", "What is X attendance"
+  const match2 = lowerQuestion.match(/(?:what\s+is|show|get|find|tell\s+me\s+about)?\s*([a-zA-Z0-9\s]{3,30}?)(?:'s\s+|\s+)(?:attendance|report|profile|details|info)/i);
+
+  if (match1 && match1[1]) {
+    studentName = match1[1].trim();
+  } else if (match2 && match2[1]) {
+    const candidate = match2[1].trim();
+    // skip generic words
+    const firstWord = candidate.split(' ')[0].toLowerCase();
+    if (!['show', 'get', 'what', 'find', 'today', 'all', 'total', 'class', 'the', 'his', 'her', 'their'].includes(firstWord)) {
+      studentName = candidate;
+    }
+  }
+
+
+
 
   // Words that indicate it's NOT a student name (generic queries like "show attendance", "today attendance")
   const skipAttendanceNames = ['show', 'get', 'list', 'find', 'display', 'view', 'give', 'today', 'todays',
     'all', 'total', 'overall', 'class', 'daily', 'monthly', 'weekly', 'bca', 'bba', 'bcom', 'bda', 'mca',
     'mba', 'the', 'my', 'our', 'sem', 'semester'];
 
-  if (attendanceMatch) {
-    let studentName = (attendanceMatch[1] || attendanceMatch[2]).trim();
-    // Clean up suffix "attended" if it was captured
+  if (studentName) {
+    // clean up generic prefix/suffix
     studentName = studentName.replace(/\s+attended$/i, '').trim();
-    // Remove possessive
-    studentName = studentName.replace(/'s?$/i, '').trim();
-    // Remove common filler words that might be captured at the start
-    studentName = studentName.replace(/^(?:student|has|attended)\s+/i, '').trim();
+    studentName = studentName.replace(/^(?:what about|how about|show me|find|get|the|a|an|student|has|attended|what is|what's|whats|detail|info|details|information)\s+/i, '').trim();
 
     const firstWord = studentName.split(' ')[0].toLowerCase();
     if (studentName && studentName.length > 2 && !skipAttendanceNames.includes(firstWord) &&
-        !studentName.match(/^(?:bca|bba|bcom|bda|mca|mba)\b/i) &&
-        !studentName.match(/^\d/) && !studentName.match(/^sem/i)) {
+      !studentName.match(/^(?:bca|bba|bcom|bda|mca|mba)\b/i) &&
+      !studentName.match(/^\d/) && !studentName.match(/^sem/i)) {
+
       console.log(`🎯 [Quick Match] Student attendance query for: ${studentName}`);
       return buildStudentAttendanceQuery(studentName, parsedDate);
     }
+
+
   }
 
   // =========== PRE-BUILT TEMPLATE: SUBJECT LISTS ===========
@@ -1665,6 +1945,13 @@ QUICK EXAMPLES:
 **Count Students:**
 {"collection":"students","operation":"countDocuments","query":{"stream":"BCA","isActive":true},"explanation":"Total BCA students"}
 
+**Top 5 Students BBA:**
+{"collection":"students","operation":"aggregate","query":[{"$match":{"stream":"BBA","isActive":true}},{"$lookup":{"from":"attendance","let":{"studentID":"$studentID","stream":"$stream","semester":"$semester"},"pipeline":[{"$match":{"$expr":{"$and":[{"$eq":["$stream","$$stream"]},{"$eq":["$semester","$$semester"]}]}}},{"$group":{"_id":null,"totalClasses":{"$sum":1},"attended":{"$sum":{"$cond":[{"$in":["$$studentID","$studentsPresent"]},1,0]}}}}],"as":"stats"}},{"$unwind":{"path":"$stats","preserveNullAndEmptyArrays":false}},{"$addFields":{"attendancePercentage":{"$cond":[{"$gt":["$stats.totalClasses",0]},{"$multiply":[{"$divide":["$stats.attended","$stats.totalClasses"]},100]},0]}}},{"$sort":{"attendancePercentage":-1}},{"$limit":5},{"$project":{"name":1,"studentID":1,"stream":1,"semester":1,"attendancePercentage":{"$round":["$attendancePercentage",1]},"classesAttended":"$stats.attended","totalClasses":"$stats.totalClasses"}}],"explanation":"Top 5 students in BBA"}
+
+**Defaulters (below 75%):**
+{"collection":"students","operation":"aggregate","query":[{"$match":{"isActive":true}},{"$lookup":{"from":"attendance","let":{"studentID":"$studentID","stream":"$stream","semester":"$semester"},"pipeline":[{"$match":{"$expr":{"$and":[{"$eq":["$stream","$$stream"]},{"$eq":["$semester","$$semester"]}]}}},{"$group":{"_id":null,"totalClasses":{"$sum":1},"attended":{"$sum":{"$cond":[{"$in":["$$studentID","$studentsPresent"]},1,0]}}}}],"as":"stats"}},{"$unwind":{"path":"$stats","preserveNullAndEmptyArrays":false}},{"$addFields":{"attendancePercentage":{"$cond":[{"$gt":["$stats.totalClasses",0]},{"$multiply":[{"$divide":["$stats.attended","$stats.totalClasses"]},100]},0]}}},{"$match":{"attendancePercentage":{"$lt":75}}},{"$project":{"name":1,"studentID":1,"stream":1,"semester":1,"attendancePercentage":{"$round":["$attendancePercentage",1]},"classesAttended":"$stats.attended","totalClasses":"$stats.totalClasses"}}],"explanation":"Students below 75% attendance"}
+
+
 ==============================================================================
 IMPORTANT:
 ==============================================================================
@@ -1678,7 +1965,7 @@ IMPORTANT:
 Generate JSON query:`;
 
   try {
-    const response = await geminiService.generateResponse(prompt);
+    const response = await geminiService.generateQuery(prompt);
     console.log(`📦 [Gemini] Response Length: ${response.length} chars`);
 
     // Robust JSON extraction
@@ -1762,7 +2049,12 @@ Generate JSON query:`;
 // ============================================================================
 
 function generateNaturalIntro(question, results, collection) {
-  const count = Array.isArray(results) ? results.length : (typeof results === 'number' ? results : 1);
+  // For counts
+  if (typeof results === 'number') {
+    return `**Query Result:** I've counted the total number of ${collection} in the database. The total count is **${results}**.`;
+  }
+
+  const count = Array.isArray(results) ? results.length : 1;
 
   // For students
   if (collection === 'students') {
@@ -1813,13 +2105,8 @@ function generateNaturalIntro(question, results, collection) {
       const totalPresent = results.reduce((sum, r) => sum + (r.presentCount || 0), 0);
       const totalStudents = results.reduce((sum, r) => sum + (r.totalStudents || 0), 0);
       const avgPct = totalStudents > 0 ? ((totalPresent / totalStudents) * 100).toFixed(1) : '0';
-      return `I found ${count} attendance session${count !== 1 ? 's' : ''} on record with an average attendance of ${avgPct}%. Here's the detailed breakdown:`;
+      return `I found ${count} attendance session${count !== 1 ? 's' : ''} on record with an average attendance of **${avgPct}%**. Here's the detailed breakdown:`;
     }
-  }
-
-  // For counts
-  if (typeof results === 'number') {
-    return `I've counted the total number of ${collection} in the database. The count is ${results}. Here's the summary:`;
   }
 
   // Default
@@ -1836,8 +2123,9 @@ function formatAsTable(results, collection, question) {
     return null;
   }
 
-  // Bypass table formatting for specific record queries handled in generateNaturalResponse
   const lowerQuestion = question.toLowerCase();
+
+  // Bypass table formatting for specific record queries handled in generateNaturalResponse
   const isMentorQuery = lowerQuestion.includes('mentor for') ||
     lowerQuestion.includes('who is the mentor') ||
     lowerQuestion.includes('which teacher mentors');
@@ -1846,11 +2134,30 @@ function formatAsTable(results, collection, question) {
     return null;
   }
 
+  const firstItem = results[0];
+
+  // =========== CHATGPT-STYLE: Single result bypass ===========
+  // For single student, teacher, or subject records, skip table entirely
+  // and let the AI generate a natural conversational response.
+  // Attendance ranking/analytics results should still be tabled even if single.
+  if (results.length === 1) {
+    const isAttendanceRanking = firstItem.attendancePercentage !== undefined && firstItem.studentID;
+    const isAttendanceSession = firstItem.presentCount !== undefined || firstItem.absentCount !== undefined;
+    const isAbsentReport = firstItem.missedSubjects && Array.isArray(firstItem.missedSubjects);
+    const isPresentReport = firstItem.attendedSubjects && Array.isArray(firstItem.attendedSubjects);
+    const isAttendanceSummary = firstItem.totalSessions !== undefined;
+    const isSubjectAttendanceDetail = firstItem.subject && firstItem.totalClasses !== undefined;
+
+    // Only allow tables for attendance/analytics single results
+    if (!isAttendanceRanking && !isAttendanceSession && !isAbsentReport && !isPresentReport && !isAttendanceSummary && !isSubjectAttendanceDetail) {
+      console.log(`💬 [Single Result] Bypassing table for conversational AI response`);
+      return null;
+    }
+  }
+
   // Get natural intro
   const intro = generateNaturalIntro(question, results, collection);
   let table = `${intro}\n\n`;
-
-  const firstItem = results[0];
 
   // =========== ABSENT STUDENTS TABLE (with missedSubjects) ===========
   if (firstItem.missedSubjects && Array.isArray(firstItem.missedSubjects)) {
@@ -1914,30 +2221,92 @@ function formatAsTable(results, collection, question) {
 
   // =========== STUDENT + SUBJECT DETAILED SUMMARY TABLE ===========
   if (firstItem.studentID && firstItem.subject && firstItem.attendancePercentage !== undefined) {
-    table = `Detailed attendance summary for ${firstItem.stream || ''} Semester ${firstItem.semester || ''}, sorted by Student ID:\n\n`;
-    table += `| # | Student ID | Name | Subject | Attended | Total | Att % | Status |\n`;
-    table += `|---|------------|------|---------|----------|-------|-------|--------|\n`;
+    // Check if this is an individual report (all rows share same ID)
+    const uniqueIDs = new Set(results.map(r => r.studentID)).size;
+    const isIndividual = uniqueIDs === 1;
+
+    if (isIndividual) {
+      const studentName = results[0].studentName || results[0].name || results[0].studentID;
+      table = `### Attendance Report: **${studentName}**\n\n`;
+      table += `| # | Subject | Attended | Total | Att % | Status |\n`;
+      table += `|---|---------|----------|-------|-------|--------|\n`;
+    } else {
+      table = `Detailed attendance summary for ${firstItem.stream || ''} Semester ${firstItem.semester || ''}, sorted by Student ID:\n\n`;
+      table += `| # | Student ID | Name | Subject | Attended | Total | Att % | Status |\n`;
+      table += `|---|------------|------|---------|----------|-------|-------|--------|\n`;
+    }
 
     results.forEach((row, index) => {
-      const id = (row.studentID || '-').substring(0, 14);
-      const name = (row.name || '-').substring(0, 20);
-      const subject = (row.subject || '-').substring(0, 25);
+      const subject = (row.subject || '-').substring(0, 35);
       const attended = row.classesAttended !== undefined ? row.classesAttended : 0;
       const total = row.totalClasses !== undefined ? row.totalClasses : 0;
       const pct = row.attendancePercentage !== undefined ? row.attendancePercentage.toFixed(1) : '0';
-      const status = parseFloat(pct) >= 75 ? '✓ Good' : '⚠ Low';
+      const classAvg = row.classAverage !== undefined ? row.classAverage.toFixed(1) : null;
 
-      table += `| ${index + 1} | ${id} | ${name} | ${subject} | ${attended} | ${total} | ${pct}% | ${status} |\n`;
+      // Use premium status tiers
+      let status;
+      const pctNum = parseFloat(pct);
+      if (pctNum >= 90) status = '🟢 Excellent';
+      else if (pctNum >= 75) status = '🟢 Good';
+      else if (pctNum >= 60) status = '🟡 Average';
+      else if (pctNum >= 50) status = '🟡 Low';
+      else status = '🔴 Critical';
+
+      if (isIndividual) {
+        if (classAvg !== null) {
+          // If this is the first row, update table header to include Class Avg
+          if (index === 0) {
+            table = `### Attendance Comparison: **${row.studentName || 'Student'}**\n\n`;
+            table += `| # | Subject | Attended | Total | Student % | Class Avg | Diff | Status |\n`;
+            table += `|---|---------|----------|-------|-----------|-----------|------|--------|\n`;
+          }
+          const diff = (pctNum - parseFloat(classAvg)).toFixed(1);
+          const diffStr = diff >= 0 ? `+${diff}%` : `${diff}%`;
+          table += `| ${index + 1} | ${subject} | ${attended} | ${total} | **${pct}%** | ${classAvg}% | ${diffStr} | ${status} |\n`;
+        } else {
+          table += `| ${index + 1} | ${subject} | ${attended} | ${total} | ${pct}% | ${status} |\n`;
+        }
+      } else {
+        const id = (row.studentID || '-').substring(0, 14);
+        const name = (row.name || '-').substring(0, 20);
+        table += `| ${index + 1} | ${id} | ${name} | ${subject} | ${attended} | ${total} | ${pct}% | ${status} |\n`;
+      }
     });
+
 
     return table;
   }
 
-  // =========== LOW ATTENDANCE / DEFAULTERS TABLE ===========
+  // =========== ATTENDANCE RANKING / TOP-BOTTOM / DEFAULTERS TABLE ===========
   if (firstItem.attendancePercentage !== undefined && firstItem.studentID) {
-    table = `I found ${results.length} student${results.length !== 1 ? 's' : ''} with attendance below 75%. Here's the complete list sorted by attendance percentage:\n\n`;
-    table += `| # | Student ID | Name | Stream | Sem | Attendance % | Classes | Status |\n`;
-    table += `|---|------------|------|--------|-----|--------------|---------|--------|\n`;
+    const isTopQuery = lowerQuestion.match(/top|best|highest/i);
+    const isBottomQuery = lowerQuestion.match(/bottom|worst|lowest/i);
+    const isBelow75 = lowerQuestion.match(/below\s*75|less\s*than\s*75|defaulter|shortage|<\s*75/i);
+
+    const isSingle = results.length === 1;
+
+    if (isTopQuery) {
+      table = `### Top Performers by Attendance\n`;
+      table += `Here are the top students ranked by their attendance percentage:\n\n`;
+    } else if (isBottomQuery) {
+      table = `### Bottom Performers by Attendance\n`;
+      table += `Here are the students with the lowest attendance ranking:\n\n`;
+    } else if (isBelow75) {
+      table = `I found **${results.length} students** with attendance below 75%. Here is the list sorted by attendance:\n\n`;
+    } else if (isSingle) {
+      const studentName = results[0].studentName || results[0].name || results[0].studentID;
+      table = `### Individual Attendance Rank: **${studentName}**\n\n`;
+    } else {
+      table = `Attendance ranking for the requested students:\n\n`;
+    }
+
+    if (isSingle) {
+      table += `| Stream | Sem | Att % | Classes | Status |\n`;
+      table += `|--------|-----|-------|---------|--------|\n`;
+    } else {
+      table += `| # | Student ID | Name | Stream | Sem | Att % | Classes | Status |\n`;
+      table += `|---|------------|------|--------|-----|-------|---------|--------|\n`;
+    }
 
     results.slice(0, 100).forEach((student, index) => {
       const id = (student.studentID || '-').substring(0, 14);
@@ -1948,30 +2317,48 @@ function formatAsTable(results, collection, question) {
       const classes = student.classesAttended !== undefined && student.totalClasses !== undefined
         ? `${student.classesAttended}/${student.totalClasses}`
         : '-';
-      const status = parseFloat(pct) < 50 ? '⚠ Critical' : '⚠ Low';
 
-      table += `| ${index + 1} | ${id} | ${name} | ${stream} | ${sem} | ${pct}% | ${classes} | ${status} |\n`;
+      // Proper status based on actual percentage
+      let status;
+      const pctNum = parseFloat(pct);
+      if (pctNum >= 90) status = '🟢 Excellent';
+      else if (pctNum >= 75) status = '🟢 Good';
+      else if (pctNum >= 60) status = '🟡 Average';
+      else if (pctNum >= 50) status = '🟡 Low';
+      else status = '🔴 Critical';
+
+      if (isSingle) {
+        table += `| ${stream} | ${sem} | **${pct}%** | ${classes} | ${status} |\n`;
+      } else {
+        table += `| ${index + 1} | ${id} | ${name} | ${stream} | ${sem} | ${pct}% | ${classes} | ${status} |\n`;
+      }
     });
 
     if (results.length > 100) {
+
       table += `\n*+${results.length - 100} more students*\n`;
     }
 
-    const critical = results.filter(s => s.attendancePercentage < 50).length;
-    const low = results.filter(s => s.attendancePercentage >= 50 && s.attendancePercentage < 75).length;
+    // Only show defaulter summary for low-attendance/defaulter queries
+    if (isBelow75) {
+      const critical = results.filter(s => s.attendancePercentage < 50).length;
+      const low = results.filter(s => s.attendancePercentage >= 50 && s.attendancePercentage < 75).length;
 
-    table += `\n### Summary\n\n`;
-    table += `| Metric | Count |\n`;
-    table += `|--------|:-----:|\n`;
-    table += `| Total Defaulters | ${results.length} |\n`;
-    table += `| Critical (Below 50%) | ${critical} |\n`;
-    table += `| Low (50% - 74%) | ${low} |\n`;
+      table += `\n### Summary\n\n`;
+      table += `| Metric | Count |\n`;
+      table += `|--------|:-----:|\n`;
+      table += `| Total Defaulters | ${results.length} |\n`;
+      table += `| Critical (Below 50%) | ${critical} |\n`;
+      table += `| Low (50% - 74%) | ${low} |\n`;
+    }
 
     return table;
   }
 
   // Student table (regular)
   if (collection === 'students' || (firstItem.studentID && firstItem.name && !firstItem.email)) {
+    if (results.length === 1) return null; // Let AI format perfectly for a single student profile
+
     table += `| # | ID | Name | Stream | Sem | Mentor | Phone |\n`;
     table += `|---|----|----|--------|-----|--------|-------|\n`;
 
@@ -1990,26 +2377,12 @@ function formatAsTable(results, collection, question) {
       table += `\n*+${results.length - 100} more students*\n`;
     }
 
-    // Accurate summary
-    const streamCounts = {};
-    results.forEach(s => {
-      const stream = s.stream || 'Unknown';
-      streamCounts[stream] = (streamCounts[stream] || 0) + 1;
-    });
-
-    table += `\n### Summary\n\n`;
-    table += `| Metric | Value |\n`;
-    table += `|--------|-------|\n`;
-    table += `| Total Students | ${results.length} |\n`;
-    Object.entries(streamCounts).forEach(([stream, count]) => {
-      table += `| ${stream} | ${count} |\n`;
-    });
-
     return table;
   }
 
   // Subject table
   if (collection === 'subjects' || (firstItem.name && firstItem.subjectCode)) {
+    if (results.length === 1) return null; // Let AI format perfectly for a single subject
     table += `| # | Subject | Code | Stream | Sem | Type |\n`;
     table += `|---|---------|------|--------|-----|------|\n`;
 
@@ -2026,19 +2399,6 @@ function formatAsTable(results, collection, question) {
     if (results.length > 100) {
       table += `\n*+${results.length - 100} more subjects*\n`;
     }
-
-    const typeCounts = { CORE: 0, ELECTIVE: 0 };
-    results.forEach(s => {
-      if (s.subjectType === 'CORE') typeCounts.CORE++;
-      else if (s.subjectType === 'ELECTIVE') typeCounts.ELECTIVE++;
-    });
-
-    table += `\n### Summary\n\n`;
-    table += `| Metric | Count |\n`;
-    table += `|--------|:-----:|\n`;
-    table += `| Total Subjects | ${results.length} |\n`;
-    table += `| Core | ${typeCounts.CORE} |\n`;
-    table += `| Elective | ${typeCounts.ELECTIVE} |\n`;
 
     return table;
   }
@@ -2114,41 +2474,8 @@ function formatAsTable(results, collection, question) {
 
   // =========== TEACHERS TABLE ===========
   if (collection === 'teachers' || (firstItem.email && !firstItem.studentID && !firstItem.subject)) {
-    // Detailed Profile View for a single teacher (Subjects in Table format)
-    if (results.length === 1) {
-      const teacher = results[0];
-      table = `### Teacher Profile: ${teacher.name || teacher.displayName || 'Teacher'}\n`;
-      table += `**Contact Email:** ${teacher.email || '-'}\n\n`;
-
-      if (teacher.createdSubjects && Array.isArray(teacher.createdSubjects) && teacher.createdSubjects.length > 0) {
-        table += `#### Assigned Subjects\n`;
-        table += `| # | Subject Name | Stream | Semester |\n`;
-        table += `|---|--------------|--------|----------|\n`;
-
-        teacher.createdSubjects.forEach((sub, idx) => {
-          table += `| ${idx + 1} | ${sub.subject || '-'} | ${sub.stream || '-'} | ${sub.semester || '-'} |\n`;
-        });
-        table += `\n**Summary:** ${teacher.createdSubjects.length} subjects total\n\n`;
-      } else {
-        table += `*No subjects found for this teacher.*\n\n`;
-      }
-
-      // Add Assigned Mentees section
-      if (teacher.mentees && Array.isArray(teacher.mentees) && teacher.mentees.length > 0) {
-        table += `#### Assigned Mentees (Mentorship)\n`;
-        table += `| # | Student ID | Name | Stream | Sem |\n`;
-        table += `|---|------------|------|--------|-----|\n`;
-
-        teacher.mentees.forEach((mentee, idx) => {
-          table += `| ${idx + 1} | ${mentee.studentID || '-'} | ${mentee.name || '-'} | ${mentee.stream || '-'} | ${mentee.semester || '-'} |\n`;
-        });
-        table += `\n**Total Mentees:** ${teacher.mentees.length}`;
-      } else {
-        table += `*No students assigned for mentorship.*`;
-      }
-
-      return table;
-    }
+    // Let AI handle single teacher to be highly conversational instead of a stiff profile table
+    if (results.length === 1) return null;
 
     // List view for multiple teachers — clean and simple
     table += `| # | Name | Email | No. of Subjects |\n`;
@@ -2167,11 +2494,6 @@ function formatAsTable(results, collection, question) {
       table += `\n*+${results.length - 100} more teachers*\n`;
     }
 
-    table += `\n### Summary\n\n`;
-    table += `| Metric | Value |\n`;
-    table += `|--------|-------|\n`;
-    table += `| Total Teachers | ${results.length} |\n`;
-
     return table;
   }
 
@@ -2186,6 +2508,48 @@ function formatAsTable(results, collection, question) {
 async function generateNaturalResponse(question, results, queryInfo) {
   console.log(`📝 [Natural Response] Processing...`);
 
+  // Generate suggestions based on query and results
+  let suggestions = '';
+  const collection = queryInfo.collection;
+  const isSingle = Array.isArray(results) ? results.length === 1 : false;
+
+  if (collection === 'students' && Array.isArray(results) && results.length > 0) {
+    const first = results[0];
+    const stream = first.stream || 'BCA';
+    const sem = first.semester ? ` Sem ${first.semester}` : '';
+    const classContext = `${stream}${sem}`;
+
+    // Detect if this is an individual report (multiple rows for one studentID)
+    const uniqueIDs = new Set(results.filter(r => r && r.studentID).map(r => r.studentID));
+    const isIndividual = uniqueIDs.size === 1;
+
+    if (isIndividual || isSingle) {
+      const rawName = first.studentName || first.name || '';
+      const stuName = rawName ? rawName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'this student';
+
+      suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *Who is ${stuName}'s mentor?*\n- *Show ${stuName}'s subjects*\n- *Compare ${stuName} with average*`;
+
+      // If we haven't shown attendance yet, make it the first suggestion
+      const questionLower = question.toLowerCase();
+      if (!questionLower.includes('attendance') && !questionLower.includes('report')) {
+        suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *What is ${stuName}'s attendance?*\n- *Who is ${stuName}'s mentor?*\n- *Show ${stuName}'s subjects*`;
+      }
+    } else {
+      suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *Top 5 performers in ${classContext}*\n- *List of defaulters in ${classContext}*\n- *Subject-wise average for ${classContext}*`;
+    }
+  } else if (collection === 'teachers' && typeof results !== 'number') {
+    if (isSingle) {
+      const teachName = results[0].name ? results[0].name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'this teacher';
+      suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *What subjects does ${teachName} teach?*\n- *Show mentees of ${teachName}*`;
+    } else {
+      suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *How many teachers are there?*\n- *Who teaches maths?*`;
+    }
+  } else if (collection === 'subjects' && typeof results !== 'number') {
+    suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *Who teaches Software Testing?*\n- *Show BCA Sem 6 subjects*`;
+  } else if (typeof results === 'number') {
+    suggestions = `\n\n**💡 Suggested Follow-ups:**\n- *Show me the list*\n- *What else can you do?*`;
+  }
+
   // Handle greetings or null collection
   if (!queryInfo.collection || queryInfo.collection === null) {
     return queryInfo.explanation || "Hello! I'm here to help you with student records, attendance tracking, subject information, and teacher profiles. What would you like to know?";
@@ -2194,7 +2558,7 @@ async function generateNaturalResponse(question, results, queryInfo) {
   // For count operations - add accurate natural intro
   if (queryInfo.operation === 'countDocuments') {
     const intro = generateNaturalIntro(question, results, queryInfo.collection);
-    return `${intro}\n\n## Total Count: **${results}**\n\nThis represents the total number of ${queryInfo.collection} records matching your search criteria in the database.`;
+    return `${intro}\n\n## Total Count: **${results}**\n\nThis represents the total number of ${queryInfo.collection} records matching your search criteria in the database.` + suggestions;
   }
 
   // Check if this is a "who teaches X" type query - give simple answer
@@ -2263,7 +2627,7 @@ async function generateNaturalResponse(question, results, queryInfo) {
         });
 
         if (mentee) {
-          return `**${teacher.name}** is the assigned mentor for student **${mentee.name}** (${mentee.studentID}).\n\n**Mentor Contact:** ${teacher.email}${teacher.phone ? ` | ${teacher.phone}` : ''}`;
+          return `**${teacher.name}** is the assigned mentor for student **${mentee.name}** (${mentee.studentID}).\n\n**Mentor Contact:** ${teacher.email}${teacher.phone ? ` | ${teacher.phone}` : ''}` + suggestions;
         }
       }
       console.log(`❌ [Mentorship Match] No mentee found matching "${searchName}" in any teacher in results`);
@@ -2272,7 +2636,7 @@ async function generateNaturalResponse(question, results, queryInfo) {
       const student = results[0];
       if (student.mentorName || student.mentorEmail) {
         const mentorDisplay = student.mentorName || student.mentorEmail.split('@')[0].split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-        return `**${mentorDisplay}** is the assigned mentor for student **${student.name}** (${student.studentID}).\n\n**Mentor Contact:** ${student.mentorEmail || 'N/A'}`;
+        return `**${mentorDisplay}** is the assigned mentor for student **${student.name}** (${student.studentID}).\n\n**Mentor Contact:** ${student.mentorEmail || 'N/A'}` + suggestions;
       }
     }
   }
@@ -2282,25 +2646,26 @@ async function generateNaturalResponse(question, results, queryInfo) {
     const teacher = results[0];
     const mentees = teacher.mentees || [];
     if (mentees.length === 0) {
-      return `**${teacher.name}** has no students assigned for mentorship at the moment.`;
+      return `**${teacher.name}** has no students assigned for mentorship at the moment.` + suggestions;
     }
     let response = `**${teacher.name}** is currently mentoring **${mentees.length} students**:\n\n`;
     mentees.forEach((m, i) => {
       response += `${i + 1}. **${m.name}** (${m.studentID}) - ${m.stream} Sem ${m.semester}\n`;
     });
-    return response;
+    return response + suggestions;
   }
 
   // Try table formatting first for list responses
   const tableFormat = formatAsTable(results, queryInfo.collection, question);
   if (tableFormat) {
     console.log(`✅ Using table format response with natural intro`);
-    return tableFormat;
+    return tableFormat + (tableFormat.includes('**💡 Suggested') ? '' : suggestions);
   }
 
   // Fallback to AI generation for complex queries or profile views
   console.log(`⚠️ Using AI generation fallback`);
-  return await generateAIResponse(question, results, queryInfo);
+  const aiResponse = await generateAIResponse(question, results, queryInfo);
+  return aiResponse + (aiResponse.includes('**💡 Suggested') ? '' : suggestions);
 }
 
 
@@ -2316,7 +2681,103 @@ async function generateAIResponse(question, results, queryInfo) {
   const resultCount = Array.isArray(results) ? results.length : 1;
   const intro = generateNaturalIntro(question, results, queryInfo.collection);
 
-  // For small result sets, format them directly in code
+  // CHATGPT-STYLE FORMATTING FOR SINGLE RECORDS — code-based for consistency
+  if (resultCount === 1) {
+    const item = results[0] || results;
+    let response = '';
+
+    // ===== STUDENT PROFILE =====
+    if (item.studentID && item.name) {
+      response += `**${item.name}** is a student currently enrolled at MLA Academy of Higher Learning.\n\n`;
+      response += `**Student Details:**\n`;
+      response += `- **Student ID:** ${item.studentID}\n`;
+      response += `- **Stream:** ${item.stream || 'N/A'}\n`;
+      response += `- **Semester:** ${item.semester || 'N/A'}\n`;
+      if (item.academicYear) response += `- **Academic Year:** ${item.academicYear}\n`;
+      if (item.section) response += `- **Section:** ${item.section}\n`;
+      if (item.languageSubject) response += `- **Language Subject:** ${item.languageSubject}\n`;
+      if (item.electiveSubject) response += `- **Elective Subject:** ${item.electiveSubject}\n`;
+
+      // Contact
+      const hasContact = item.parentPhone || item.email;
+      if (hasContact) {
+        response += `\n**Contact Information:**\n`;
+        if (item.parentPhone) response += `- **Parent Phone:** ${item.parentPhone}\n`;
+        if (item.email) response += `- **Email:** ${item.email}\n`;
+      }
+
+      // Mentor
+      if (item.mentorEmail || item.mentorName) {
+        const mentorDisplay = item.mentorName || item.mentorEmail.split('@')[0].split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+        response += `\n**Mentor:** ${mentorDisplay}\n`;
+      } else {
+        response += `\n*No mentor has been assigned yet.*\n`;
+      }
+
+      return response;
+    }
+
+    // ===== TEACHER PROFILE =====
+    if (item.email && (item.createdSubjects || item.mentees || item.department)) {
+      response += `**${item.name || item.displayName || 'Teacher'}** is a faculty member at MLA Academy of Higher Learning.\n\n`;
+      response += `**Profile Details:**\n`;
+      response += `- **Email:** ${item.email}\n`;
+      if (item.phone) response += `- **Phone:** ${item.phone}\n`;
+      if (item.department) response += `- **Department:** ${item.department}\n`;
+
+      // Subjects
+      if (item.createdSubjects && Array.isArray(item.createdSubjects) && item.createdSubjects.length > 0) {
+        response += `\n**Subjects Assigned (${item.createdSubjects.length}):**\n`;
+        item.createdSubjects.forEach((sub, i) => {
+          response += `${i + 1}. ${sub.subject || 'Unknown'} — ${sub.stream || '?'} Sem ${sub.semester || '?'}\n`;
+        });
+      }
+
+      // Mentees
+      if (item.mentees && Array.isArray(item.mentees) && item.mentees.length > 0) {
+        response += `\n**Mentees (${item.mentees.length}):**\n`;
+        item.mentees.forEach((m, i) => {
+          response += `${i + 1}. ${m.name} (${m.studentID}) — ${m.stream} Sem ${m.semester}\n`;
+        });
+      }
+
+      return response;
+    }
+
+    // ===== SUBJECT PROFILE =====
+    if (item.subjectCode || (item.name && item.stream && item.semester && !item.studentID)) {
+      response += `**${item.name}** is a subject offered at MLA Academy.\n\n`;
+      response += `**Subject Details:**\n`;
+      if (item.subjectCode) response += `- **Subject Code:** ${item.subjectCode}\n`;
+      response += `- **Stream:** ${item.stream || 'N/A'}\n`;
+      response += `- **Semester:** ${item.semester || 'N/A'}\n`;
+      if (item.subjectType) response += `- **Type:** ${item.subjectType}\n`;
+      if (item.teacherAssigned) response += `- **Teacher:** ${item.teacherAssigned}\n`;
+      return response;
+    }
+
+    // ===== GENERIC SINGLE RECORD — use AI for anything else =====
+    const prompt = `Format this database result as a clean, structured response like ChatGPT would. Use markdown with bold headers, bullet points, and clear sections. Do NOT use tables.
+
+USER ASKED: "${question}"
+DATA: ${JSON.stringify(item, null, 2)}
+
+RULES:
+- Use **bold** for field names and a structured bullet-point layout
+- Group related fields under clear section headers  
+- Skip internal fields like _id, __v, isActive
+- Never invent data. Only use what is provided
+- Be concise but complete`;
+
+    try {
+      const aiResponse = await geminiService.generateResponse(prompt);
+      return aiResponse.trim();
+    } catch (e) {
+      console.log("⚠️ Fallback to basic text for single result:", e.message);
+    }
+  }
+
+  // For small result sets (multiple records), format them directly in code
   if (Array.isArray(results) && results.length <= 5) {
     let formatted = `${intro}\n\n`;
 
