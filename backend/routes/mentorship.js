@@ -21,19 +21,26 @@ router.get('/stats', async (req, res) => {
 // Assign students to a mentor
 router.post('/assign', async (req, res) => {
     try {
-        const { mentorEmail, studentIDs } = req.body;
+        let { mentorEmail, studentIDs } = req.body;
 
         if (!mentorEmail || !studentIDs || !Array.isArray(studentIDs)) {
             return res.status(400).json({ success: false, error: 'Mentor email and array of student IDs required' });
         }
+
+        // 1. Clean input list (unique + uppercase)
+        studentIDs = [...new Set(studentIDs.map(id => id.toString().trim().toUpperCase()))];
 
         const teacher = await Teacher.findOne({ email: mentorEmail.toLowerCase().trim() });
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'Mentor not found' });
         }
 
-        // Fetch student details to store in teacher schema
+        // 2. Fetch student details to store in teacher schema
         const students = await Student.find({ studentID: { $in: studentIDs } });
+        const foundIDs = new Set(students.map(s => s.studentID));
+
+        // 3. Identify missing USNs
+        const missingIDs = studentIDs.filter(id => !foundIDs.has(id));
 
         const newMentees = students.map(s => ({
             studentID: s.studentID,
@@ -43,23 +50,29 @@ router.post('/assign', async (req, res) => {
             addedAt: new Date()
         }));
 
-        // Add to teacher's mentees (avoid duplicates)
-        const existingIDs = new Set(teacher.mentees.map(m => m.studentID));
-        const filteredNewMentees = newMentees.filter(m => !existingIDs.has(m.studentID));
+        // 4. Add to teacher's mentees (avoid duplicates already in this teacher's list)
+        const alreadyInMentorListIDs = new Set(teacher.mentees.map(m => m.studentID));
+        const filteredNewMentees = newMentees.filter(m => !alreadyInMentorListIDs.has(m.studentID));
+        const duplicateInListCount = newMentees.length - filteredNewMentees.length;
 
         teacher.mentees.push(...filteredNewMentees);
         await teacher.save();
 
-        // Sync back to Student records
+        // 5. Sync back to Student records
         await Student.updateMany(
-            { studentID: { $in: studentIDs } },
+            { studentID: { $in: Array.from(foundIDs) } },
             { $set: { mentorEmail: mentorEmail.toLowerCase().trim() } }
         );
 
+        let finalMsg = `Assigned ${filteredNewMentees.length} students.`;
+        if (missingIDs.length > 0) finalMsg += ` (${missingIDs.length} IDs not found in database: ${missingIDs.join(', ')}).`;
+        if (duplicateInListCount > 0) finalMsg += ` (${duplicateInListCount} were already assigned to this mentor).`;
+
         res.json({
             success: true,
-            message: `Assigned ${filteredNewMentees.length} new students to ${mentorEmail}`,
-            totalMentees: teacher.mentees.length
+            message: finalMsg,
+            totalMentees: teacher.mentees.length,
+            missingIDs: missingIDs
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -84,6 +97,41 @@ router.post('/remove', async (req, res) => {
         );
 
         res.json({ success: true, message: 'Mentee removed', totalMentees: teacher.mentees.length });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Bulk remove mentees from a mentor
+router.post('/remove-bulk', async (req, res) => {
+    try {
+        const { mentorEmail, studentIDs } = req.body;
+
+        if (!mentorEmail || !studentIDs || !Array.isArray(studentIDs)) {
+            return res.status(400).json({ success: false, error: 'Mentor email and array of student IDs required' });
+        }
+
+        const teacher = await Teacher.findOneAndUpdate(
+            { email: mentorEmail.toLowerCase().trim() },
+            { $pull: { mentees: { studentID: { $in: studentIDs } } } },
+            { new: true }
+        );
+
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'Mentor not found' });
+        }
+
+        // Sync back to Student records (clear the mentor email)
+        await Student.updateMany(
+            { studentID: { $in: studentIDs } },
+            { $set: { mentorEmail: null } }
+        );
+
+        res.json({
+            success: true,
+            message: `Removed ${studentIDs.length} mentees successfully`,
+            totalMentees: teacher.mentees.length
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
