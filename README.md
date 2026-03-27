@@ -1,90 +1,69 @@
-# Smart Attendance & Academic Management System (SAAME)
+# AI-Powered Academic Management System (AMS)
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
-![License](https://img.shields.io/badge/license-Proprietary-red.svg)
-![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
+![Hostinger VPS](https://img.shields.io/badge/Deployed_on-Hostinger_VPS-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.5.0_Enterprise-blue.svg)
+![Modern Architecture](https://img.shields.io/badge/Architecture-Scalable_SaaS-purple.svg)
 
-A comprehensive, AI-enhanced SaaS platform designed for modern academic institutions to manage attendance, track student performance, and automate mentorship workflows.
-
-## 🚀 Key Modules
-
-### 1. Non-Teaching / Admin Portal
-*   **Intelligent Dashboard**: Real-time stats with unique student tracking and attendance rate trends.
-*   **Advanced Reports**: One-click generation of Semester/Subject reports with Excel export and print-ready formatting.
-*   **Student Management**: Stream-wise organization, active/inactive student tracking, and automated promotion logic.
-*   **Mentorship System**: Case-sensitive mentor-mentee mapping and interaction tracking.
-*   **WhatsApp Integration**: Direct communication channels for alerts and notifications.
-
-### 2. Teaching / Faculty Portal
-*   **AI Assistant**: Powered by Groq AI for instant academic queries (e.g., "How many students are absent from BCA Sem 6 today?").
-*   **Digital Attendance**: Mobile-responsive interface for marking attendance in seconds.
-*   **Performance Tracking**: Identification of "defaulters" (low attendance) to enable early intervention.
-
-### 3. AI Core
-*   **Natural Language Processing**: Advanced intent classification using a layered regex + LLM (Groq) approach.
-*   **Deterministic Querying**: High-speed MongoDB query generation for complex academic data retrieval.
+An enterprise-grade, highly scalable platform designed to integrate Artificial Intelligence into institutional operations. This platform automates critical academic workflows, from multi-stream attendance tracking to complex multi-level mentorship management.
 
 ---
 
-## 🛠 Tech Stack
+## 🏛️ System Overview
 
-*   **Frontend**: HTML5, Vanilla CSS3 (Modern Glassmorphism Design), JavaScript (ES6+)
-*   **Backend**: Node.js, Express.js
-*   **Database**: MongoDB (Atlas)
-*   **Authentication**: Firebase Auth (Identity Platform)
-*   **AI Engine**: Groq SDK (Llama 3 / Mixtral models)
-*   **Deployment**: Linux VPS / PM2 Process Management
+This system is engineered for modularity and high-performance throughput, utilizing a custom-built **Academic AI Engine** to provide predictive insights and automated reporting for large-scale educational institutions.
 
----
+### 🔭 Core Enterprise Modules
 
-## ⚙️ Installation & Setup
+#### 1. Advanced Institutional Dashboard
+*   **Real-Time Analytics**: Visualizes attendance trends with student-level granularity.
+*   **Dynamic Data Aggragation**: Intelligent calculation of unique student presence vs. session frequency, ensuring data accuracy for complex academic schedules.
+*   **Institutional Monitoring**: Real-time alerts for low-attendance thresholds and declining academic trends.
 
-### Prerequisites
-*   Node.js (v18+)
-*   MongoDB Instance
-*   Firebase Project (for authentication)
-*   Groq API Key (for AI features)
+#### 2. AI-Native Faculty Interface
+*   **NLP Query Engine**: Powered by Llama 3 / Mixtral (Groq SDK) for human-like natural language querying of the institutional database. 
+*   **Predictive Insights**: Automated identification of at-risk students based on historical attendance patterns.
+*   **Scalable Attendance Engine**: Rapid marking and verification system designed for thousands of daily session records.
 
-### Local Configuration
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/skandaumesh/Saas-edtech.git
-    cd Saas-edtech
-    ```
-
-2.  **Backend Setup**:
-    *   Navigate to `backend/` and install dependencies: `npm install`
-    *   Create a `.env` file in `backend/` with the following variables:
-        ```env
-        PORT=5000
-        MONGO_URI=your_mongodb_connection_string
-        GROQ_API_KEY=your_groq_api_key
-        FIREBASE_CONFIG=...
-        ```
-    *   Place your Firebase `serviceAccountKey.json` in `backend/config/`.
-
-3.  **Frontend Setup**:
-    *   Update `non-teaching/js/config.js` and `teaching/js/config.js` to point to your backend API.
-
-4.  **Run Locally**:
-    ```bash
-    # In the backend directory
-    node server.js
-    ```
+#### 3. Enterprise Reporting & Analytics
+*   **Unified Reporting Hub**: Generates subject-level and semester-level performance matrices.
+*   **Multi-Format Export**: One-click professional data extraction into Excel (XLSX) and print-optimized PDF-ready layouts.
+*   **Automated Mentorship Mapping**: Centralized control for mentor-mentee assignments with case-sensitive integrity checks.
 
 ---
 
-## 🌐 Deployment (VPS)
+## 🏗️ Technology Stack
 
-The project includes automated deployment scripts for Linux environments:
+Designed for stability, scalability, and extreme performance.
 
-1.  **Deploy Backend**: `python deploy_backend.py` (Deploys files and restarts PM2)
-2.  **Sync VPS**: `python force_vps_pull.py` (Forcefully pulls latest code from GitHub to VPS)
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Logic Layer** | Node.js (V8) | High-concurrency runtime for complex academic logic processing. |
+| **API Architecture** | Express (RESTful) | Robust, stateless service layer for seamless data flow. |
+| **Persistence Layer** | MongoDB (NoSQL) | High-performance document DB for flexible academic data structures. |
+| **Identity Management** | Firebase Authentication | Enterprise-grade security and secure session management. |
+| **Intelligence Engine** | Groq AI (LLM) | State-of-the-art NLP classification for deterministic data retrieval. |
+| **Infrastructure** | Hostinger VPS (Linux) | High-availability cloud hosting with dedicated resource allocation. |
+| **Process Control** | PM2 Runtime | Advanced process manager for 24/7 uptime and automated recovery. |
 
 ---
 
-## 📧 Support
-For technical support or institutional customization, please contact the development lead.
+## 🚀 Deployment Architecture
+
+The system is deployed on a dedicated **Hostinger VPS (Virtual Private Server)**, providing optimized performance and security for sensitive institutional data.
+
+### Deployment Workflow
+1.  **Code Base**: Centralized and version-controlled via Git.
+2.  **Environment**: Isolated production environment on Linux Ubuntu for maximum security.
+3.  **Process Management**: Persistent PM2 daemon for background service lifecycle and log rotate management.
+4.  **Auto-Sync**: Automated Python-driven deployment pipelines for instantaneous updates.
 
 ---
-*© 2024 Skanda Umesh. All rights reserved.*
+
+## 🔐 Security & Compliance
+*   **Environment Isolation**: Sensitive credentials managed through encrypted environment variables.
+*   **OAuth Lifecycle**: Secure authentication flow with token-level security.
+*   **Database integrity**: ACID compliant transactional integrity in MongoDB.
+
+---
+*Developed for excellence in Institutional Management.*
+*© 2024 AI-Powered AMS. All rights reserved.*
