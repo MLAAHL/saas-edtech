@@ -100,15 +100,53 @@ router.get('/stats', async (req, res) => {
       req.db.collection('students').distinct('stream', { isActive: true })
     ]);
 
-    // ========== TODAY'S ATTENDANCE (Sum of marked classes today) ==========
+    // ========== TODAY'S ATTENDANCE (First class only per stream+semester) ==========
     let todayPresent = 0, todayAbsent = 0;
 
-    todayAttendance.forEach(r => {
-      const pCount = r.presentCount !== undefined ? r.presentCount : (r.studentsPresent ? r.studentsPresent.length : 0);
-      const absCount = r.absentCount !== undefined ? r.absentCount : Math.max(0, (r.totalStudents || 0) - pCount);
-      todayPresent += pCount;
-      todayAbsent += absCount;
+    // Find the FIRST class of the day for each stream+semester combo
+    // Sort by time so earliest class comes first
+    const sortedToday = [...todayAttendance].sort((a, b) => {
+      const timeA = a.time || a.createdAt || '';
+      const timeB = b.time || b.createdAt || '';
+      return String(timeA).localeCompare(String(timeB));
     });
+
+    // Pick only the first class per stream+semester
+    const firstClassMap = new Map(); // key: "STREAM|SEM" -> first attendance record
+    sortedToday.forEach(r => {
+      if (r.stream && r.semester) {
+        const key = `${r.stream}|${r.semester}`;
+        if (!firstClassMap.has(key)) {
+          firstClassMap.set(key, r);
+        }
+      }
+    });
+
+    // Count unique present/absent from ONLY the first class per stream+semester
+    const uniquePresentToday = new Set();
+    const todayStreamSems = new Set();
+
+    firstClassMap.forEach((r, key) => {
+      todayStreamSems.add(key);
+      if (r.studentsPresent && Array.isArray(r.studentsPresent)) {
+        r.studentsPresent.forEach(id => uniquePresentToday.add(id));
+      }
+    });
+
+    todayPresent = uniquePresentToday.size;
+
+    // Get total unique enrolled students in streams/semesters that had classes today
+    if (todayStreamSems.size > 0) {
+      const streamSemFilters = [...todayStreamSems].map(key => {
+        const [stream, semester] = key.split('|');
+        return { stream, semester: parseInt(semester) || semester, isActive: true };
+      });
+      const enrolledStudents = await req.db.collection('students').distinct('studentID', {
+        $or: streamSemFilters
+      });
+      const totalEnrolled = enrolledStudents.filter(id => id != null).length;
+      todayAbsent = Math.max(0, totalEnrolled - todayPresent);
+    }
 
     const todayTotal = todayPresent + todayAbsent;
     const todayRate = todayTotal > 0 ? Math.round((todayPresent / todayTotal) * 100) : 0;

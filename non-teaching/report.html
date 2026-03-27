@@ -1073,6 +1073,10 @@
   <script>
     let currentReportData = null;
 
+    function initReport() {
+      loadAvailableStreams();
+    }
+
     async function loadAvailableStreams() {
       const streamSelect = document.getElementById('reportStream');
       try {

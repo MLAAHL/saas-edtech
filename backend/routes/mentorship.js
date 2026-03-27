@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Teacher = require('../models/Teacher');
-const Student = require('../models/Student');
+const Student = require('../models/student');
 
 // Get all mentors and their mentee counts
 router.get('/stats', async (req, res) => {
