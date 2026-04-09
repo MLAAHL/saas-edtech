@@ -8,7 +8,6 @@ function showScreen(id) {
 function goBack() { 
   currentStudent = null; 
   localStorage.removeItem('parentStudentID');
-  localStorage.removeItem('parentPhone');
   showScreen('loginScreen'); 
 }
 
@@ -45,7 +44,7 @@ async function safeRegisterPush(studentID) {
 }
 
 // ===== STUDENT LOOKUP =====
-async function performLookup(sid, phone, skipRegister = false) {
+async function performLookup(sid, skipRegister = false) {
   const btn = document.getElementById('lookupBtn');
   const txt = document.getElementById('lookupText');
   const spin = document.getElementById('lookupSpinner');
@@ -55,7 +54,7 @@ async function performLookup(sid, phone, skipRegister = false) {
   try {
     const res = await fetch(`${API}/parent/lookup`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID: sid, parentPhone: phone })
+      body: JSON.stringify({ studentID: sid })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Student not found');
@@ -70,7 +69,6 @@ async function performLookup(sid, phone, skipRegister = false) {
     
     
     localStorage.setItem('parentStudentID', currentStudent.studentID);
-    localStorage.setItem('parentPhone', phone);
 
     // Register Push Notifications only if not skipping
     if (!skipRegister) safeRegisterPush(currentStudent.studentID);
@@ -78,7 +76,6 @@ async function performLookup(sid, phone, skipRegister = false) {
   } catch (error) {
     err.textContent = error.message; err.classList.remove('hidden');
     localStorage.removeItem('parentStudentID');
-    localStorage.removeItem('parentPhone');
   } finally {
     txt.textContent = 'Search Student'; spin.classList.add('hidden'); btn.disabled = false;
   }
@@ -87,19 +84,16 @@ async function performLookup(sid, phone, skipRegister = false) {
 document.getElementById('lookupForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const sid = document.getElementById('studentIDInput').value.trim();
-  const phone = document.getElementById('parentPhoneInput').value.trim();
-  if (!sid || !phone) return;
-  await performLookup(sid, phone, false);
+  if (!sid) return;
+  await performLookup(sid, false);
 });
 
 // Auto-login on boot
 document.addEventListener('DOMContentLoaded', () => {
   const savedID = localStorage.getItem('parentStudentID');
-  const savedPhone = localStorage.getItem('parentPhone');
-  if (savedID && savedPhone) {
+  if (savedID) {
     document.getElementById('studentIDInput').value = savedID;
-    document.getElementById('parentPhoneInput').value = savedPhone;
-    performLookup(savedID, savedPhone, true);
+    performLookup(savedID, true);
   }
 });
 

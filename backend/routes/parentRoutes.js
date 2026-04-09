@@ -59,27 +59,13 @@ function isRecordRelevant(record, student) {
 // POST - Lookup student
 router.post('/lookup', async (req, res) => {
   try {
-    const { studentID, parentPhone } = req.body;
+    const { studentID } = req.body;
     if (!studentID || studentID.trim() === '') return res.status(400).json({ success: false, error: 'Student ID is required' });
-    if (!parentPhone || parentPhone.trim() === '') return res.status(400).json({ success: false, error: 'Parent Phone Number is required for security' });
-    
     const tid = studentID.trim();
-    const phone = parentPhone.trim();
     const col = req.db.collection('students');
-    
-    const query = { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true };
-    const student = await col.findOne(query);
-    
+    let student = await col.findOne({ studentID: tid, isActive: true });
+    if (!student) student = await col.findOne({ studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
-
-    // Enforce matching phone number
-    const dbPhone = (student.parentPhone || '').trim().replace(/\s+/g, '');
-    const inputPhone = phone.replace(/\s+/g, '');
-    
-    if (dbPhone !== inputPhone) {
-      if (dbPhone === '') return res.status(400).json({ success: false, error: 'No parent phone registered in the database for this student.' });
-      return res.status(401).json({ success: false, error: 'Incorrect Phone Number. Verification failed.' });
-    }
 
     res.json({
       success: true,
