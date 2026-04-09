@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Parent Portal - Smart Attendance</title>
+  <meta name="description" content="Check your child's daily and overall attendance">
+  <meta name="theme-color" content="#F8FAFC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+  </noscript>
+  <script src="js/config.js"></script>
+  <link rel="stylesheet" href="css/parent.css">
+</head>
+<body>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="loginScreen" class="screen active">
+    <div class="login-wrapper">
+      <!-- Floating icon -->
+      <div class="hero-icon">
+        <span class="material-symbols-rounded" style="font-size:52px;color:white;font-variation-settings:'FILL' 1">family_restroom</span>
+      </div>
+
+      <h1 class="login-title">Parent Portal</h1>
+      <p class="login-sub">Track your child's attendance instantly</p>
+
+      <div class="glass-card login-card">
+        <form id="lookupForm">
+          <div class="input-wrapper">
+            <span class="material-symbols-rounded input-ico">badge</span>
+            <input type="text" id="studentIDInput" placeholder="Enter Student ID" required autocomplete="off">
+          </div>
+          <button type="submit" class="btn-primary" id="lookupBtn">
+            <span id="lookupText">Search Student</span>
+            <div class="spinner hidden" id="lookupSpinner"></div>
+          </button>
+        </form>
+        <p class="error-msg hidden" id="loginError"></p>
+      </div>
+
+      <div class="trust-badges">
+        <div class="trust-item"><span class="material-symbols-rounded" style="font-size:18px">lock</span> Read-only</div>
+        <div class="trust-item"><span class="material-symbols-rounded" style="font-size:18px">verified_user</span> Secure</div>
+        <div class="trust-item"><span class="material-symbols-rounded" style="font-size:18px">speed</span> Instant</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD SCREEN ===== -->
+  <div id="dashboardScreen" class="screen">
+    <!-- Header -->
+    <div class="dash-header">
+      <button class="back-btn" onclick="goBack()"><span class="material-symbols-rounded">arrow_back</span></button>
+      <div class="header-info">
+        <div class="student-name" id="studentName"></div>
+        <div class="student-meta" id="studentMeta"></div>
+      </div>
+      <div class="header-avatar">
+        <span class="material-symbols-rounded" style="font-size:24px;color:#6366F1;font-variation-settings:'FILL' 1">school</span>
+      </div>
+    </div>
+
+    <!-- Bottom Nav Tabs -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="daily" onclick="switchTab('daily')">
+        <span class="material-symbols-rounded">today</span>
+        <span class="nav-label">Daily</span>
+      </button>
+      <button class="nav-item" data-tab="full" onclick="switchTab('full')">
+        <span class="material-symbols-rounded">bar_chart</span>
+        <span class="nav-label">Overall</span>
+      </button>
+      <button class="nav-item" data-tab="recent" onclick="switchTab('recent')">
+        <span class="material-symbols-rounded">schedule</span>
+        <span class="nav-label">Recent</span>
+      </button>
+    </nav>
+
+    <main>
+      <!-- ===== DAILY TAB ===== -->
+      <div id="dailyTab" class="tab-content active">
+        <div class="date-nav">
+          <button class="date-arrow" onclick="changeDate(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
+          <div class="date-display" onclick="document.getElementById('dailyDate').showPicker()">
+            <span class="material-symbols-rounded" style="font-size:20px;color:#6366F1">calendar_today</span>
+            <span id="dateLabel"></span>
+            <input type="date" id="dailyDate" onchange="updateDateLabel();loadDailyAttendance()" style="position:absolute;opacity:0;width:0;height:0">
+          </div>
+          <button class="date-arrow" onclick="changeDate(1)"><span class="material-symbols-rounded">chevron_right</span></button>
+        </div>
+        <div id="dailySummaryCard"></div>
+        <div id="dailyList" class="card-list"></div>
+      </div>
+
+      <!-- ===== OVERALL TAB ===== -->
+      <div id="fullTab" class="tab-content">
+        <div id="overallSummary"></div>
+        <div class="section-header">
+          <h3 class="section-title">Subject Breakdown</h3>
+        </div>
+        <div id="subjectList" class="card-list"></div>
+      </div>
+
+      <!-- ===== RECENT TAB ===== -->
+      <div id="recentTab" class="tab-content">
+        <div id="recentList" class="card-list"></div>
+      </div>
+    </main>
+
+    <!-- Loading -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+      <div class="spinner large"></div>
+      <p>Loading attendance...</p>
+    </div>
+  </div>
+
+  <script src="js/parent.js"></script>
+</body>
+</html>

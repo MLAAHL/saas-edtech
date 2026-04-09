@@ -160,6 +160,7 @@ const enrollmentsRoutes = require("./routes/enrollments");
 const notificationsRoutes = require("./routes/notifications");
 const firebaseUsersRoutes = require("./routes/firebaseUsers");
 const mentorshipRoutes = require("./routes/mentorship");
+const parentRoutes = require("./routes/parentRoutes");
 
 // ============================================================================
 // STANDALONE API ENDPOINTS
@@ -243,6 +244,7 @@ app.use("/api/enrollments", enrollmentsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/firebase-users", strictLimiter, firebaseUsersRoutes);
 app.use("/api/mentorship", mentorshipRoutes);
+app.use("/api/parent", parentRoutes);
 
 // ✅ PROMOTION ROUTES - BEFORE ATTENDANCE (Critical!)
 app.use("/api", promotionRoutes);
