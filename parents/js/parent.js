@@ -5,13 +5,14 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goBack() { currentStudent = null; showScreen('loginScreen'); }
+function goBack() { 
+  currentStudent = null; 
+  localStorage.removeItem('parentStudentID');
+  showScreen('loginScreen'); 
+}
 
 // ===== STUDENT LOOKUP =====
-document.getElementById('lookupForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const sid = document.getElementById('studentIDInput').value.trim();
-  if (!sid) return;
+async function performLookup(sid, skipRegister = false) {
   const btn = document.getElementById('lookupBtn');
   const txt = document.getElementById('lookupText');
   const spin = document.getElementById('lookupSpinner');
@@ -34,13 +35,33 @@ document.getElementById('lookupForm').addEventListener('submit', async (e) => {
     setTodayDate();
     switchTab('daily');
     
-    // Register Push Notifications
-    safeRegisterPush(currentStudent.studentID);
+    
+    localStorage.setItem('parentStudentID', currentStudent.studentID);
+
+    // Register Push Notifications only if not skipping
+    if (!skipRegister) safeRegisterPush(currentStudent.studentID);
     
   } catch (error) {
     err.textContent = error.message; err.classList.remove('hidden');
+    localStorage.removeItem('parentStudentID');
   } finally {
     txt.textContent = 'Search Student'; spin.classList.add('hidden'); btn.disabled = false;
+  }
+}
+
+document.getElementById('lookupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const sid = document.getElementById('studentIDInput').value.trim();
+  if (!sid) return;
+  await performLookup(sid, false);
+});
+
+// Auto-login on boot
+document.addEventListener('DOMContentLoaded', () => {
+  const savedID = localStorage.getItem('parentStudentID');
+  if (savedID) {
+    document.getElementById('studentIDInput').value = savedID;
+    performLookup(savedID, true); // True = don't re-prompt fcm if already done, actually Capacitor handles re-registering silently but this is safer
   }
 });
 
