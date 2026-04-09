@@ -1,6 +1,51 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
+const admin = require('../config/firebase-admin');
+
+// helper function to send push notifications to absent students' parents
+async function notifyAbsentParents(req, db, stream, semester, subject, date, time, studentsPresentArray) {
+  try {
+    const col = db.collection('students');
+    const allStudents = await col.find({
+      stream: { $regex: new RegExp(`^${stream}$`, 'i') },
+      semester: parseInt(semester, 10),
+      isActive: true
+    }).toArray();
+
+    let absentTokens = [];
+    
+    allStudents.forEach(student => {
+      const sid = (student.studentID || '').trim();
+      const sname = (student.name || '').trim();
+      
+      const isPresent = studentsPresentArray.some(e => {
+        const entry = (e || '').trim();
+        return entry === sid || entry.toLowerCase() === sid.toLowerCase() ||
+               entry === sname || entry.toLowerCase() === sname.toLowerCase();
+      });
+
+      if (!isPresent && student.fcmTokens && student.fcmTokens.length > 0) {
+        absentTokens.push(...student.fcmTokens);
+      }
+    });
+
+    if (absentTokens.length > 0) {
+      const message = {
+        notification: {
+          title: 'Attendance Alert',
+          body: `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`
+        },
+        tokens: [...new Set(absentTokens)] // unique tokens
+      };
+      
+      const response = await admin.messaging().sendEachForMulticast(message);
+      console.log(`📡 Sent FCM Push to ${absentTokens.length} devices. Success: ${response.successCount}`);
+    }
+  } catch (err) {
+    console.error('❌ FCM Push Notification Error:', err);
+  }
+}
 
 // ============================================================================
 // SCHEMA
@@ -802,6 +847,10 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     clearCachePattern(`stats:${stream}`);
     
     console.log('✅ Attendance saved:', saved._id);
+    
+    // Trigger Push Notifications in background
+    notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent);
+    
     res.json({ success: true, attendanceId: saved._id });
     
   } catch (error) {
@@ -874,6 +923,10 @@ router.post('/attendance', async (req, res) => {
     clearCachePattern(`attendance:${saved.stream}`);
     
     console.log('✅ Attendance saved:', saved._id);
+    
+    // Trigger Push Notifications in background
+    notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent);
+    
     res.json({ success: true, attendanceId: saved._id });
     
   } catch (error) {

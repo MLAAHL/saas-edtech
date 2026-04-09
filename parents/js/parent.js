@@ -33,6 +33,10 @@ document.getElementById('lookupForm').addEventListener('submit', async (e) => {
     showScreen('dashboardScreen');
     setTodayDate();
     switchTab('daily');
+    
+    // Register Push Notifications
+    safeRegisterPush(currentStudent.studentID);
+    
   } catch (error) {
     err.textContent = error.message; err.classList.remove('hidden');
   } finally {

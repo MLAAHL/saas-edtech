@@ -75,6 +75,32 @@ router.post('/lookup', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// POST - Register FCM Token
+router.post('/register-fcm', async (req, res) => {
+  try {
+    const { studentID, fcmToken } = req.body;
+    if (!studentID || !fcmToken) return res.status(400).json({ success: false, error: 'Missing parameters' });
+    
+    const tid = studentID.trim();
+    const col = req.db.collection('students');
+    
+    // Create query to match case-insensitive
+    const query = { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true };
+    const student = await col.findOne(query);
+    
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
+
+    // Add token to fcmTokens array without duplicates
+    await col.updateOne(
+      { _id: student._id },
+      { $addToSet: { fcmTokens: fcmToken } }
+    );
+
+    res.json({ success: true, message: 'FCM Token registered' });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+
 // GET - Daily attendance
 router.get('/daily/:studentID', async (req, res) => {
   try {
