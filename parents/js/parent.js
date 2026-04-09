@@ -11,6 +11,38 @@ function goBack() {
   showScreen('loginScreen'); 
 }
 
+// ===== PUSH NOTIFICATIONS =====
+async function safeRegisterPush(studentID) {
+  try {
+    if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
+      console.log('Push Notifications plugin not available (must run in Android wrapper).');
+      return;
+    }
+    const { PushNotifications } = window.Capacitor.Plugins;
+    
+    // Request permission
+    const permStatus = await PushNotifications.requestPermissions();
+    if (permStatus.receive === 'granted') {
+      await PushNotifications.register();
+      
+      PushNotifications.addListener('registration', async (token) => {
+        console.log('Firebase Push Token:', token.value);
+        await fetch(`${API}/parent/register-fcm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentID: studentID, fcmToken: token.value })
+        });
+      });
+      
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        alert(`${notification.title}\n${notification.body}`);
+      });
+    }
+  } catch (err) {
+    console.error('Failed to register push:', err);
+  }
+}
+
 // ===== STUDENT LOOKUP =====
 async function performLookup(sid, skipRegister = false) {
   const btn = document.getElementById('lookupBtn');
