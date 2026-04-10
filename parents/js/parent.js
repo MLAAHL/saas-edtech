@@ -14,29 +14,61 @@ function goBack() {
 // ===== PUSH NOTIFICATIONS =====
 async function safeRegisterPush(studentID) {
   try {
-    if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
-      console.log('Push Notifications plugin not available (must run in Android wrapper).');
-      return;
-    }
-    const { PushNotifications } = window.Capacitor.Plugins;
-    
-    // Request permission
-    const permStatus = await PushNotifications.requestPermissions();
-    if (permStatus.receive === 'granted') {
-      await PushNotifications.register();
+    // 1. Android Native Push (Capacitor)
+    if (window.Capacitor && window.Capacitor.Plugins.PushNotifications) {
+      console.log('Using Capacitor Native Push for Android');
+      const { PushNotifications } = window.Capacitor.Plugins;
       
-      PushNotifications.addListener('registration', async (token) => {
-        console.log('Firebase Push Token:', token.value);
-        await fetch(`${API}/parent/register-fcm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentID: studentID, fcmToken: token.value })
+      const permStatus = await PushNotifications.requestPermissions();
+      if (permStatus.receive === 'granted') {
+        await PushNotifications.register();
+        
+        PushNotifications.addListener('registration', async (token) => {
+          console.log('Firebase Push Token:', token.value);
+          await fetch(`${API}/parent/register-fcm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentID: studentID, fcmToken: token.value })
+          });
         });
-      });
+        
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          alert(`${notification.title}\n${notification.body}`);
+        });
+      }
+      return; // Stop here if native worked
+    }
+
+    // 2. Web Push (For iOS PWA / Desktop Web)
+    if (window.firebase && window.APP_CONFIG.FIREBASE_CONFIG && window.APP_CONFIG.FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
+      console.log('Using Web Firebase Push (PWA)');
+      if (!firebase.apps.length) {
+        firebase.initializeApp(window.APP_CONFIG.FIREBASE_CONFIG);
+      }
       
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        alert(`${notification.title}\n${notification.body}`);
-      });
+      const messaging = firebase.messaging();
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        const token = await messaging.getToken({ vapidKey: window.APP_CONFIG.FIREBASE_CONFIG.vapidKey });
+        if (token) {
+          console.log('Web FCM Token:', token);
+          await fetch(`${API}/parent/register-fcm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentID: studentID, fcmToken: token })
+          });
+        }
+        
+        messaging.onMessage((payload) => {
+          console.log('Foreground Message: ', payload);
+          alert(`${payload.notification.title}\n${payload.notification.body}`);
+        });
+      } else {
+        console.log('Web Push permission denied.');
+      }
+    } else {
+      console.log('Push Notifications not configured. Update config.js FIREBASE_CONFIG to enable Web Push.');
     }
   } catch (err) {
     console.error('Failed to register push:', err);
