@@ -109,6 +109,8 @@ router.post('/update-activity', async (req, res) => {
     const tid = studentID.trim();
     const col = req.db.collection('students');
     
+    console.log(`[PARENTS] Activity update for: ${tid}`);
+    
     await col.updateOne(
       { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },
       { $set: { lastLogin: new Date() } }
@@ -165,25 +167,27 @@ router.get('/status-report', async (req, res) => {
 
     const total = students.length;
     const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+    const oneDayAgo = now.getTime() - (24 * 60 * 60 * 1000);
     
-    // Define "Active" as anyone who has a token OR has logged in in the last 24h
-    const active = students.filter(s => 
-      (s.fcmTokens && s.fcmTokens.length > 0 && s.notificationStatus === 'granted') || 
-      (s.lastLogin && new Date(s.lastLogin) > oneDayAgo)
-    ).length;
+    // Define "Active" exactly like the frontend does
+    const activeCount = students.filter(s => {
+      const isOnline = Array.isArray(s.fcmTokens) && s.fcmTokens.length > 0 && s.notificationStatus === 'granted';
+      // If notifications are off, they are still "Active" if they have logged in recently
+      const isRecent = s.lastLogin && (new Date(s.lastLogin).getTime() > oneDayAgo);
+      return isOnline || isRecent;
+    }).length;
     
-    const notificationsGranted = students.filter(s => s.fcmTokens && s.fcmTokens.length > 0 && s.notificationStatus === 'granted').length;
-    const notificationsDenied = students.filter(s => s.notificationStatus === 'denied' || !s.fcmTokens || s.fcmTokens.length === 0).length;
+    // Notifications ON count only includes those who actually have them granted
+    const notificationsGranted = students.filter(s => s.notificationStatus === 'granted').length;
 
     res.json({
       success: true,
       summary: {
         total,
-        active: active,
-        inactive: total - active,
+        active: activeCount,
+        inactive: total - activeCount,
         notificationsGranted,
-        notificationsDenied
+        notificationsDenied: total - notificationsGranted
       },
       students: students.map(s => ({
         studentID: s.studentID,

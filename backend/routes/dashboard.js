@@ -78,7 +78,8 @@ router.get('/stats', async (req, res) => {
       todayAttendance,
       thisWeekAttendance,
       lastWeekAttendance,
-      allStreams
+      allStreams,
+      totalParentsStats
     ] = await Promise.all([
       req.db.collection('students').aggregate([
         { $match: { studentID: { $exists: true, $ne: "", $ne: null } } },
@@ -97,8 +98,28 @@ router.get('/stats', async (req, res) => {
       req.db.collection('attendance').find({ date: today }).toArray(),
       req.db.collection('attendance').find({ date: { $in: thisWeekDateStrs } }).toArray(),
       req.db.collection('attendance').find({ date: { $in: lastWeekDateStrs } }).toArray(),
-      req.db.collection('students').distinct('stream', { isActive: true })
+      req.db.collection('students').distinct('stream', { isActive: true }),
+      req.db.collection('students').aggregate([
+        { $match: { isActive: true } },
+        { 
+          $group: { 
+            _id: null, 
+            total: { $sum: 1 }, 
+            loggedIn: { 
+              $sum: { 
+                $cond: [
+                  { $gt: ["$lastLogin", new Date(Date.now() - 24 * 60 * 60 * 1000)] }, 
+                  1, 
+                  0
+                ] 
+              } 
+            }
+          }
+        }
+      ]).toArray().then(arr => arr[0] || { total: 0, loggedIn: 0 })
     ]);
+
+    const parentRate = totalParentsStats.total > 0 ? Math.round((totalParentsStats.loggedIn / totalParentsStats.total) * 100) : 0;
 
     // ========== TODAY'S ATTENDANCE (First class only per stream+semester) ==========
     let todayPresent = 0, todayAbsent = 0;
@@ -306,6 +327,7 @@ router.get('/stats', async (req, res) => {
       trends: { students: null, streams: null, subjects: null, attendance: weeklyTrend },
       studentsSubtitle: `${activeStudents} active`, streamsSubtitle: `${allStreams.length} programs`,
       subjectsSubtitle: `${totalSubjects} courses`, attendanceSubtitle: `This month's rate`,
+      parentEngagement: parentRate,
       todayOverview: { present: todayPresent, absent: todayAbsent, total: todayTotal, rate: todayRate, classesMarked: todayAttendance.length, date: today },
       weeklyComparison: { thisWeek: thisWeekRate, lastWeek: lastWeekRate, trend: weeklyTrend, thisWeekSessions: thisWeekAttendance.length, lastWeekSessions: lastWeekAttendance.length },
       topPerformers: streamStats.map(s => ({

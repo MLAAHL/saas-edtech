@@ -22,14 +22,14 @@ async function fetchStatus() {
 
 function updateSummary(s) {
     document.getElementById('totalParents').textContent = s.total;
-    document.getElementById('loggedInCount').textContent = s.notificationsGranted;
-    document.getElementById('loggedInPercent').textContent = `Push Alerts Linked`;
+    document.getElementById('loggedInCount').textContent = s.active;
+    document.getElementById('loggedInPercent').textContent = `Account Access Active`;
     
     document.getElementById('notifOnCount').textContent = s.notificationsGranted;
-    document.getElementById('notifOnPercent').textContent = `${Math.round((s.notificationsGranted / s.total) * 100) || 0}% Reachable`;
+    document.getElementById('notifOnPercent').textContent = `${Math.round((s.notificationsGranted / s.total) * 100) || 0}% Alerts Ready`;
     
-    document.getElementById('notLoggedInCount').textContent = s.total - s.notificationsGranted;
-    document.getElementById('notLoggedInPercent').textContent = `Unlinked / Offline`;
+    document.getElementById('notLoggedInCount').textContent = s.inactive;
+    document.getElementById('notLoggedInPercent').textContent = `No Activity (Offline)`;
 }
 
 function renderTable(students) {

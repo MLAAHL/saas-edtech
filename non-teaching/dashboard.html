@@ -1101,9 +1101,9 @@
       <a href="ai-assistant.html" class="sb-link">
         <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
       </a>
-      <a href="teachers.html" class="sb-link">
-        <span class="material-symbols-rounded">person</span> Teachers
-      </a>
+      <a href="teachers.html" class="sb-link"><span class="material-symbols-rounded">badge</span>Teachers</a>
+    <a href="parents-status.html" class="sb-link"><span class="material-symbols-rounded">notifications_active</span>Parent Status</a>
+    <div class="sb-divider"></div>
       <a href="mentorship.html" class="sb-link">
         <span class="material-symbols-rounded">school</span> Mentors
       </a>
@@ -1186,12 +1186,12 @@
           </div>
           <div class="stat-icon"><span class="material-symbols-rounded">account_tree</span></div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" onclick="window.location.href='parents-status.html'" style="cursor:pointer;">
           <div class="stat-info">
-            <div class="stat-label">Total Subjects</div>
-            <div class="stat-val" id="totalSubjects">—</div>
+            <div class="stat-label">Parent App Usage</div>
+            <div class="stat-val" id="parentEngagement">—%</div>
           </div>
-          <div class="stat-icon"><span class="material-symbols-rounded">auto_stories</span></div>
+          <div class="stat-icon" style="background:var(--purple-dim);color:var(--purple);"><span class="material-symbols-rounded">notifications_active</span></div>
         </div>
       </div>
 
@@ -1627,6 +1627,7 @@
           setVal("totalStreams", s.totalStreams ?? 0);
           setVal("totalSubjects", s.totalSubjects ?? 0);
           setVal("attendanceRate", (s.attendanceRate ?? 0) + '%');
+          setVal("parentEngagement", (s.parentEngagement ?? 0) + '%');
 
           if (s.trends) {
             setTrend("studentsTrend", s.trends.students);

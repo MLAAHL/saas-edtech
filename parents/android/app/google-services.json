@@ -1,0 +1,97 @@
+{
+  "project_info": {
+    "project_number": "447867381654",
+    "project_id": "smart-attendance-a9ab4",
+    "storage_bucket": "smart-attendance-a9ab4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447867381654:android:1cc36d4762342161799fb7",
+        "android_client_info": {
+          "package_name": "com.mlaahl.parent"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "447867381654-c83vvvacoqv638a8vj50uksl2v7tg2bq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYWVHzLJjWzVvEeBZxaWmsOX97k9_aRis"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "447867381654-c83vvvacoqv638a8vj50uksl2v7tg2bq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447867381654:android:cd07e078272f69e3799fb7",
+        "android_client_info": {
+          "package_name": "com.mlaahl.smartattendance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "447867381654-c83vvvacoqv638a8vj50uksl2v7tg2bq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYWVHzLJjWzVvEeBZxaWmsOX97k9_aRis"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "447867381654-c83vvvacoqv638a8vj50uksl2v7tg2bq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447867381654:android:6c2aebb6da0a72cf799fb7",
+        "android_client_info": {
+          "package_name": "com.sk.smartattendance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "447867381654-c83vvvacoqv638a8vj50uksl2v7tg2bq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYWVHzLJjWzVvEeBZxaWmsOX97k9_aRis"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "447867381654-c83vvvacoqv638a8vj50uksl2v7tg2bq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,9 @@
+{
+  "appId": "com.mlaahl.parent",
+  "appName": "Smart Parent",
+  "webDir": "www",
+  "server": {
+    "url": "https://parents.mlaahl.online",
+    "cleartext": true
+  }
+}
