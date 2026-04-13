@@ -36,6 +36,15 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
           title: 'Attendance Alert',
           body: `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`
         },
+        android: {
+          priority: 'high',
+          notification: { sound: 'default' }
+        },
+        apns: {
+          payload: {
+            aps: { sound: 'default' }
+          }
+        },
         tokens: [...new Set(absentTokens)] // unique tokens
       };
       
