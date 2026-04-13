@@ -40,7 +40,19 @@ function renderTable(students) {
     }
 
     tbody.innerHTML = students.map(s => {
-        const isOnline = s.hasTokens && s.notificationStatus === 'granted';
+        const hasToken = s.hasTokens && s.notificationStatus === 'granted';
+        const isLogged = s.lastLogin; // Any login ever
+        const isRecent = s.lastLogin && new Date(s.lastLogin) > new Date(Date.now() - 24 * 60 * 60 * 1000); // Activity in last 24h
+
+        let statusHtml = '';
+        if (hasToken) {
+            statusHtml = `<div><span class="status-dot online"></span>Connected</div>`;
+        } else if (isRecent) {
+            statusHtml = `<div><span class="status-dot online" style="background:var(--amber); box-shadow:0 0 8px var(--amber)"></span>No Alerts</div>`;
+        } else {
+            statusHtml = `<div><span class="status-dot offline"></span>Disconnected</div>`;
+        }
+
         return `
         <tr>
             <td>
@@ -52,11 +64,11 @@ function renderTable(students) {
                 <div style="font-size:11px; color:var(--text-muted)">Sem ${s.semester}</div>
             </td>
             <td>
-                <div><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>${isOnline ? 'Connected' : 'Disconnected'}</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-left:14px;">${s.lastLogin ? 'Last seen: ' + formatTimestamp(s.lastLogin) : 'Never logged in'}</div>
+                ${statusHtml}
+                <div style="font-size:10px; color:var(--text-muted); margin-left:14px;">${s.lastLogin ? 'Last seen: ' + formatTimestamp(s.lastLogin) : 'Never seen'}</div>
             </td>
             <td>
-                <span class="badge ${s.notificationStatus}">${s.notificationStatus}</span>
+                <span class="badge ${s.notificationStatus === 'granted' ? 'granted' : 'denied'}">${hasToken ? 'ACTIVE' : (isLogged ? 'OFF/MISSING' : 'PENDING')}</span>
             </td>
             <td>
                 ${s.hasTokens ? 
@@ -82,14 +94,20 @@ function filterData() {
 
     const filtered = allStudents.filter(s => {
         const matchesSearch = (s.studentID || '').toLowerCase().includes(query) || (s.name || '').toLowerCase().includes(query);
-        let matchesStatus = true;
         
         const isOnline = s.hasTokens && s.notificationStatus === 'granted';
+        const isRecent = s.lastLogin && (new Date(Date.now() - new Date(s.lastLogin)) < 24 * 60 * 60 * 1000);
 
-        if (status === 'logged-in') matchesStatus = isOnline;
-        else if (status === 'not-logged-in') matchesStatus = !isOnline;
-        else if (status === 'notif-granted') matchesStatus = s.notificationStatus === 'granted';
-        else if (status === 'notif-denied') matchesStatus = s.notificationStatus === 'denied';
+        let matchesStatus = true;
+        if (status === 'logged-in') {
+            matchesStatus = isOnline || isRecent;
+        } else if (status === 'not-logged-in') {
+            matchesStatus = !isOnline && !isRecent;
+        } else if (status === 'notif-granted') {
+            matchesStatus = s.notificationStatus === 'granted';
+        } else if (status === 'notif-denied') {
+            matchesStatus = s.notificationStatus === 'denied';
+        }
 
         return matchesSearch && matchesStatus;
     });

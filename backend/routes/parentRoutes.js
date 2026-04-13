@@ -165,10 +165,15 @@ router.get('/status-report', async (req, res) => {
 
     const total = students.length;
     const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
     
-    // Define "Active" as having tokens and granted status
-    const active = students.filter(s => s.fcmTokens && s.fcmTokens.length > 0 && s.notificationStatus === 'granted').length;
-    const notificationsGranted = active;
+    // Define "Active" as anyone who has a token OR has logged in in the last 24h
+    const active = students.filter(s => 
+      (s.fcmTokens && s.fcmTokens.length > 0 && s.notificationStatus === 'granted') || 
+      (s.lastLogin && new Date(s.lastLogin) > oneDayAgo)
+    ).length;
+    
+    const notificationsGranted = students.filter(s => s.fcmTokens && s.fcmTokens.length > 0 && s.notificationStatus === 'granted').length;
     const notificationsDenied = students.filter(s => s.notificationStatus === 'denied' || !s.fcmTokens || s.fcmTokens.length === 0).length;
 
     res.json({
@@ -187,7 +192,7 @@ router.get('/status-report', async (req, res) => {
         semester: s.semester,
         lastLogin: s.lastLogin,
         notificationStatus: s.notificationStatus || 'pending',
-        hasTokens: s.fcmTokens && s.fcmTokens.length > 0
+        hasTokens: Array.isArray(s.fcmTokens) && s.fcmTokens.length > 0
       }))
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
