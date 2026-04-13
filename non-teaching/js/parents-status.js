@@ -22,14 +22,14 @@ async function fetchStatus() {
 
 function updateSummary(s) {
     document.getElementById('totalParents').textContent = s.total;
-    document.getElementById('loggedInCount').textContent = s.active;
-    document.getElementById('loggedInPercent').textContent = `${Math.round((s.active / s.total) * 100) || 0}% Active (Last 24h)`;
+    document.getElementById('loggedInCount').textContent = s.notificationsGranted;
+    document.getElementById('loggedInPercent').textContent = `Push Alerts Linked`;
     
     document.getElementById('notifOnCount').textContent = s.notificationsGranted;
     document.getElementById('notifOnPercent').textContent = `${Math.round((s.notificationsGranted / s.total) * 100) || 0}% Reachable`;
     
-    document.getElementById('notLoggedInCount').textContent = s.inactive;
-    document.getElementById('notLoggedInPercent').textContent = `${Math.round((s.inactive / s.total) * 100) || 0}% No Recent Activity`;
+    document.getElementById('notLoggedInCount').textContent = s.total - s.notificationsGranted;
+    document.getElementById('notLoggedInPercent').textContent = `Unlinked / Offline`;
 }
 
 function renderTable(students) {
@@ -39,7 +39,9 @@ function renderTable(students) {
         return;
     }
 
-    tbody.innerHTML = students.map(s => `
+    tbody.innerHTML = students.map(s => {
+        const isOnline = s.hasTokens && s.notificationStatus === 'granted';
+        return `
         <tr>
             <td>
                 <div style="font-weight:600; color:var(--text-primary)">${s.name}</div>
@@ -50,24 +52,19 @@ function renderTable(students) {
                 <div style="font-size:11px; color:var(--text-muted)">Sem ${s.semester}</div>
             </td>
             <td>
-                ${(() => {
-                    const isActive = s.lastLogin && new Date(s.lastLogin) > new Date(Date.now() - 24 * 60 * 60 * 1000);
-                    return s.lastLogin ? 
-                        `<div><span class="status-dot ${isActive ? 'online' : 'offline'}"></span>${isActive ? 'Active' : 'Inactive'}</div>
-                         <div style="font-size:10px; color:var(--text-muted); margin-left:14px;">${formatTimestamp(s.lastLogin)}</div>` : 
-                        `<div><span class="status-dot offline"></span>Never</div>`;
-                })()}
+                <div><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>${isOnline ? 'Connected' : 'Disconnected'}</div>
+                <div style="font-size:10px; color:var(--text-muted); margin-left:14px;">${s.lastLogin ? 'Last seen: ' + formatTimestamp(s.lastLogin) : 'Never logged in'}</div>
             </td>
             <td>
                 <span class="badge ${s.notificationStatus}">${s.notificationStatus}</span>
             </td>
             <td>
                 ${s.hasTokens ? 
-                    `<span class="fcm-pill"><span class="material-symbols-rounded" style="font-size:12px;">vibration</span> Active</span>` : 
-                    `<span style="color:var(--text-muted); font-size:10px;">None</span>`}
+                    `<span class="fcm-pill"><span class="material-symbols-rounded" style="font-size:12px;">vibration</span> Linked</span>` : 
+                    `<span style="color:var(--text-muted); font-size:10px;">No Device</span>`}
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 function formatTimestamp(ts) {
@@ -87,12 +84,10 @@ function filterData() {
         const matchesSearch = (s.studentID || '').toLowerCase().includes(query) || (s.name || '').toLowerCase().includes(query);
         let matchesStatus = true;
         
-        const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-        const isActive = s.lastLogin && new Date(s.lastLogin) > oneDayAgo;
+        const isOnline = s.hasTokens && s.notificationStatus === 'granted';
 
-        if (status === 'logged-in') matchesStatus = isActive;
-        else if (status === 'not-logged-in') matchesStatus = !isActive;
+        if (status === 'logged-in') matchesStatus = isOnline;
+        else if (status === 'not-logged-in') matchesStatus = !isOnline;
         else if (status === 'notif-granted') matchesStatus = s.notificationStatus === 'granted';
         else if (status === 'notif-denied') matchesStatus = s.notificationStatus === 'denied';
 

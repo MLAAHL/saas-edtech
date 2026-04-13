@@ -5,7 +5,17 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goBack() { 
+async function logout() { 
+  if (currentStudent) {
+    try {
+      await fetch(`${API}/parent/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentID: currentStudent.studentID })
+      });
+    } catch (e) { console.error('Logout report failed:', e); }
+  }
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
   currentStudent = null; 
   localStorage.removeItem('parentStudentID');
   showScreen('loginScreen'); 
@@ -107,11 +117,11 @@ async function reportActivity(studentID) {
   } catch (e) { console.error('Failed to report activity:', e); }
 }
 
-// Heartbeat - ping activity every 5 minutes so dashboard stays live
+// Heartbeat - ping activity every 2 minutes for real-time tracking
 let heartbeatInterval = null;
 function startHeartbeat(studentID) {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
-  heartbeatInterval = setInterval(() => reportActivity(studentID), 5 * 60 * 1000);
+  heartbeatInterval = setInterval(() => reportActivity(studentID), 2 * 60 * 1000);
 }
 
 // ===== STUDENT LOOKUP =====
@@ -133,6 +143,11 @@ async function performLookup(sid, skipRegister = false) {
 
     document.getElementById('studentName').textContent = currentStudent.name;
     document.getElementById('studentMeta').textContent = `${currentStudent.stream} \u00B7 Semester ${currentStudent.semester}`;
+    // Add version info to help debug
+    const v = document.createElement('span');
+    v.style.fontSize = '8px'; v.style.opacity = '0.3'; v.style.marginLeft = '5px';
+    v.textContent = 'v1.0.1';
+    document.getElementById('studentMeta').appendChild(v);
 
     showScreen('dashboardScreen');
     setTodayDate();

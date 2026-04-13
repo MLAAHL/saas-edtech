@@ -100,6 +100,99 @@ router.post('/register-fcm', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// POST - Update Activity (Login)
+router.post('/update-activity', async (req, res) => {
+  try {
+    const { studentID } = req.body;
+    if (!studentID) return res.status(400).json({ success: false, error: 'Student ID is required' });
+    
+    const tid = studentID.trim();
+    const col = req.db.collection('students');
+    
+    await col.updateOne(
+      { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },
+      { $set: { lastLogin: new Date() } }
+    );
+    
+    res.json({ success: true, message: 'Activity updated' });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// POST - Update Notification Status
+router.post('/update-notification-status', async (req, res) => {
+  try {
+    const { studentID, status } = req.body; // status: 'granted', 'denied', 'not_supported'
+    if (!studentID || !status) return res.status(400).json({ success: false, error: 'Missing parameters' });
+    
+    const tid = studentID.trim();
+    const col = req.db.collection('students');
+    
+    await col.updateOne(
+      { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },
+      { $set: { notificationStatus: status } }
+    );
+    
+    res.json({ success: true, message: 'Notification status updated' });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// POST - Logout (Clear activity)
+router.post('/logout', async (req, res) => {
+  try {
+    const { studentID } = req.body;
+    if (!studentID) return res.status(400).json({ success: false, error: 'Student ID is required' });
+    
+    const tid = studentID.trim();
+    // Clear all push tokens and mark as denied on logout
+    await req.db.collection('students').updateOne(
+      { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },
+      { 
+        $set: { fcmTokens: [], notificationStatus: 'denied' }
+      }
+    );
+    
+    res.json({ success: true, message: 'Logged out and tokens cleared' });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// GET - Parent Status Stats (for Non-Teaching Dashboard)
+router.get('/status-report', async (req, res) => {
+  try {
+    const col = req.db.collection('students');
+    const students = await col.find({ isActive: true }, {
+      projection: { studentID: 1, name: 1, stream: 1, semester: 1, lastLogin: 1, notificationStatus: 1, fcmTokens: 1 }
+    }).toArray();
+
+    const total = students.length;
+    const now = new Date();
+    
+    // Define "Active" as having tokens and granted status
+    const active = students.filter(s => s.fcmTokens && s.fcmTokens.length > 0 && s.notificationStatus === 'granted').length;
+    const notificationsGranted = active;
+    const notificationsDenied = students.filter(s => s.notificationStatus === 'denied' || !s.fcmTokens || s.fcmTokens.length === 0).length;
+
+    res.json({
+      success: true,
+      summary: {
+        total,
+        active: active,
+        inactive: total - active,
+        notificationsGranted,
+        notificationsDenied
+      },
+      students: students.map(s => ({
+        studentID: s.studentID,
+        name: s.name,
+        stream: s.stream,
+        semester: s.semester,
+        lastLogin: s.lastLogin,
+        notificationStatus: s.notificationStatus || 'pending',
+        hasTokens: s.fcmTokens && s.fcmTokens.length > 0
+      }))
+    });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
 
 // GET - Daily attendance
 router.get('/daily/:studentID', async (req, res) => {
