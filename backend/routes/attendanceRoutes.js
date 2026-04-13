@@ -47,9 +47,41 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         },
         tokens: [...new Set(absentTokens)] // unique tokens
       };
+      const uniqueTokens = message.tokens;
       
       const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(`📡 Sent FCM Push to ${absentTokens.length} devices. Success: ${response.successCount}`);
+      console.log(`📡 Sent FCM Push to ${uniqueTokens.length} devices. Success: ${response.successCount}, Failed: ${response.failureCount}`);
+      
+      // Clean up invalid/stale tokens (app uninstalled, notifications blocked, etc.)
+      if (response.failureCount > 0) {
+        const failedTokens = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            const errorCode = resp.error?.code || '';
+            // These error codes mean the token is permanently invalid
+            if (errorCode === 'messaging/registration-token-not-registered' ||
+                errorCode === 'messaging/invalid-registration-token' ||
+                errorCode === 'messaging/invalid-argument') {
+              failedTokens.push(uniqueTokens[idx]);
+            }
+          }
+        });
+        
+        if (failedTokens.length > 0) {
+          console.log(`🧹 Removing ${failedTokens.length} stale FCM tokens`);
+          const col = db.collection('students');
+          // Remove stale tokens from all students that have them
+          await col.updateMany(
+            { fcmTokens: { $in: failedTokens } },
+            { $pullAll: { fcmTokens: failedTokens } }
+          );
+          // Mark students with zero tokens remaining as 'denied'
+          await col.updateMany(
+            { fcmTokens: { $size: 0 } },
+            { $set: { notificationStatus: 'denied' } }
+          );
+        }
+      }
     }
   } catch (err) {
     console.error('❌ FCM Push Notification Error:', err);

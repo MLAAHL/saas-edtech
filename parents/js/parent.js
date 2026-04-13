@@ -20,6 +20,10 @@ async function safeRegisterPush(studentID) {
       const { PushNotifications } = window.Capacitor.Plugins;
       
       const permStatus = await PushNotifications.requestPermissions();
+      
+      // Report notification status to backend
+      await reportNotificationStatus(studentID, permStatus.receive === 'granted' ? 'granted' : 'denied');
+      
       if (permStatus.receive === 'granted') {
         await PushNotifications.register();
         
@@ -36,7 +40,7 @@ async function safeRegisterPush(studentID) {
           alert(`${notification.title}\n${notification.body}`);
         });
       }
-      return; // Stop here if native worked
+      return;
     }
 
     // 2. Web Push (For iOS PWA / Desktop Web)
@@ -48,6 +52,9 @@ async function safeRegisterPush(studentID) {
       
       const messaging = firebase.messaging();
       const permission = await Notification.requestPermission();
+      
+      // Report notification status to backend
+      await reportNotificationStatus(studentID, permission === 'granted' ? 'granted' : 'denied');
       
       if (permission === 'granted') {
         const token = await messaging.getToken({ vapidKey: window.APP_CONFIG.FIREBASE_CONFIG.vapidKey });
@@ -68,11 +75,43 @@ async function safeRegisterPush(studentID) {
         console.log('Web Push permission denied.');
       }
     } else {
-      console.log('Push Notifications not configured. Update config.js FIREBASE_CONFIG to enable Web Push.');
+      // No push support at all
+      await reportNotificationStatus(studentID, 'not_supported');
+      console.log('Push Notifications not available on this device/browser.');
     }
   } catch (err) {
     console.error('Failed to register push:', err);
   }
+}
+
+// Report notification permission status to backend
+async function reportNotificationStatus(studentID, status) {
+  try {
+    await fetch(`${API}/parent/update-notification-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentID, status })
+    });
+    console.log('Notification status reported:', status);
+  } catch (e) { console.error('Failed to report notification status:', e); }
+}
+
+// Report login activity to backend
+async function reportActivity(studentID) {
+  try {
+    await fetch(`${API}/parent/update-activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentID })
+    });
+  } catch (e) { console.error('Failed to report activity:', e); }
+}
+
+// Heartbeat - ping activity every 5 minutes so dashboard stays live
+let heartbeatInterval = null;
+function startHeartbeat(studentID) {
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
+  heartbeatInterval = setInterval(() => reportActivity(studentID), 5 * 60 * 1000);
 }
 
 // ===== STUDENT LOOKUP =====
@@ -102,8 +141,17 @@ async function performLookup(sid, skipRegister = false) {
     
     localStorage.setItem('parentStudentID', currentStudent.studentID);
 
-    // Register Push Notifications only if not skipping
-    if (!skipRegister) safeRegisterPush(currentStudent.studentID);
+    // Track activity + start heartbeat
+    reportActivity(currentStudent.studentID);
+    startHeartbeat(currentStudent.studentID);
+
+    // Register Push Notifications (first login) or re-check status (auto-login)
+    if (!skipRegister) {
+      safeRegisterPush(currentStudent.studentID);
+    } else {
+      // Even on auto-login, re-check notification permission status
+      safeRegisterPush(currentStudent.studentID);
+    }
     
   } catch (error) {
     err.textContent = error.message; err.classList.remove('hidden');
