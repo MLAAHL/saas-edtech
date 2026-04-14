@@ -1,6 +1,6 @@
-const CACHE_NAME = 'teaching-v11';
-const STATIC_CACHE = 'static-v11';
-const API_CACHE = 'api-v11';
+const CACHE_NAME = 'teaching-v12';
+const STATIC_CACHE = 'static-v12';
+const API_CACHE = 'api-v12';
 
 // Cache limits to prevent memory bloat
 const MAX_API_CACHE_ENTRIES = 50;
@@ -70,7 +70,7 @@ async function cleanupOldCaches() {
         // Clean up any orphaned/old caches
         const cacheKeys = await caches.keys();
         const oldCaches = cacheKeys.filter(key =>
-            !key.includes('v11') &&
+            !key.includes('v12') &&
             (key.includes('teaching') || key.includes('static') || key.includes('api'))
         );
 
@@ -113,7 +113,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys
-                    .filter(key => !key.includes('v11'))  // Delete ALL caches that are NOT v11
+                    .filter(key => !key.includes('v12'))  // Delete ALL caches that are NOT v12
                     .map(key => {
                         console.log('🗑️ Deleting old cache:', key);
                         return caches.delete(key);
