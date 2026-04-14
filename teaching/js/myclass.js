@@ -1288,24 +1288,26 @@ function updateCompletedDisplay() {
 
       // Stats if available
       const statsHTML = item.presentCount !== undefined ? `
-        <div class="card-detail" style="display: flex; align-items: center; gap: 4px; color: #10B981; font-weight: 600;">
-          <span class="material-symbols-rounded" style="font-size: 14px; font-variation-settings: 'FILL' 1;">check_circle</span>
-          <span>${item.presentCount}/${item.totalStudents}</span>
+        <div class="card-detail" style="display: flex; align-items: center; gap: 4px; color: #10B981; font-weight: 700;">
+          <span class="material-symbols-rounded" style="font-size: 14px; font-variation-settings: 'FILL' 1;">group</span>
+          <span style="font-size: 12px;">Present: ${item.presentCount}/${item.totalStudents}</span>
         </div>
       ` : '';
 
       return `
-        <div class="class-card completed">
+        <div class="class-card completed" style="position: relative; margin-bottom: 12px;">
+          <!-- Absolute Session Badge -->
+          <div style="position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 800; color: #4F46E5; background: #EEF2FF; padding: 4px 10px; border-radius: 8px; white-space: nowrap; border: 1px solid #E0E7FF; z-index: 1;">
+            SESSION ${sessionNum}
+          </div>
+
           <div class="card-content">
             <div class="card-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
               <span class="material-symbols-rounded" style="font-variation-settings: 'FILL' 1;">check_circle</span>
             </div>
             
-            <div class="card-info" style="flex: 1;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div class="card-subject">${item.subject}</div>
-                <div style="font-size: 11px; font-weight: 700; color: #6366F1; background: #EEF2FF; padding: 2px 8px; border-radius: 6px;">Session ${sessionNum}</div>
-              </div>
+            <div class="card-info" style="flex: 1; min-width: 0;">
+              <div class="card-subject" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B; margin-bottom: 8px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; padding-right: 75px;">${item.subject}</div>
               
               <div class="card-badge-row">
                  <span class="card-badge badge-stream">${item.stream}</span>
