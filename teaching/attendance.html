@@ -639,6 +639,15 @@
         <option value="">Select subject</option>
       </select>
     </div>
+
+    <div class="form-group">
+      <label class="form-label">Class Duration</label>
+      <select id="classDuration" class="form-select">
+        <option value="1">1 Hour (Single Period)</option>
+        <option value="2">2 Hours (Double Period)</option>
+        <option value="3">3 Hours (Triple Period)</option>
+      </select>
+    </div>
   </div>
 
   <!-- SEARCH -->
@@ -693,7 +702,7 @@
     </button>
   </div>
 
-  <script src="js/index.js"></script>
+  <script src="js/index.js?v=10"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

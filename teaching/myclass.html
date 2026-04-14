@@ -19,13 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://mlaahl.online" crossorigin>
 
-  <!-- Preload critical resources -->
   <link rel="preload" href="logo2.png" as="image">
-  <link rel="preload" href="js/config.js" as="script">
-  <link rel="preload" href="js/myclass.js" as="script">
-  <link rel="preload" href="firebase-config.js" as="script">
-
-  <script src="js/config.js"></script>
 
   <!-- Load fonts with display=swap to prevent FOIT -->
   <link
@@ -840,6 +834,11 @@
       }
     }
 
+    @keyframes slideUpIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .crop-header,
     .edit-name-header {
       padding: 24px 24px 12px;
@@ -1181,7 +1180,13 @@
     }
 
     .loading-overlay.hidden {
-      display: none;
+      display: none !important;
+      pointer-events: none !important;
+    }
+
+    .hidden {
+      display: none !important;
+      pointer-events: none !important;
     }
   </style>
   <script type="module">
@@ -1254,11 +1259,21 @@
 
     // Console Welcome Message
     console.log("%cSmart Attendance ✨", "color: #4F46E5; font-size: 24px; font-weight: bold;");
+
+    // Global error handler
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      console.error('❌ Global JS Error:', msg, 'at', lineNo, ':', columnNo);
+      // Try to hide overlay if it failed during init
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+      return false;
+    };
   </script>
 
 </head>
 
 <body>
+  <!-- Simple Loading Screen -->
   <!-- Simple Loading Screen -->
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-text">Loading...</div>
@@ -1321,10 +1336,76 @@
         </div>
       </div>
 
-      <div class="menu-icon" onclick="toggleMenu()">
-        <span></span>
-        <span></span>
-        <span></span>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div id="headerNotifBtn" onclick="toggleNotificationDropdown(event)" style="
+          width: 42px; 
+          height: 42px; 
+          border-radius: 12px; 
+          background: rgba(255, 255, 255, 0.5); 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          cursor: pointer; 
+          position: relative;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(4px);
+        ">
+          <span class="material-symbols-rounded" style="color: #1E293B; font-size: 24px;">notifications</span>
+          <span id="notifBadge" style="
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: #EF4444;
+            border-radius: 50%;
+            border: 2px solid white;
+          "></span>
+        </div>
+
+        <!-- Notifications Dropdown -->
+        <div id="notificationsDropdown" style="
+          display: none;
+          position: absolute;
+          top: 60px;
+          right: 0;
+          width: 320px;
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+          border: 1px solid #E2E8F0;
+          z-index: 10002;
+          padding: 16px;
+          flex-direction: column;
+          gap: 12px;
+          animation: slideUpIn 0.3s ease-out;
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #1E293B; margin: 0;">Notifications</h4>
+            <span id="dropdownNotifCount" style="font-size: 11px; font-weight: 700; color: #6366F1; background: #EEF2FF; padding: 2px 8px; border-radius: 10px;">1 New</span>
+          </div>
+          
+          <div style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <div style="background: #F8FAFC; border-radius: 14px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; cursor: default; border: 1px solid #F1F5F9;">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <span class="material-symbols-rounded" style="color: #6366F1; font-size: 18px;">campaign</span>
+              </div>
+              <div>
+                <h5 style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #1E293B; margin: 0 0 2px 0;">Hour Slots Live!</h5>
+                <p style="font-size: 12px; color: #64748B; line-height: 1.4; margin: 0;">You can now pick specific hours (10-11, 11-12) for attendance!</p>
+                <div style="font-size: 10px; color: #94A3B8; margin-top: 4px;">Just now</div>
+              </div>
+            </div>
+            <!-- More can be added here -->
+          </div>
+        </div>
+
+        <div class="menu-icon" onclick="toggleMenu()">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
       </div>
     </div>
   </header>
@@ -1538,6 +1619,44 @@
     </div>
   </main>
 
+  <!-- Feature Update Modal -->
+  <div id="featureUpdateModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 24px; padding: 24px; max-width: 360px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative; animation: slideUp 0.4s ease;">
+      <button onclick="document.getElementById('featureUpdateModal').style.display='none'" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 50%; background: #F1F5F9; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748B;">
+        <span class="material-symbols-rounded" style="font-size: 16px;">close</span>
+      </button>
+      
+      <div style="background: #EEF2FF; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+        <span class="material-symbols-rounded" style="color: #6366F1; font-size: 24px;">new_releases</span>
+      </div>
+      
+      <h2 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; color: #1E293B; text-align: center; margin-bottom: 8px;">What's New!</h2>
+      <p style="text-align: center; color: #64748B; font-size: 13px; margin-bottom: 20px;">We've improved your teaching dashboard.</p>
+      
+      <div style="color: #64748B; font-size: 13px; line-height: 1.5; margin-bottom: 20px;">
+        <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start;">
+           <span class="material-symbols-rounded" style="color: #6366F1; font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; overflow: visible;">schedule</span>
+           <div><b>Select Hour Slots:</b> When taking attendance, you can now pick the exact class hour (e.g. 11 AM - 12 PM).</div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start;">
+           <span class="material-symbols-rounded" style="color: #6366F1; font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; overflow: visible;">notifications</span>
+           <div><b>New Notifications:</b> Check the new bell icon in the header for important system alerts.</div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: flex-start;">
+           <span class="material-symbols-rounded" style="color: #F59E0B; font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; overflow: visible;">analytics</span>
+           <div><b>Session Tracking:</b> History now shows automatic session counts (Session 1, 2, etc.).</div>
+        </div>
+      </div>
+      
+      <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 10px; background: #F8FAFC; border-radius: 10px; border: 1px solid #E2E8F0; cursor: pointer;">
+        <input type="checkbox" id="understoodFeatureUpdate" style="width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1;">
+        <span style="font-size: 13px; color: #334155; font-weight: 500; user-select: none;">I understand the updates</span>
+      </label>
+      
+      <button id="continueUpdateBtn" style="width: 100%; padding: 14px; border-radius: 14px; background: #6366F1; color: white; font-weight: 700; font-size: 15px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); transition: all 0.2s;">Got it!</button>
+    </div>
+  </div>
+
   <!-- Bottom Nav -->
   <nav class="bottom-nav">
     <button class="nav-item active" id="nav-today" onclick="switchTab('today', this)">
@@ -1562,7 +1681,8 @@
   </nav>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
-  <script src="js/myclass.js"></script>
+  <script src="js/config.js?v=2"></script>
+  <script src="js/myclass.js?v=2"></script>
 
   <script>
     let croppieInstance = null;
@@ -1672,6 +1792,8 @@
         switchTab('subjects');
       } else if (hash === 'history') {
         switchTab('completed');
+      } else if (hash === 'notifications') {
+        switchTab('notifications');
       }
     });
 
@@ -1690,6 +1812,87 @@
     function viewAttendance() {
       window.location.href = 'view-attendance.html';
     }
+
+    function toggleNotificationDropdown(e) {
+      if (e) e.stopPropagation();
+      const dropdown = document.getElementById('notificationsDropdown');
+      const badge = document.getElementById('notifBadge');
+      
+      if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+        renderNotifications();
+        dropdown.style.display = 'flex';
+        if (badge) badge.style.display = 'none';
+      } else {
+        dropdown.style.display = 'none';
+      }
+    }
+
+    // Notifications List with timestamps
+    const appNotifications = [
+      {
+        id: 'session_tracking',
+        title: 'Session Tracking Live!',
+        text: 'Cumulative session counting (Session 1, 2, etc.) is now enabled in history.',
+        icon: 'analytics',
+        timestamp: Date.now()
+      },
+      {
+        id: 'hour_slots',
+        title: 'Hour Slots Live!',
+        text: 'You can now pick specific hours (10-11, 11-12) for attendance!',
+        icon: 'campaign',
+        timestamp: Date.now() - (2 * 60 * 60 * 1000) // 2 hours ago
+      }
+    ];
+
+    function renderNotifications() {
+      const listContainer = document.querySelector('#notificationsDropdown > div:nth-child(2)');
+      const countBadge = document.getElementById('dropdownNotifCount');
+      const now = Date.now();
+      const dayInMs = 24 * 60 * 60 * 1000;
+
+      // Filter for those under 24 hours
+      const activeNotifications = appNotifications.filter(n => (now - n.timestamp) < dayInMs);
+
+      if (activeNotifications.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: #94A3B8; font-size: 13px;">No alerts in the last 24h</div>`;
+        countBadge.style.display = 'none';
+        return;
+      }
+
+      countBadge.style.display = 'block';
+      countBadge.textContent = `${activeNotifications.length} New`;
+
+      listContainer.innerHTML = activeNotifications.map(n => `
+        <div style="background: #F8FAFC; border-radius: 14px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; cursor: default; border: 1px solid #F1F5F9; margin-bottom: 8px;">
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span class="material-symbols-rounded" style="color: #6366F1; font-size: 18px;">${n.icon}</span>
+          </div>
+          <div>
+            <h5 style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #1E293B; margin: 0 0 2px 0;">${n.title}</h5>
+            <p style="font-size: 12px; color: #64748B; line-height: 1.4; margin: 0;">${n.text}</p>
+            <div style="font-size: 10px; color: #94A3B8; margin-top: 4px;">${getTimeAgo(n.timestamp)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getTimeAgo(timestamp) {
+      const minutes = Math.floor((Date.now() - timestamp) / 60000);
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      return `${hours}h ago`;
+    }
+
+    // Close dropdown on click outside
+    window.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('notificationsDropdown');
+      const btn = document.getElementById('headerNotifBtn');
+      if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
 
     function logout() {
       if (window.firebaseAuth && window.firebaseSignOut) {
@@ -1990,6 +2193,66 @@
     }
   </script>
 
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // Feature announcement modal logic
+      const hasSeenFeature = localStorage.getItem('hasSeenUpdateApril2026');
+      if (!hasSeenFeature) {
+        const modal = document.getElementById('featureUpdateModal');
+        const checkbox = document.getElementById('understoodFeatureUpdate');
+        const continueBtn = document.getElementById('continueUpdateBtn');
+        
+        // Delay showing momentarily so normal page UI settles first
+        setTimeout(() => {
+          modal.style.display = 'flex';
+          modal.style.opacity = '0';
+          modal.style.transition = 'opacity 0.3s ease';
+          setTimeout(() => modal.style.opacity = '1', 50);
+          if (checkbox) {
+            checkbox.addEventListener('change', (e) => {
+              // Optional: handle checkbox state if needed
+            });
+          }
+          
+          if (continueBtn) {
+            continueBtn.addEventListener('click', () => {
+              if (!checkbox.checked) {
+                  checkbox.parentElement.style.animation = 'shake 0.4s ease';
+                  setTimeout(() => checkbox.parentElement.style.animation = '', 400);
+                  return;
+              }
+              localStorage.setItem('hasSeenUpdateApril2026', 'true');
+              if (modal) {
+                modal.style.opacity = '0';
+                setTimeout(() => modal.style.display = 'none', 300);
+              }
+            });
+          }
+        }, 600);
+      }
+    });
+
+    // Forced cleanup of any blocking overlays
+    window.addEventListener('load', () => {
+       const sidebarOverlay = document.getElementById('sidebarOverlay');
+       if (sidebarOverlay) {
+          sidebarOverlay.classList.remove('show');
+          sidebarOverlay.style.visibility = 'hidden';
+          sidebarOverlay.style.opacity = '0';
+       }
+    });
+
+    // Add shake animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
 </body>
 
 </html>

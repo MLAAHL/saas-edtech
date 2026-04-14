@@ -1259,8 +1259,21 @@ function updateCompletedDisplay() {
     elements.completedList.style.flexDirection = 'column';
     elements.completedList.style.gap = '12px';
 
+    // Calculate cumulative session counts per subject
+    const subjectCounts = {};
+    // Sort chronologically to count correctly
+    const chronCompleted = [...completedClasses].sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt));
+    const sessionMap = new Map();
+
+    chronCompleted.forEach(item => {
+      const key = `${item.stream}-${item.semester}-${item.subject}`;
+      subjectCounts[key] = (subjectCounts[key] || 0) + 1;
+      sessionMap.set(item.id, subjectCounts[key]);
+    });
+
     elements.completedList.innerHTML = completedClasses.map(item => {
       const classTiming = getClassTiming(item.completedAt);
+      const sessionNum = sessionMap.get(item.id) || '?';
       const completedDate = new Date(item.completedAt);
       const dateStr = completedDate.toLocaleDateString('en-US', {
         month: 'short',
@@ -1273,6 +1286,14 @@ function updateCompletedDisplay() {
       const dd = String(completedDate.getDate()).padStart(2, '0');
       const dateForURL = `${yyyy}-${mm}-${dd}`;
 
+      // Stats if available
+      const statsHTML = item.presentCount !== undefined ? `
+        <div class="card-detail" style="display: flex; align-items: center; gap: 4px; color: #10B981; font-weight: 600;">
+          <span class="material-symbols-rounded" style="font-size: 14px; font-variation-settings: 'FILL' 1;">check_circle</span>
+          <span>${item.presentCount}/${item.totalStudents}</span>
+        </div>
+      ` : '';
+
       return `
         <div class="class-card completed">
           <div class="card-content">
@@ -1280,15 +1301,18 @@ function updateCompletedDisplay() {
               <span class="material-symbols-rounded" style="font-variation-settings: 'FILL' 1;">check_circle</span>
             </div>
             
-            <div class="card-info">
-              <div class="card-subject">${item.subject}</div>
+            <div class="card-info" style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="card-subject">${item.subject}</div>
+                <div style="font-size: 11px; font-weight: 700; color: #6366F1; background: #EEF2FF; padding: 2px 8px; border-radius: 6px;">Session ${sessionNum}</div>
+              </div>
               
               <div class="card-badge-row">
                  <span class="card-badge badge-stream">${item.stream}</span>
                  <span class="card-badge badge-sem">SEM ${item.semester}</span>
               </div>
               
-              <div class="card-badge-row" style="margin-top: 4px; opacity: 0.8;">
+              <div class="card-badge-row" style="margin-top: 4px; opacity: 0.8; flex-wrap: wrap; gap: 12px;">
                 <div class="card-detail" style="display: flex; align-items: center; gap: 4px;">
                   <span class="material-symbols-rounded" style="font-size: 14px; color: #F59E0B; font-variation-settings: 'FILL' 1;">schedule</span>
                   <span>${classTiming}</span>
@@ -1297,13 +1321,14 @@ function updateCompletedDisplay() {
                    <span class="material-symbols-rounded" style="font-size: 14px;">calendar_today</span>
                    <span>${dateStr}</span>
                 </div>
+                ${statsHTML}
               </div>
             </div>
             
             <button 
               onclick="viewAttendanceDetails('${item.stream}', ${item.semester}, '${item.subject}', '${dateForURL}')"
               class="action-icon-btn"
-              style="background: #F8FAFC; color: #10B981;"
+              style="background: #F8FAFC; color: #10B981; margin-left: 8px;"
             >
               <span class="material-symbols-rounded">arrow_forward_ios</span>
             </button>

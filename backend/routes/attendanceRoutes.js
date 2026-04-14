@@ -176,6 +176,18 @@ router.use((req, res, next) => {
 // HELPER FUNCTIONS
 // ============================================================================
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return 0;
+  let hour = parseInt(match[1], 10);
+  const min = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return hour * 60 + min;
+}
+
 async function getSubjectDetails(db, stream, semester, subjectName) {
   try {
     const subjectsCollection = db.collection('subjects');
@@ -431,7 +443,16 @@ router.get('/attendance/register/:stream/sem:semester/:subject', async (req, res
       stream: { $regex: new RegExp(`^${stream}$`, 'i') },
       semester: semesterNumber,
       subject: { $regex: new RegExp(`^${subject}$`, 'i') }
-    }).sort({ date: 1, time: 1 }).lean().exec();
+    }).sort({ date: 1 }).lean().exec();
+    
+    // Sort by Date then parsed Time for accurate chronological ordering
+    sessions.sort((a, b) => {
+      const dt1 = new Date(a.date).getTime();
+      const dt2 = new Date(b.date).getTime();
+      if (dt1 !== dt2) return dt1 - dt2;
+      return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
+    });
+
     
     if (sessions.length === 0) {
       return res.json({
@@ -523,7 +544,11 @@ router.get('/attendance/date/:stream/sem:semester/:subject/:date', async (req, r
       semester: semesterNumber,
       subject: { $regex: new RegExp(`^${subject}$`, 'i') },
       date: date
-    }).sort({ time: 1 }).lean().exec();
+    }).lean().exec();
+    
+    // Sort correctly by time since it's a single date query
+    sessions.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+
     
     if (sessions.length === 0) {
       return res.json({ success: true, sessions: [], students: [] });
@@ -828,7 +853,42 @@ router.get('/students/:stream/sem:semester/electives', async (req, res) => {
 // ATTENDANCE POST ROUTES
 // ============================================================================
 
+// Helper: Generate consecutive 1-hour time slots from a starting time
+function generateTimeSlots(startTime, count) {
+  if (count <= 1) return [startTime];
+  
+  // Parse the start time like "9:00 AM - 10:00 AM"
+  const match = startTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return [startTime]; // fallback if format is unexpected
+  
+  let hour = parseInt(match[1]);
+  const startMinute = match[2];
+  const period = match[3].toUpperCase();
+  
+  // Convert to 24h
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+  
+  const slots = [];
+  for (let i = 0; i < count; i++) {
+    const slotStart = hour + i;
+    const slotEnd = slotStart + 1;
+    
+    const fmt = (h) => {
+      const normalizedH = h % 24;
+      const p = normalizedH >= 12 ? 'PM' : 'AM';
+      const dh = normalizedH === 0 ? 12 : normalizedH > 12 ? normalizedH - 12 : normalizedH;
+      return `${dh}:${startMinute} ${p}`;
+    };
+    
+    slots.push(`${fmt(slotStart)} - ${fmt(slotEnd)}`);
+  }
+  
+  return slots;
+}
+
 router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
+  console.log(`📩 Received attendance request for ${req.params.subject}. Duration: ${req.body.durationHours}`);
   try {
     const { stream, semester, subject } = req.params;
     const { 
@@ -840,7 +900,8 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
       absentCount,
       languageSubject,
       electiveSubject,
-      teacherEmail
+      teacherEmail,
+      durationHours
     } = req.body;
     const semesterNumber = parseInt(semester.replace('sem', ''));
     
@@ -852,47 +913,55 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     }
     
     const subjectDetails = await getSubjectDetails(req.db, stream, semester, subject);
+    const hours = Math.min(Math.max(parseInt(durationHours) || 1, 1), 3);
+    const timeSlots = generateTimeSlots(time, hours);
     
-    const attendanceData = {
-      stream, 
-      semester: semesterNumber, 
-      subject, 
-      date: date, 
-      time,
-      studentsPresent, 
-      totalStudents,
-      presentCount: presentCount || studentsPresent.length,
-      absentCount: absentCount || (totalStudents - studentsPresent.length),
-      teacherEmail
-    };
+    console.log(`📚 Saving ${hours}-hour attendance for ${subject} (${timeSlots.join(', ')})`);
     
-    if (subjectDetails) {
-      attendanceData.subjectCode = subjectDetails.subjectCode;
-      attendanceData.subjectType = subjectDetails.subjectType;
+    const savedIds = [];
+    
+    for (const slot of timeSlots) {
+      const attendanceData = {
+        stream, 
+        semester: semesterNumber, 
+        subject, 
+        date: date, 
+        time: slot,
+        studentsPresent, 
+        totalStudents,
+        presentCount: presentCount || studentsPresent.length,
+        absentCount: absentCount || (totalStudents - studentsPresent.length),
+        teacherEmail
+      };
       
-      if (subjectDetails.isLanguageSubject) {
-        attendanceData.languageSubject = subjectDetails.languageType;
+      if (subjectDetails) {
+        attendanceData.subjectCode = subjectDetails.subjectCode;
+        attendanceData.subjectType = subjectDetails.subjectType;
+        
+        if (subjectDetails.isLanguageSubject) {
+          attendanceData.languageSubject = subjectDetails.languageType;
+        }
       }
+      
+      if (languageSubject && languageSubject !== 'ALL') {
+        attendanceData.languageSubject = languageSubject;
+      }
+      if (electiveSubject && electiveSubject !== 'ALL') {
+        attendanceData.electiveSubject = electiveSubject;
+      }
+      
+      const saved = await new Attendance(attendanceData).save();
+      savedIds.push(saved._id);
+      console.log(`✅ Attendance saved for slot ${slot}:`, saved._id);
     }
-    
-    if (languageSubject && languageSubject !== 'ALL') {
-      attendanceData.languageSubject = languageSubject;
-    }
-    if (electiveSubject && electiveSubject !== 'ALL') {
-      attendanceData.electiveSubject = electiveSubject;
-    }
-    
-    const saved = await new Attendance(attendanceData).save();
     
     clearCachePattern(`attendance:${stream}`);
     clearCachePattern(`stats:${stream}`);
     
-    console.log('✅ Attendance saved:', saved._id);
-    
-    // Trigger Push Notifications in background
+    // Trigger Push Notifications ONCE (not per slot)
     notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent);
     
-    res.json({ success: true, attendanceId: saved._id });
+    res.json({ success: true, attendanceId: savedIds[0], totalSlots: hours, allIds: savedIds });
     
   } catch (error) {
     console.error('❌ Error saving attendance:', error);
@@ -901,6 +970,7 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
 });
 
 router.post('/attendance', async (req, res) => {
+  console.log(`📩 Received generic attendance request. Duration: ${req.body.durationHours}`);
   try {
     const { 
       date, 
@@ -915,7 +985,8 @@ router.post('/attendance', async (req, res) => {
       classInfo,
       languageSubject,
       electiveSubject,
-      teacherEmail
+      teacherEmail,
+      durationHours
     } = req.body;
     
     if (!date || !time || !subject || !studentsPresent || totalStudents === undefined) {
@@ -929,46 +1000,54 @@ router.post('/attendance', async (req, res) => {
     const finalSemester = classInfo?.semester || semester || 1;
     
     const subjectDetails = await getSubjectDetails(req.db, finalStream, finalSemester, subject);
+    const hours = Math.min(Math.max(parseInt(durationHours) || 1, 1), 3);
+    const timeSlots = generateTimeSlots(time, hours);
     
-    const attendanceData = {
-      stream: finalStream, 
-      semester: finalSemester, 
-      subject,
-      date: date, 
-      time,
-      studentsPresent, 
-      totalStudents,
-      presentCount: presentCount || studentsPresent.length,
-      absentCount: absentCount || (totalStudents - studentsPresent.length),
-      teacherEmail
-    };
+    console.log(`📚 Saving ${hours}-hour attendance for ${subject} (${timeSlots.join(', ')})`);
     
-    if (subjectDetails) {
-      attendanceData.subjectCode = subjectDetails.subjectCode;
-      attendanceData.subjectType = subjectDetails.subjectType;
+    const savedIds = [];
+    
+    for (const slot of timeSlots) {
+      const attendanceData = {
+        stream: finalStream, 
+        semester: finalSemester, 
+        subject,
+        date: date, 
+        time: slot,
+        studentsPresent, 
+        totalStudents,
+        presentCount: presentCount || studentsPresent.length,
+        absentCount: absentCount || (totalStudents - studentsPresent.length),
+        teacherEmail
+      };
       
-      if (subjectDetails.isLanguageSubject) {
-        attendanceData.languageSubject = subjectDetails.languageType;
+      if (subjectDetails) {
+        attendanceData.subjectCode = subjectDetails.subjectCode;
+        attendanceData.subjectType = subjectDetails.subjectType;
+        
+        if (subjectDetails.isLanguageSubject) {
+          attendanceData.languageSubject = subjectDetails.languageType;
+        }
       }
+      
+      if (languageSubject && languageSubject !== 'ALL') {
+        attendanceData.languageSubject = languageSubject;
+      }
+      if (electiveSubject && electiveSubject !== 'ALL') {
+        attendanceData.electiveSubject = electiveSubject;
+      }
+      
+      const saved = await new Attendance(attendanceData).save();
+      savedIds.push(saved._id);
+      console.log(`✅ Attendance saved for slot ${slot}:`, saved._id);
     }
     
-    if (languageSubject && languageSubject !== 'ALL') {
-      attendanceData.languageSubject = languageSubject;
-    }
-    if (electiveSubject && electiveSubject !== 'ALL') {
-      attendanceData.electiveSubject = electiveSubject;
-    }
+    clearCachePattern(`attendance:${finalStream}`);
     
-    const saved = await new Attendance(attendanceData).save();
-    
-    clearCachePattern(`attendance:${saved.stream}`);
-    
-    console.log('✅ Attendance saved:', saved._id);
-    
-    // Trigger Push Notifications in background
+    // Trigger Push Notifications ONCE (not per slot)
     notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent);
     
-    res.json({ success: true, attendanceId: saved._id });
+    res.json({ success: true, attendanceId: savedIds[0], totalSlots: hours, allIds: savedIds });
     
   } catch (error) {
     console.error('❌ Error saving attendance:', error);

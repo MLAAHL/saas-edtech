@@ -178,11 +178,58 @@
       overflow-x: auto;
       width: 100%;
       position: relative;
+      /* Smooth scrolling */
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Custom laptop scrollbar for easier scrolling */
+    .modern-table-container::-webkit-scrollbar {
+      height: 12px;
+      width: 12px;
+    }
+    .modern-table-container::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 0 0 16px 16px;
+    }
+    .modern-table-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 6px;
+      border: 3px solid #f1f5f9;
+    }
+    .modern-table-container::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Top sync scrollbar */
+    .top-scrollbar-container {
+      overflow-x: auto;
+      width: 100%;
+      height: 14px;
+    }
+    .top-scrollbar-container::-webkit-scrollbar {
+      height: 12px;
+      width: 12px;
+    }
+    .top-scrollbar-container::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 16px 16px 0 0;
+    }
+    .top-scrollbar-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 6px;
+      border: 3px solid #f1f5f9;
+    }
+    .top-scrollbar-container::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .top-scrollbar-content {
+      height: 1px;
     }
 
     .modern-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       font-size: 13px;
     }
 
@@ -192,6 +239,7 @@
       border-bottom: 1px solid rgba(0, 0, 0, 0.05);
       border-right: 1px solid rgba(0, 0, 0, 0.03);
       white-space: nowrap;
+      background-clip: padding-box; /* required for sticky borders */
     }
 
     /* Sticky Logic */
@@ -247,6 +295,52 @@
     .chip-absent {
       background: #FEE2E2;
       color: #991B1B;
+    }
+
+    .session-header {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .session-header:hover {
+      background: #E2E8F0 !important;
+    }
+    .session-header.selected {
+      background: #FEE2E2 !important;
+      color: #991B1B !important;
+      border-bottom: 2px solid #EF4444;
+    }
+
+    /* DESKTOP/LAPTOP FROZEN COLUMNS */
+    @media (min-width: 769px) {
+      .modern-table th:nth-child(1),
+      .modern-table td:nth-child(1) {
+        position: sticky;
+        left: 0;
+        z-index: 20;
+        background-color: #F8FAFC !important;
+      }
+      .modern-table th:nth-child(2),
+      .modern-table td:nth-child(2) {
+        position: sticky;
+        left: 50px;
+        z-index: 20;
+        background-color: #F8FAFC !important;
+      }
+      .modern-table th:nth-child(3),
+      .modern-table td:nth-child(3) {
+        position: sticky;
+        left: 190px;
+        z-index: 20;
+        background-color: #F8FAFC !important;
+        border-right: 2px solid rgba(0, 0, 0, 0.08);
+      }
+      
+      /* Ensure table header corners overlap correctly */
+      .modern-table thead th:nth-child(1),
+      .modern-table thead th:nth-child(2),
+      .modern-table thead th:nth-child(3) {
+        z-index: 30 !important;
+      }
     }
 
     /* MOBILE ADJUSTMENTS */
@@ -366,8 +460,25 @@
     .gap-2 {
       gap: 8px;
     }
+
+    .tab-btn {
+      padding: 15px; 
+      border: none; 
+      background: none; 
+      color: #64748B; 
+      font-weight: 600; 
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      border-bottom: 2px solid #6366F1; 
+      color: #6366F1;
+    }
   </style>
 </head>
+
 
 <body>
   <div class="page-header">
@@ -416,12 +527,9 @@
 
   <div id="registerTable" class="hidden">
     <div style="padding: 0 20px; border-bottom: 1px solid #f1f1f1; display: flex; gap: 10px;">
-      <button id="fullRegisterBtn"
-        style="padding: 15px; border: none; background: none; border-bottom: 2px solid #6366F1; color: #6366F1; font-weight: 600; cursor: pointer;">Full
-        Register</button>
-      <button id="singleDateBtn"
-        style="padding: 15px; border: none; background: none; color: #64748B; font-weight: 600; cursor: pointer;">Single
-        Date</button>
+      <button id="fullRegisterBtn" class="tab-btn active">Full Register</button>
+      <button id="singleDateBtn" class="tab-btn">Single Date</button>
+
       <div id="dateSelector" class="hidden" style="margin-top: 10px; margin-left: auto;">
         <input type="date" id="specificDateInput"
           style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ddd;">
@@ -430,9 +538,10 @@
 
     <div class="actions-bar"
       style="padding: 15px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid #f1f1f1;">
-      <div id="searchContainer" class="hidden">
+      <div id="searchContainer" class="hidden" style="display: flex; gap: 15px; align-items: center;">
         <input type="text" id="studentSearchInput" placeholder="Search ID or Name..."
           style="padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; width: 250px;">
+        <div id="sessionCountDisplay" style="font-size: 13px; font-weight: 600; color: #10B981; background: #DCFCE7; padding: 6px 12px; border-radius: 8px; display: none;"></div>
       </div>
 
       <div class="flex gap-2" style="margin-left: auto;">
@@ -445,7 +554,12 @@
       </div>
     </div>
 
-    <div class="modern-table-container">
+    <!-- Top scroll bar sync -->
+    <div class="top-scrollbar-container" id="topScrollContainer">
+      <div class="top-scrollbar-content" id="topScrollContent"></div>
+    </div>
+
+    <div class="modern-table-container" id="mainTableContainer">
       <table class="modern-table">
         <thead id="view-thead"></thead>
         <tbody id="view-tbody"></tbody>
@@ -455,6 +569,37 @@
 
   <script src="view-attendance.js"></script>
   <script>
+    // Synchronization for Top Scrollbar
+    const topScroll = document.getElementById('topScrollContainer');
+    const tableScroll = document.getElementById('mainTableContainer');
+    const topScrollContent = document.getElementById('topScrollContent');
+    
+    let isSyncingLeft = false;
+    let isSyncingRight = false;
+    
+    // Set width via MutationObserver whenever table changes
+    const observer = new MutationObserver(() => {
+      const tableWidth = tableScroll.querySelector('table').offsetWidth;
+      topScrollContent.style.width = tableWidth + 'px';
+    });
+    observer.observe(tableScroll, { childList: true, subtree: true, attributes: true });
+
+    topScroll.addEventListener('scroll', function() {
+      if (!isSyncingLeft) {
+        isSyncingRight = true;
+        tableScroll.scrollLeft = this.scrollLeft;
+      }
+      isSyncingLeft = false;
+    });
+
+    tableScroll.addEventListener('scroll', function() {
+      if (!isSyncingRight) {
+        isSyncingLeft = true;
+        topScroll.scrollLeft = this.scrollLeft;
+      }
+      isSyncingRight = false;
+    });
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')

@@ -528,7 +528,7 @@ router.get('/students/: stream/sem:semester/electives', async (req, res) => {
 // ============================================================================
 
 // POST - Submit attendance with subject metadata
-router.post('/attendance/: stream/sem:semester/: subject', async (req, res) => {
+router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
   try {
     const { stream, semester, subject } = req.params;
     const { 

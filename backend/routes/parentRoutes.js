@@ -9,6 +9,18 @@ router.use((req, res, next) => {
   next();
 });
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return 0;
+  let hour = parseInt(match[1], 10);
+  const min = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return hour * 60 + min;
+}
+
 function isStudentPresent(studentsPresent, student) {
   if (!studentsPresent || !Array.isArray(studentsPresent)) return false;
   const sid = (student.studentID || '').trim();
@@ -213,7 +225,9 @@ router.get('/daily/:studentID', async (req, res) => {
 
     const targetDateStr = date || new Date().toISOString().split('T')[0];
     const query = { stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, ...buildDateQuery(targetDateStr) };
-    const records = await req.db.collection('attendance').find(query).sort({ time: 1 }).toArray();
+    const records = await req.db.collection('attendance').find(query).toArray();
+    
+    records.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 
     // Filter to only relevant subjects for this student
     const filtered = records.filter(r => isRecordRelevant(r, student));
@@ -245,7 +259,14 @@ router.get('/full/:studentID', async (req, res) => {
 
     const records = await req.db.collection('attendance').find({
       stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester
-    }).sort({ date: -1, time: 1 }).toArray();
+    }).sort({ date: -1 }).toArray();
+    
+    records.sort((a, b) => {
+      const d1 = new Date(a.date).getTime();
+      const d2 = new Date(b.date).getTime();
+      if (d1 !== d2) return d2 - d1;
+      return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
+    });
 
     const filtered = records.filter(r => isRecordRelevant(r, student));
 
@@ -291,7 +312,14 @@ router.get('/recent/:studentID', async (req, res) => {
     const records = await req.db.collection('attendance').find({
       stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester,
       $or: [{ date: { $in: dateStrings } }, { date: { $gte: startD, $lte: endD } }]
-    }).sort({ date: -1, time: 1 }).toArray();
+    }).sort({ date: -1 }).toArray();
+    
+    records.sort((a, b) => {
+      const d1 = new Date(a.date).getTime();
+      const d2 = new Date(b.date).getTime();
+      if (d1 !== d2) return d2 - d1;
+      return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
+    });
 
     const filtered = records.filter(r => isRecordRelevant(r, student));
 
@@ -308,7 +336,10 @@ router.get('/recent/:studentID', async (req, res) => {
     res.json({
       success: true,
       student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester },
-      recent: Object.values(recentDays).sort((a, b) => b.date.localeCompare(a.date))
+      recent: Object.values(recentDays).sort((a, b) => b.date.localeCompare(a.date)).map(day => {
+        day.classes.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+        return day;
+      })
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

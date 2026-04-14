@@ -945,6 +945,11 @@ function displayFullRegister() {
 
   if (searchContainer) {
     searchContainer.classList.remove('hidden');
+    const countDisplay = document.getElementById('sessionCountDisplay');
+    if (countDisplay && registerData.sessions) {
+      countDisplay.textContent = `Total Sessions Taken: ${registerData.sessions.length}`;
+      countDisplay.style.display = 'block';
+    }
   }
 
   updateStats();
@@ -1067,6 +1072,12 @@ function displaySingleDate(data) {
   });
 
   viewTbody.innerHTML = bodyHTML;
+  
+  const countDisplay = document.getElementById('sessionCountDisplay');
+  if (countDisplay && data.sessions) {
+    countDisplay.textContent = `Classes on ${currentDate}: ${data.sessions.length}`;
+    countDisplay.style.display = 'block';
+  }
 }
 
 // ============================================================================

@@ -849,7 +849,7 @@ function updateCounts(present, absent) {
 // MOVE QUEUE ITEM TO COMPLETED
 // ============================================================================
 
-async function moveQueueItemToCompleted() {
+async function moveQueueItemToCompleted(stats) {
   if (!queueItemId || !userData.userEmail) {
     console.log('⚠️ No queue item to complete');
     return;
@@ -872,7 +872,11 @@ async function moveQueueItemToCompleted() {
       semester: currentClassInfo.semester,
       subject: currentClassInfo.subject,
       completedAt: new Date().toISOString(),
-      teacherEmail: userData.userEmail
+      teacherEmail: userData.userEmail,
+      presentCount: stats.presentCount,
+      absentCount: stats.absentCount,
+      totalStudents: stats.totalStudents,
+      durationHours: stats.durationHours || 1
     };
 
     const completedResponse = await fetch(`${API_BASE_URL}/teacher/completed`, {
@@ -1147,7 +1151,7 @@ function setupSubmitButton() {
         return;
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
       if (date > today) {
         showNotification("Future dates not allowed", "error");
         return;
@@ -1170,9 +1174,12 @@ function setupSubmitButton() {
         year: 'numeric'
       });
 
+      const durationHrs = parseInt(document.getElementById('classDuration')?.value || '1', 10);
+      const durationLabel = durationHrs > 1 ? ` (${durationHrs} Hours)` : '';
+
       showConfirm(
         "confirm",
-        subject,
+        subject + durationLabel,
         formattedDate,
         totalStudents,
         presentStudents,
@@ -1206,7 +1213,8 @@ function setupSubmitButton() {
               totalStudents,
               presentCount: presentStudents,
               absentCount: absentStudents,
-              classInfo: currentClassInfo
+              classInfo: currentClassInfo,
+              durationHours: parseInt(document.getElementById('classDuration')?.value || '1', 10)
             };
 
             if (selectedLanguage && selectedLanguage !== 'ALL') {
@@ -1234,14 +1242,21 @@ function setupSubmitButton() {
             const result = await res.json();
 
             if (result.success !== false) {
-              await moveQueueItemToCompleted();
+              await moveQueueItemToCompleted({
+                presentCount: presentStudents,
+                absentCount: absentStudents,
+                totalStudents: totalStudents,
+                durationHours: parseInt(document.getElementById('classDuration')?.value || '1', 10)
+              });
 
-              showSubmittedConfirmation(subject, formattedDate, presentStudents, totalStudents);
+              const durationVal = parseInt(document.getElementById('classDuration')?.value || '1', 10);
+              const durationText = durationVal > 1 ? ` (${durationVal} slots created)` : '';
+              showSubmittedConfirmation(subject + durationText, formattedDate, presentStudents, totalStudents);
 
               clearLocalStorage();
               sessionStorage.removeItem('attendanceSession');
 
-              dateInput.value = new Date().toISOString().split("T")[0];
+              dateInput.value = new Date().toLocaleDateString('en-CA');
 
               if (!isPreSelectedSubject) {
                 subjectSelect.value = "";
@@ -1342,7 +1357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadUserInfo();
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString('en-CA');
   dateInput.value = today;
   dateInput.max = today;
 
