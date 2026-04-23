@@ -799,13 +799,43 @@ router.put('/attendance/:id', async (req, res) => {
 });
 
 // DELETE - Remove record
-router.delete('/attendance/: id', async (req, res) => {
+router.delete('/attendance/:id', async (req, res) => {
   try {
-    const record = await Attendance.findByIdAndDelete(req.params.id).lean();
+    const authUser = req.body.operatorEmail || req.user?.email || 'Unknown';
+    const record = await Attendance.findByIdAndUpdate(
+      req.params.id, 
+      { 
+        $set: { 
+          isDeleted: true, 
+          deletedAt: new Date(),
+          deletedBy: authUser
+        } 
+      },
+      { new: true }
+    ).lean();
     if (!record) return res.status(404).json({ success: false, error: 'Record not found' });
     
     cache.delete(`attendance:single:${req.params.id}`);
     clearCachePattern(`attendance:${record.stream}`);
+    
+    // Add Audit Log
+    try {
+      await req.db.collection('action_logs').insertOne({
+        action: 'DELETE_ATTENDANCE',
+        collection: 'attendance',
+        documentId: req.params.id,
+        details: {
+          stream: record.stream,
+          semester: record.semester,
+          subject: record.subject,
+          date: record.date
+        },
+        performedBy: authUser,
+        timestamp: new Date()
+      });
+    } catch (logErr) {
+      console.error('Failed to write audit log:', logErr);
+    }
     
     res.json({ success: true, message: 'Deleted successfully' });
   } catch (error) {

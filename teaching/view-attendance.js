@@ -999,7 +999,10 @@ async function deleteSelectedSessions() {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          body: JSON.stringify({
+            operatorEmail: localStorage.getItem('lastUserEmail') || localStorage.getItem('teacherEmail') || 'Unknown Teacher'
+          })
         })
       );
 
@@ -1400,7 +1403,15 @@ async function deleteAttendance() {
   showConfirm(message, async () => {
     try {
       const deletePromises = currentDateData.sessions.map(session =>
-        fetch(`${API_BASE_URL}/attendance/${session._id}`, { method: 'DELETE' })
+        fetch(`${API_BASE_URL}/attendance/${session._id}`, { 
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            operatorEmail: localStorage.getItem('lastUserEmail') || localStorage.getItem('teacherEmail') || 'Unknown Teacher'
+          })
+        })
       );
 
       const results = await Promise.all(deletePromises);

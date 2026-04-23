@@ -106,7 +106,10 @@ const attendanceSchema = new mongoose.Schema({
   absentCount: { type: Number, required: true, min: 0 },
   languageSubject: { type: String, trim: true },
   electiveSubject: { type: String, trim: true },
-  teacherEmail: { type: String, trim: true }
+  teacherEmail: { type: String, trim: true },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
+  deletedBy: { type: String, trim: true }
 }, { 
   timestamps: true,
   collection: 'attendance'
@@ -126,6 +129,15 @@ attendanceSchema.pre('save', function(next) {
   if (!this.presentCount) this.presentCount = this.studentsPresent.length;
   if (!this.absentCount) this.absentCount = this.totalStudents - this.presentCount;
   next();
+});
+
+// Soft delete middleware
+attendanceSchema.pre(/^find/, function() {
+  this.where({ isDeleted: { $ne: true } });
+});
+
+attendanceSchema.pre('aggregate', function() {
+  this.pipeline().unshift({ $match: { isDeleted: { $ne: true } } });
 });
 
 const Attendance = mongoose.models.Attendance || mongoose.model('Attendance', attendanceSchema);
@@ -683,7 +695,19 @@ router.delete('/attendance/:sessionId', async (req, res) => {
       return res.status(503).json({ success: false, error: 'Database unavailable' });
     }
     
-    const result = await Attendance.findByIdAndDelete(sessionId);
+    // PERFORM SOFT DELETE
+    const authUser = req.user ? req.user.email : 'Unknown';
+    const result = await Attendance.findByIdAndUpdate(
+      sessionId, 
+      { 
+        $set: { 
+          isDeleted: true, 
+          deletedAt: new Date(),
+          deletedBy: authUser
+        } 
+      },
+      { new: true }
+    );
     
     if (!result) {
       return res.status(404).json({ success: false, error: 'Session not found' });
@@ -691,7 +715,26 @@ router.delete('/attendance/:sessionId', async (req, res) => {
     
     clearCachePattern(`attendance:${result.stream}`);
     
-    console.log(`✅ Session deleted successfully`);
+    // Add Audit Log
+    try {
+      await req.db.collection('action_logs').insertOne({
+        action: 'DELETE_ATTENDANCE',
+        collection: 'attendance',
+        documentId: sessionId,
+        details: {
+          stream: result.stream,
+          semester: result.semester,
+          subject: result.subject,
+          date: result.date
+        },
+        performedBy: authUser,
+        timestamp: new Date()
+      });
+    } catch (logErr) {
+      console.error('Failed to write audit log:', logErr);
+    }
+    
+    console.log(`✅ Session deleted successfully and logged`);
     
     res.json({ success: true, deleted: 1 });
     
