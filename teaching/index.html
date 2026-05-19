@@ -40,6 +40,10 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
   </noscript>
 
+  <script>
+    // Splash screen removed for WebView compatibility.
+  </script>
+
   <script type="module">
     import { firebaseConfig } from './firebase-config.js';
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
@@ -61,38 +65,15 @@
     window.firebaseBrowserLocalPersistence = browserLocalPersistence;
     window.firebaseBrowserSessionPersistence = browserSessionPersistence;
 
-    // Function to hide splash and show login
-    function showLoginForm() {
-      const splash = document.getElementById('splash-screen');
-      const mainContent = document.getElementById('mainContent');
-
-      if (splash) {
-        splash.style.opacity = '0';
-        setTimeout(() => splash.remove(), 300);
-      }
-      if (mainContent) {
-        mainContent.classList.add('visible');
-      }
-    }
-
-    // Timeout fallback - show login form after 2 seconds if Firebase is slow
-    const splashTimeout = setTimeout(() => {
-      console.log('⏱️ Timeout reached, showing login form');
-      showLoginForm();
-    }, 2000);
-
     // Check auth state immediately when Firebase loads
     onAuthStateChanged(auth, (user) => {
-      clearTimeout(splashTimeout); // Cancel timeout since Firebase responded
-
       if (user) {
         // User is logged in - redirect to myclass immediately
         console.log('✅ User authenticated, redirecting to myclass.html');
         window.location.replace('myclass.html');
       } else {
-        // User is not logged in - show login form
-        console.log('👋 No active session, showing login form');
-        showLoginForm();
+        // User is not logged in - form is already visible
+        console.log('👋 No active session, form ready');
       }
     });
   </script>
@@ -199,8 +180,7 @@
 
     /* Premium App Container matching myclass.html structure */
     .main-content {
-      opacity: 0;
-      transition: opacity 0.35s ease;
+      opacity: 1;
       width: 100%;
       max-width: 410px;
       display: flex;
@@ -418,35 +398,7 @@
   <!-- Noise Overlay -->
   <div class="noise-overlay"></div>
 
-  <!-- SPLASH SCREEN -->
-  <div id="splash-screen" style="
-    position: fixed;
-    inset: 0;
-    background: #F8FAFC;
-    z-index: 9999;
-    transition: opacity 0.3s ease;
-  ">
-    <div style="
-      position: absolute;
-      top: 45%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    ">
-      <img src="logo2.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 20px;">
-      <div style="
-        width: 24px;
-        height: 24px;
-        border: 3px solid rgba(99, 102, 241, 0.15);
-        border-top-color: #6366F1;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-      "></div>
-    </div>
-  </div>
+  <!-- Splash screen removed to prevent white screen lockups on WebViews -->
 
   <div class="main-content" id="mainContent">
     <div class="login-wrapper">
