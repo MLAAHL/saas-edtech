@@ -112,12 +112,13 @@
       font-family: 'Inter', sans-serif;
       min-height: 100vh;
       display: flex;
-      align-items: center;
+      align-items: flex-start; /* Changed from center to prevent top clipping when keyboard opens */
       justify-content: center;
       position: relative;
       -webkit-font-smoothing: antialiased;
-      padding: 24px 20px;
-      overflow: hidden;
+      padding: 6vh 20px 24px 20px; /* Top padding pushes it down like center, but safely */
+      overflow-x: hidden;
+      overflow-y: auto; /* Allow scrolling when keyboard is open */
     }
 
     /* Premium granular noise overlay for organic paper/grain texture matching the request */
