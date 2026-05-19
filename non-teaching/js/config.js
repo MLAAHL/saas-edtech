@@ -29,20 +29,28 @@
 
   if (!isStorageSupported('localStorage')) {
     console.warn('⚠️ localStorage is not supported or is disabled. Using in-memory fallback.');
-    Object.defineProperty(window, 'localStorage', {
-      value: createInMemoryStorage(),
-      writable: true,
-      configurable: true
-    });
+    try {
+      Object.defineProperty(window, 'localStorage', {
+        value: createInMemoryStorage(),
+        writable: true,
+        configurable: true
+      });
+    } catch (e) {
+      window.localStorage = createInMemoryStorage();
+    }
   }
 
   if (!isStorageSupported('sessionStorage')) {
     console.warn('⚠️ sessionStorage is not supported or is disabled. Using in-memory fallback.');
-    Object.defineProperty(window, 'sessionStorage', {
-      value: createInMemoryStorage(),
-      writable: true,
-      configurable: true
-    });
+    try {
+      Object.defineProperty(window, 'sessionStorage', {
+        value: createInMemoryStorage(),
+        writable: true,
+        configurable: true
+      });
+    } catch (e) {
+      window.sessionStorage = createInMemoryStorage();
+    }
   }
 })();
 
