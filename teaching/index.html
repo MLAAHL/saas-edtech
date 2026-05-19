@@ -107,18 +107,18 @@
     }
 
     body {
-      background: #F8FAFC; /* Sleek slate-light canvas matching myclass.html */
+      background: #F8FAFC;
       color: var(--text-primary);
       font-family: 'Inter', sans-serif;
       min-height: 100vh;
       display: flex;
-      align-items: flex-start; /* Changed from center to prevent top clipping when keyboard opens */
+      align-items: center;
       justify-content: center;
       position: relative;
       -webkit-font-smoothing: antialiased;
-      padding: 6vh 20px 24px 20px; /* Top padding pushes it down like center, but safely */
+      padding: 24px 20px;
       overflow-x: hidden;
-      overflow-y: auto; /* Allow scrolling when keyboard is open */
+      overflow-y: auto;
     }
 
     /* Noise overlay removed for WebView GPU stability */
