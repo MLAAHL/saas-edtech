@@ -1,5 +1,5 @@
 window.APP_CONFIG = {
-  API_BASE_URL: 'http://localhost:5000/api',
+  API_BASE_URL: 'https://mlaahl.online/api',
   // ⚠️ REPLACE THIS CONFIG with your Firebase Project settings!
   // This is required to make Push Notifications work on iOS / Web.
   FIREBASE_CONFIG: {
