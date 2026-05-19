@@ -6,12 +6,13 @@ const express = require('express');
 const router = express.Router();
 const queryGenerator = require('../services/queryGenerator');
 const aiService = require('../services/aiService');
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 // ============================================================================
 // CHAT ENDPOINT
 // ============================================================================
 
-router.post('/chat', async (req, res) => {
+router.post('/chat', firebaseAuth, async (req, res) => {
   try {
     const { message, question, history } = req.body;
     const userQuery = message || question;

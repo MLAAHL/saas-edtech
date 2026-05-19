@@ -5,6 +5,26 @@ const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 console.log('🔧 Students API Base URL:', API_BASE_URL);
 // GLOBAL VARIABLES
 let allStudents = [];
+
+// Helper to get authentication headers
+async function getAuthHeaders() {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+        try {
+            const token = await window.firebaseAuth.currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+            console.error('Error getting auth token:', error);
+        }
+    } else {
+        console.warn('Firebase Auth or User not available for headers');
+    }
+
+    return headers;
+}
 let filteredStudents = [];
 let selectedStudents = new Set();
 let currentSortColumn = null;
@@ -201,9 +221,11 @@ async function loadAllStudents() {
         console.log('📡 Fetching fresh data from database...');
 
         const timestamp = new Date().getTime();
+        const authHeaders = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/students/all?t=${timestamp}`, {
             method: 'GET',
             headers: {
+                ...authHeaders,
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache',
                 'Expires': '0'
@@ -252,8 +274,10 @@ async function extractDynamicData() {
     // Fetch streams
     try {
         const timestamp = new Date().getTime();
+        const authHeaders = await getAuthHeaders();
         const streamsResponse = await fetch(`${API_BASE_URL}/students/streams?t=${timestamp}`, {
             headers: {
+                ...authHeaders,
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache'
             }
@@ -279,8 +303,10 @@ async function extractDynamicData() {
     // Fetch languages
     try {
         const timestamp = new Date().getTime();
+        const authHeaders = await getAuthHeaders();
         const languagesResponse = await fetch(`${API_BASE_URL}/subjects/languages?t=${timestamp}`, {
             headers: {
+                ...authHeaders,
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache'
             }
@@ -312,8 +338,10 @@ async function extractDynamicData() {
     // Fetch electives
     try {
         const timestamp = new Date().getTime();
+        const authHeaders = await getAuthHeaders();
         const electivesResponse = await fetch(`${API_BASE_URL}/students/subjects/electives?t=${timestamp}`, {
             headers: {
+                ...authHeaders,
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache'
             }

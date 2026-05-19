@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { ObjectId } = require('mongodb');
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 // ============================================================================
 // MIDDLEWARE
@@ -20,6 +21,24 @@ const checkDB = (req, res, next) => {
 };
 
 router.use(checkDB);
+
+// ============================================================================
+// PUBLIC HEALTH CHECK
+// ============================================================================
+
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Dashboard API is running',
+    database: req.db ? 'Connected' : 'Disconnected',
+    timestamp: new Date()
+  });
+});
+
+// ============================================================================
+// ENFORCE AUTHENTICATION FOR ALL FUNCTIONAL ROUTES BELOW
+// ============================================================================
+router.use(firebaseAuth);
 
 // ============================================================================
 // DASHBOARD STATISTICS
@@ -736,19 +755,6 @@ router.get('/attendance-trend', async (req, res) => {
       error: error.message
     });
   }
-});
-
-// ============================================================================
-// HEALTH CHECK
-// ============================================================================
-
-router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Dashboard API is running',
-    database: req.db ? 'Connected' : 'Disconnected',
-    timestamp: new Date()
-  });
 });
 
 module.exports = router;

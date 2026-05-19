@@ -21,12 +21,60 @@ function getApiUrl(endpoint, param = '') {
   return `${API_CONFIG.BASE_URL}${path}`;
 }
 
+// Helper to get authentication headers
+async function getAuthHeaders() {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+    try {
+      const token = await window.firebaseAuth.currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+    }
+  } else {
+    console.warn('Firebase Auth or User not available for headers');
+  }
+
+  return headers;
+}
+
 let selectedStream = '';
 
 document.addEventListener('DOMContentLoaded', function () {
   console.log('🚀 Promotion System Initialized');
   console.log('📍 Backend URL:', API_CONFIG.BASE_URL);
-  loadStreamsFromDatabase();
+
+  document.getElementById('promotionStream').addEventListener('change', function () {
+    const loadBtn = document.getElementById('loadBtn');
+    if (loadBtn) loadBtn.disabled = !this.value;
+    const statsRow = document.getElementById('statsRow');
+    if (statsRow) statsRow.classList.add('hidden');
+    const preview = document.getElementById('promotionPreview');
+    if (preview) preview.classList.add('hidden');
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) emptyState.classList.remove('hidden');
+  });
+
+  const checkAuthAndInit = () => {
+    const auth = window.firebaseAuth;
+    const onAuthStateChanged = window.firebaseOnAuthStateChanged;
+    
+    if (auth && onAuthStateChanged) {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          console.log('✅ Auth ready - loading streams for user:', user.email);
+          loadStreamsFromDatabase();
+        }
+      });
+    } else {
+      setTimeout(checkAuthAndInit, 50);
+    }
+  };
+
+  checkAuthAndInit();
 });
 
 // ============================================================================
@@ -41,7 +89,8 @@ async function loadStreamsFromDatabase() {
     const url = getApiUrl(API_CONFIG.ENDPOINTS.STREAMS);
     console.log('📡 Fetching streams from:', url);
 
-    const response = await fetch(url);
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -92,6 +141,8 @@ async function loadPromotionPreview() {
     previewDiv.classList.add('hidden');
     statsRow.style.display = 'none';
     if (undoSection) undoSection.classList.add('hidden');
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) emptyState.classList.remove('hidden');
     return;
   }
 
@@ -99,13 +150,16 @@ async function loadPromotionPreview() {
     const url = getApiUrl(API_CONFIG.ENDPOINTS.PREVIEW, selectedStream);
     console.log('📡 Fetching preview from:', url);
 
-    const response = await fetch(url);
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, { headers });
     const data = await response.json();
 
     if (response.ok) {
       promoteBtn.disabled = false;
       previewDiv.classList.remove('hidden');
       statsRow.style.display = 'flex';
+      const emptyState = document.getElementById('emptyState');
+      if (emptyState) emptyState.classList.add('hidden');
 
       // Update top stats
       document.getElementById('totalStudents').textContent = data.totalStudents || 0;
@@ -150,7 +204,8 @@ async function loadPromotionPreview() {
       if (undoSection) {
         try {
           const undoUrl = getApiUrl(API_CONFIG.ENDPOINTS.UNDO_CHECK, selectedStream);
-          const undoResponse = await fetch(undoUrl);
+          const headers = await getAuthHeaders();
+          const undoResponse = await fetch(undoUrl, { headers });
           const undoData = await undoResponse.json();
 
           if (undoData.success && undoData.canUndo) {
@@ -183,6 +238,97 @@ async function loadPromotionPreview() {
 }
 
 // ============================================================================
+// PASSWORD VERIFICATION MODAL HELPER
+// ============================================================================
+function requestPasswordVerification(description) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('passwordModalOverlay');
+    const desc = document.getElementById('passwordModalDescription');
+    const input = document.getElementById('confirmPasswordInput');
+    const errorMsg = document.getElementById('passwordErrorMsg');
+    const errorText = document.getElementById('passwordErrorText');
+    const cancelBtn = document.getElementById('cancelPasswordBtn');
+    const confirmBtn = document.getElementById('confirmPasswordBtn');
+
+    if (!overlay || !input || !confirmBtn || !cancelBtn) {
+      // Fallback
+      resolve(true);
+      return;
+    }
+
+    desc.textContent = description || 'Please enter your password to confirm this action.';
+    input.value = '';
+    errorMsg.classList.add('hidden');
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = 'Verify & Proceed';
+
+    overlay.classList.add('active');
+    setTimeout(() => input.focus(), 150);
+
+    const cleanup = () => {
+      overlay.classList.remove('active');
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+    };
+
+    const handleVerify = async () => {
+      const password = input.value;
+      if (!password) {
+        errorText.textContent = 'Password is required.';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = 'Verifying...';
+      errorMsg.classList.add('hidden');
+
+      try {
+        if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
+          throw new Error('Authentication state not loaded.');
+        }
+
+        const user = window.firebaseAuth.currentUser;
+        const credential = window.EmailAuthProvider.credential(user.email, password);
+        await window.reauthenticateWithCredential(user, credential);
+        
+        // Re-authentication successful!
+        cleanup();
+        resolve(true);
+      } catch (err) {
+        console.error('Re-auth verification failed:', err);
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = 'Verify & Proceed';
+        
+        let friendlyMessage = 'Incorrect password. Please try again.';
+        if (err.code === 'auth/too-many-requests') {
+          friendlyMessage = 'Too many attempts. Account temporarily locked. Please try again later.';
+        } else if (err.code === 'auth/network-request-failed') {
+          friendlyMessage = 'Network error. Please check your connection.';
+        }
+        
+        errorText.textContent = friendlyMessage;
+        errorMsg.classList.remove('hidden');
+        input.focus();
+        input.select();
+      }
+    };
+
+    confirmBtn.onclick = handleVerify;
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(false);
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        handleVerify();
+      }
+    };
+  });
+}
+
+// ============================================================================
 // EXECUTE PROMOTION
 // ============================================================================
 async function executeSimplePromotion() {
@@ -191,9 +337,9 @@ async function executeSimplePromotion() {
     return;
   }
 
-  if (!confirm(`🎓 Promote all students in ${selectedStream}?\n\n⚠️ A backup will be created. You can undo within 24 hours.\n\nContinue?`)) {
-    return;
-  }
+  // Ask for password instead of simple confirm dialog
+  const isVerified = await requestPasswordVerification(`You are about to promote all students in ${selectedStream}. A backup will be created and you can undo within 24 hours.`);
+  if (!isVerified) return;
 
   const promoteBtn = document.getElementById('promoteBtn');
   const originalText = promoteBtn.innerHTML;
@@ -204,9 +350,13 @@ async function executeSimplePromotion() {
     const url = getApiUrl(API_CONFIG.ENDPOINTS.PROMOTE, selectedStream);
     console.log('📡 Executing promotion:', url);
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        ...authHeaders,
+        'Content-Type': 'application/json'
+      }
     });
 
     const result = await response.json();
@@ -235,9 +385,9 @@ async function undoLastPromotion() {
     return;
   }
 
-  if (!confirm(`⚠️ UNDO LAST PROMOTION for ${selectedStream}?\n\nThis will restore all students to their previous semesters.\n\nContinue?`)) {
-    return;
-  }
+  // Ask for password instead of simple confirm dialog
+  const isVerified = await requestPasswordVerification(`You are about to UNDO the last promotion for ${selectedStream}. This will restore all students to their previous semesters.`);
+  if (!isVerified) return;
 
   const undoBtn = document.getElementById('undoBtn');
   const originalText = undoBtn.innerHTML;
@@ -248,9 +398,13 @@ async function undoLastPromotion() {
     const url = getApiUrl(API_CONFIG.ENDPOINTS.UNDO_ACTION, selectedStream);
     console.log('📡 Undoing promotion:', url);
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        ...authHeaders,
+        'Content-Type': 'application/json'
+      }
     });
 
     const result = await response.json();

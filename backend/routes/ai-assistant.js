@@ -1,6 +1,7 @@
 // routes/ai-assistant.js - COMPLETE VERSION
 const express = require('express');
 const router = express.Router();
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 // ============================================================================
 // MIDDLEWARE
@@ -19,6 +20,7 @@ const checkDB = (req, res, next) => {
 };
 
 router.use(checkDB);
+router.use(firebaseAuth);
 
 // ============================================================================
 // ROUTES

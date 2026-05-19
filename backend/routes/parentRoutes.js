@@ -1,6 +1,7 @@
 // parentRoutes.js - Parent Portal API Routes (Read-Only)
 const express = require('express');
 const router = express.Router();
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 router.use((req, res, next) => {
   const db = req.app.locals.db || req.app.get('db');
@@ -170,7 +171,7 @@ router.post('/logout', async (req, res) => {
 });
 
 // GET - Parent Status Stats (for Non-Teaching Dashboard)
-router.get('/status-report', async (req, res) => {
+router.get('/status-report', firebaseAuth, async (req, res) => {
   try {
     const col = req.db.collection('students');
     const students = await col.find({ isActive: true }, {

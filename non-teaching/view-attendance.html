@@ -803,30 +803,57 @@
         .gap-2 {
             gap: 8px;
         }
+
+        body.auth-loading {
+            display: none !important;
+        }
     </style>
 </head>
+<body class="auth-loading">
 
 <!-- ══════════ SIDEBAR ══════════ -->
 <aside class="sidebar">
     <div class="sb-logo"><img src="logo.png" alt="Logo"></div>
     <div class="sb-group">
-        <a href="dashboard.html" class="sb-link"><span class="material-symbols-rounded">dashboard</span>Dashboard</a>
-        <a href="students.html" class="sb-link"><span class="material-symbols-rounded">group</span>Students</a>
-        <a href="report.html" class="sb-link"><span class="material-symbols-rounded">description</span>Reports</a>
-        <a href="view-attendance.html" class="sb-link active"><span
-                class="material-symbols-rounded">assignment</span>View Attendance</a>
-        <a href="promotion.html" class="sb-link"><span class="material-symbols-rounded">trending_up</span>Promote</a>
+        <a href="dashboard.html" class="sb-link">
+            <span class="material-symbols-rounded">dashboard</span> Dashboard
+        </a>
+        <a href="students.html" class="sb-link">
+            <span class="material-symbols-rounded">group</span> Students
+        </a>
+        <a href="report.html" class="sb-link">
+            <span class="material-symbols-rounded">description</span> Reports
+        </a>
+        <a href="view-attendance.html" class="sb-link active">
+            <span class="material-symbols-rounded">assignment</span> View Attendance
+        </a>
+        <a href="promotion.html" class="sb-link">
+            <span class="material-symbols-rounded">trending_up</span> Promote
+        </a>
     </div>
+
     <div class="sb-divider"></div>
+
     <div class="sb-group">
-        <a href="ai-assistant.html" class="sb-link"><span class="material-symbols-rounded">auto_awesome</span>AI
-            Assistant</a>
-        <a href="teachers.html" class="sb-link"><span class="material-symbols-rounded">person</span>Teachers</a>
-        <a href="parents-status.html" class="sb-link"><span class="material-symbols-rounded">notifications_active</span>Parent Status</a>
-        <a href="mentorship.html" class="sb-link"><span class="material-symbols-rounded">school</span>Mentors</a>
-        <a href="msg.html" class="sb-link" id="nav-whatsapp"><span
-                class="material-symbols-rounded">chat</span>WhatsApp</a>
+        <a href="ai-assistant.html" class="sb-link">
+            <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
+        </a>
+        <a href="teachers.html" class="sb-link">
+            <span class="material-symbols-rounded">badge</span> Teachers
+        </a>
+        <a href="parents-status.html" class="sb-link">
+            <span class="material-symbols-rounded">notifications</span> Parent Status
+        </a>
     </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-group">
+        <a href="mentorship.html" class="sb-link">
+            <span class="material-symbols-rounded">school</span> Mentors
+        </a>
+    </div>
+
     <div class="sb-divider"></div>
     <div class="sb-bottom">
         <button class="sb-logout" id="logoutBtn"><span class="material-symbols-rounded">logout</span>Log Out</button>
@@ -934,6 +961,7 @@
 </div><!-- main -->
 
 <script src="view-attendance.js"></script>
+<script src="js/profile-handler.js"></script>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -943,6 +971,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     window.firebaseAuth = auth;
+    window.firebaseOnAuthStateChanged = onAuthStateChanged;
 
     async function fetchTeacherProfile(email) {
         try {
@@ -958,14 +987,20 @@
         return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
     }
 
-    function updateUserInfo(displayName, email) {
+    function updateUserInfo(displayName, email, profileImageUrl) {
         const nameEl = document.getElementById('headerUserFullName');
         const emailEl = document.getElementById('headerUserEmail');
         const avatarEl = document.getElementById('headerAvatar');
 
         if (nameEl) nameEl.textContent = displayName;
         if (emailEl) emailEl.textContent = email;
-        if (avatarEl) avatarEl.textContent = getInitials(displayName);
+        if (avatarEl) {
+            if (profileImageUrl) {
+                avatarEl.innerHTML = `<img src="${profileImageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            } else {
+                avatarEl.textContent = getInitials(displayName);
+            }
+        }
     }
 
     const logoutBtn = document.getElementById("logoutBtn");
@@ -974,19 +1009,25 @@
             signOut(auth).then(() => {
                 localStorage.clear();
                 sessionStorage.clear();
-                window.location.replace("login.html");
+                window.location.replace("index.html");
             });
         };
     }
 
     onAuthStateChanged(auth, async (user) => {
         if (user && user.email) {
+            document.body.classList.remove('auth-loading');
             let displayName = user.displayName || user.email.split('@')[0];
             const profile = await fetchTeacherProfile(user.email);
             if (profile && profile.name) displayName = profile.name;
-            updateUserInfo(displayName, user.email);
+            updateUserInfo(displayName, user.email, profile?.profileImageUrl);
+            
+            // Initialize profile upload trigger
+            if (typeof initProfileUpload === 'function') {
+                initProfileUpload(user.email);
+            }
         } else {
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         }
     });
 </script>

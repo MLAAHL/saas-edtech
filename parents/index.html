@@ -45,10 +45,14 @@
         <form id="lookupForm">
           <div class="input-wrapper">
             <span class="material-symbols-rounded input-ico">badge</span>
-            <input type="text" id="studentIDInput" placeholder="Enter Student ID" required autocomplete="off">
+            <input type="text" id="studentIDInput" placeholder="UUCMS Register Number / Student ID" required autocomplete="off">
+          </div>
+          <div class="input-wrapper">
+            <span class="material-symbols-rounded input-ico">lock</span>
+            <input type="password" id="uucmsPasswordInput" placeholder="UUCMS Portal Password" required>
           </div>
           <button type="submit" class="btn-primary" id="lookupBtn">
-            <span id="lookupText">Search Student</span>
+            <span id="lookupText">Login to Portal</span>
             <div class="spinner hidden" id="lookupSpinner"></div>
           </button>
         </form>

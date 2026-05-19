@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const admin = require('../config/firebase-admin');
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 // helper function to send push notifications to absent students' parents
 async function notifyAbsentParents(req, db, stream, semester, subject, date, time, studentsPresentArray) {
@@ -642,7 +643,7 @@ router.put('/attendance/session/:sessionId', async (req, res) => {
 });
 
 // ============================================================================
-// BULK UPDATE ROUTE (Required by view-attendance.js)
+// BULK UPDATE ROUTE (Required by view-attendance.js - Single Date Mode)
 // ============================================================================
 
 router.put('/attendance/bulk/:stream/sem:semester/:subject/:date', async (req, res) => {
@@ -682,10 +683,68 @@ router.put('/attendance/bulk/:stream/sem:semester/:subject/:date', async (req, r
 });
 
 // ============================================================================
+// BULK UPDATE SESSIONS ROUTE (Full Register Mode - many sessions at once)
+// ============================================================================
+
+router.put('/attendance/bulk-update-sessions', async (req, res) => {
+  try {
+    const { updates } = req.body;
+    
+    if (!updates || !Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'No updates provided' });
+    }
+    
+    console.log(`💾 Bulk updating ${updates.length} sessions (full register save)`);
+    
+    if (!req.db) {
+      return res.status(503).json({ success: false, error: 'Database unavailable' });
+    }
+    
+    // Use MongoDB bulkWrite for maximum performance on large batch updates
+    const { ObjectId } = require('mongodb');
+    const bulkOps = updates.map(update => ({
+      updateOne: {
+        filter: { _id: new ObjectId(update.sessionId) },
+        update: {
+          $set: {
+            studentsPresent: update.studentsPresent,
+            presentCount: update.studentsPresent.length
+          }
+        }
+      }
+    }));
+    
+    // Process in chunks of 50 to avoid overwhelming MongoDB
+    const CHUNK_SIZE = 50;
+    let totalModified = 0;
+    
+    for (let i = 0; i < bulkOps.length; i += CHUNK_SIZE) {
+      const chunk = bulkOps.slice(i, i + CHUNK_SIZE);
+      const result = await req.db.collection('attendances').bulkWrite(chunk, { ordered: false });
+      totalModified += result.modifiedCount || 0;
+      console.log(`  ✅ Chunk ${Math.floor(i / CHUNK_SIZE) + 1}: ${result.modifiedCount} modified`);
+    }
+    
+    // Clear cache for all affected streams
+    if (updates.length > 0) {
+      clearCachePattern('attendance:');
+    }
+    
+    console.log(`✅ Full register bulk update complete: ${totalModified} document(s) modified`);
+    
+    res.json({ success: true, modified: totalModified });
+    
+  } catch (error) {
+    console.error('❌ Error in bulk session update:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
 // DELETE SESSION ROUTE (Required by view-attendance.js)
 // ============================================================================
 
-router.delete('/attendance/:sessionId', async (req, res) => {
+router.delete('/attendance/:sessionId', firebaseAuth, async (req, res) => {
   try {
     const { sessionId } = req.params;
     
@@ -696,7 +755,7 @@ router.delete('/attendance/:sessionId', async (req, res) => {
     }
     
     // PERFORM SOFT DELETE
-    const authUser = req.user ? req.user.email : 'Unknown';
+    const authUser = req.body.operatorEmail || req.user?.email || req.firebaseUser?.email || 'Unknown';
     const result = await Attendance.findByIdAndUpdate(
       sessionId, 
       { 

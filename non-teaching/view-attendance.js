@@ -1,6 +1,29 @@
 const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 console.log('🔧 API Base URL:', API_BASE_URL);
 
+// Helper to get authentication headers
+let currentUserObj = null;
+
+async function getAuthHeaders() {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    const currentUser = currentUserObj || (window.firebaseAuth && window.firebaseAuth.currentUser);
+    if (currentUser) {
+        try {
+            const token = await currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+            console.error('Error getting auth token:', error);
+        }
+    } else {
+        console.warn('Firebase Auth or User not available for headers');
+    }
+
+    return headers;
+}
+
 // ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
@@ -321,10 +344,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    await loadStreams();
     setupEventListeners();
 
-    setTimeout(() => restoreState(), 500);
+    // Wait for Firebase Auth to initialize before calling loadStreams
+    const checkAuthAndInit = () => {
+        const auth = window.firebaseAuth;
+        const onAuthStateChanged = window.firebaseOnAuthStateChanged;
+        
+        if (auth && onAuthStateChanged) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserObj = user;
+                    console.log('✅ Auth ready - loading streams for user:', user.email);
+                    try {
+                        await loadStreams();
+                        setTimeout(() => restoreState(), 200);
+                    } catch (err) {
+                        console.error('Error loading streams on auth:', err);
+                    }
+                }
+            });
+        } else {
+            // Retry after 50ms if Firebase script hasn't loaded/initialized yet
+            setTimeout(checkAuthAndInit, 50);
+        }
+    };
+
+    checkAuthAndInit();
 });
 
 // ============================================================================
@@ -424,9 +470,11 @@ async function loadStreams() {
         const url = `${API_BASE_URL}/streams`;
         console.log('🔗 Fetching from URL:', url);
 
+        const authHeaders = await getAuthHeaders();
         const response = await fetch(url, {
             method: 'GET',
             headers: {
+                ...authHeaders,
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
@@ -514,8 +562,10 @@ async function loadSemesters(stream) {
 
         console.log('📡 Fetching semesters for stream:', stream);
 
+        const authHeaders = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/streams/${encodeURIComponent(stream)}/semesters`, {
             headers: {
+                ...authHeaders,
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             }
@@ -565,8 +615,10 @@ async function loadSubjects(stream, semester) {
 
         console.log('📡 Fetching subjects for:', { stream, semester });
 
+        const authHeaders = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/subjects/${encodeURIComponent(stream)}/sem${semester}`, {
             headers: {
+                ...authHeaders,
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             }
@@ -719,7 +771,8 @@ async function loadRegister() {
     try {
         showLoadingState();
 
-        const response = await fetch(`${API_BASE_URL}/attendance/register/${stream}/sem${semester}/${encodeURIComponent(subject)}`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/attendance/register/${stream}/sem${semester}/${encodeURIComponent(subject)}`, { headers });
         const data = await response.json();
 
         console.log('📦 Register data received:', data);
@@ -987,12 +1040,11 @@ async function deleteSelectedSessions() {
             deleteSessionBtn.disabled = true;
             deleteSessionBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size: 16px;">hourglass_empty</span> Deleting...';
 
+            const authHeaders = await getAuthHeaders();
             const deletePromises = Array.from(selectedSessions).map(sessionId =>
                 fetch(`${API_BASE_URL}/attendance/${sessionId}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: authHeaders
                 })
             );
 
@@ -1247,11 +1299,10 @@ async function saveAttendance() {
 
             console.log('🚀 Sending bulk update request...');
 
+            const authHeaders = await getAuthHeaders();
             const response = await fetch(`${API_BASE_URL}/attendance/bulk/${currentStream}/sem${currentSemester}/${encodeURIComponent(currentSubject)}/${currentDate}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: authHeaders,
                 body: JSON.stringify({ updates })
             });
 
@@ -1303,14 +1354,13 @@ async function saveAttendance() {
 
             console.log(`🚀 Updating ${sessionUpdates.size} sessions...`);
 
+            const authHeaders = await getAuthHeaders();
             const updatePromises = Array.from(sessionUpdates.values()).map(update => {
                 console.log(`📝 Updating session ${update.sessionId}: ${update.studentsPresent.length}/${update.totalStudents} present`);
 
                 return fetch(`${API_BASE_URL}/attendance/session/${update.sessionId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: authHeaders,
                     body: JSON.stringify({
                         studentsPresent: update.studentsPresent,
                         totalStudents: update.totalStudents
@@ -1386,8 +1436,12 @@ async function deleteAttendance() {
 
     showConfirm(message, async () => {
         try {
+            const authHeaders = await getAuthHeaders();
             const deletePromises = currentDateData.sessions.map(session =>
-                fetch(`${API_BASE_URL}/attendance/${session._id}`, { method: 'DELETE' })
+                fetch(`${API_BASE_URL}/attendance/${session._id}`, {
+                    method: 'DELETE',
+                    headers: authHeaders
+                })
             );
 
             const results = await Promise.all(deletePromises);

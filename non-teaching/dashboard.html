@@ -1065,11 +1065,13 @@
       .stats-row {
         grid-template-columns: 1fr;
       }
+    body.auth-loading {
+      display: none !important;
     }
   </style>
 </head>
 
-<body>
+<body class="auth-loading">
 
   <!-- ══════════ SIDEBAR ══════════ -->
   <aside class="sidebar">
@@ -1101,18 +1103,21 @@
       <a href="ai-assistant.html" class="sb-link">
         <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
       </a>
-      <a href="teachers.html" class="sb-link"><span class="material-symbols-rounded">badge</span>Teachers</a>
-    <a href="parents-status.html" class="sb-link"><span class="material-symbols-rounded">notifications_active</span>Parent Status</a>
-    <div class="sb-divider"></div>
-      <a href="mentorship.html" class="sb-link">
-        <span class="material-symbols-rounded">school</span> Mentors
+      <a href="teachers.html" class="sb-link">
+        <span class="material-symbols-rounded">badge</span> Teachers
       </a>
-      <a href="msg.html" class="sb-link" id="nav-whatsapp">
-        <span class="material-symbols-rounded">chat</span> WhatsApp
+      <a href="parents-status.html" class="sb-link">
+        <span class="material-symbols-rounded">notifications</span> Parent Status
       </a>
     </div>
 
     <div class="sb-divider"></div>
+
+    <div class="sb-group">
+      <a href="mentorship.html" class="sb-link">
+        <span class="material-symbols-rounded">school</span> Mentors
+      </a>
+    </div>
 
     <div class="sb-section-label">
       Quick Stats
@@ -1352,7 +1357,12 @@
 
     async function fetchTeacherProfile(email) {
       try {
-        const r = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const headers = {};
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const r = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
         if (!r.ok) return null;
         const d = await r.json();
         return (d.success && d.teacher) ? d.teacher : null;
@@ -1385,6 +1395,7 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (user?.email) {
+        document.body.classList.remove('auth-loading');
         let displayName = user.displayName || user.email.split('@')[0]
           .replace(/[._]/g, ' ').split(' ')
           .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -1398,10 +1409,10 @@
         }
 
         if (document.readyState === 'complete') {
-          if (typeof loadDashboardData === 'function') loadDashboardData();
+          if (typeof loadDashboardData === 'function') loadDashboardData(user);
         } else {
           window.addEventListener('load', () => {
-            if (typeof loadDashboardData === 'function') loadDashboardData();
+            if (typeof loadDashboardData === 'function') loadDashboardData(user);
           });
         }
       } else {
@@ -1442,9 +1453,26 @@
       loadAttendanceTrendData(period);
     }
 
+    let currentUserObj = null;
+
+    async function getAuthHeaders() {
+      const headers = {};
+      const currentUser = currentUserObj || (window.firebaseAuth && window.firebaseAuth.currentUser);
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+          console.error('Error getting auth token:', error);
+        }
+      }
+      return headers;
+    }
+
     async function loadAttendanceTrendData(period) {
       try {
-        const r = await fetch(`${dashboardApiUrl}/dashboard/attendance-trend?period=${period}&t=${Date.now()}`);
+        const headers = await getAuthHeaders();
+        const r = await fetch(`${dashboardApiUrl}/dashboard/attendance-trend?period=${period}&t=${Date.now()}`, { headers });
         const d = await r.json();
         if (d.success && d.trend && attendanceChart) {
           attendanceChart.data.labels = d.trend.labels || [];
@@ -1611,12 +1639,14 @@
     }
 
     // ══════ MAIN LOAD ══════
-    async function loadDashboardData() {
+    async function loadDashboardData(user) {
+      if (user) currentUserObj = user;
       setVal("totalStudents", "..."); setVal("totalStreams", "...");
       setVal("totalSubjects", "..."); setVal("attendanceRate", "...");
 
       try {
-        const res = await fetch(`${dashboardApiUrl}/dashboard/stats?t=${Date.now()}`);
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${dashboardApiUrl}/dashboard/stats?t=${Date.now()}`, { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -1798,9 +1828,7 @@
       renderClassesList();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadDashboardData();
-    });
+
   </script>
 </body>
 

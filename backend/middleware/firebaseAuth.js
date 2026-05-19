@@ -32,6 +32,7 @@ const firebaseAuth = async (req, res, next) => {
       email: decoded.email,
       name: decoded.name || decoded.email?.split('@')[0]
     };
+    req.user = req.firebaseUser; // ✅ Ensure backward compatibility with req.user
     
     console.log('✅ Token verified for user:', decoded.email);
     next();

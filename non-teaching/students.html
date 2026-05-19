@@ -962,10 +962,13 @@
         grid-template-columns: 1fr;
       }
     }
+    body.auth-loading {
+      display: none !important;
+    }
   </style>
 </head>
 
-<body>
+<body class="auth-loading">
 
   <!-- ══════════ SIDEBAR ══════════ -->
   <aside class="sidebar">
@@ -989,24 +992,29 @@
         <span class="material-symbols-rounded">trending_up</span> Promote
       </a>
     </div>
+
     <div class="sb-divider"></div>
+
     <div class="sb-group">
       <a href="ai-assistant.html" class="sb-link">
         <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
       </a>
       <a href="teachers.html" class="sb-link">
-        <span class="material-symbols-rounded">person</span> Teachers
+        <span class="material-symbols-rounded">badge</span> Teachers
       </a>
       <a href="parents-status.html" class="sb-link">
-        <span class="material-symbols-rounded">notifications_active</span> Parent Status
+        <span class="material-symbols-rounded">notifications</span> Parent Status
       </a>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-group">
       <a href="mentorship.html" class="sb-link">
         <span class="material-symbols-rounded">school</span> Mentors
       </a>
-      <a href="msg.html" class="sb-link" id="nav-whatsapp">
-        <span class="material-symbols-rounded">chat</span> WhatsApp
-      </a>
     </div>
+
     <div class="sb-divider"></div>
     <div class="sb-bottom">
       <button class="sb-logout" id="logoutBtn">
@@ -1708,17 +1716,22 @@
     const auth = getAuth(app);
     window.firebaseAuth = auth;
 
-    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    if (userRole === 'teaching') {
+    const userType = localStorage.getItem('userType') || sessionStorage.getItem('userType');
+    if (userType === 'teaching') {
       alert('Please use Non-Teaching Staff Login');
-      window.location.replace('login.html');
+      window.location.replace('index.html');
     }
 
     const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 
     async function fetchTeacherProfile(email) {
       try {
-        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const headers = {};
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
         const data = await response.json();
         return data.success && data.teacher ? data.teacher : null;
       } catch { return null; }
@@ -1748,7 +1761,7 @@
       signOut(auth).then(() => {
         localStorage.clear();
         sessionStorage.clear();
-        window.location.replace("login.html");
+        window.location.replace("index.html");
       }).catch((error) => {
         console.error("Logout error:", error);
         alert("Error logging out. Please try again.");
@@ -1757,6 +1770,7 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (user && user.email) {
+        document.body.classList.remove('auth-loading');
         let displayName = user.displayName || user.email.split('@')[0].replace(/[._]/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         const profile = await fetchTeacherProfile(user.email);
         if (profile && profile.name) displayName = profile.name;
@@ -1767,9 +1781,13 @@
           initProfileUpload(user.email);
         }
 
-        if (typeof refreshStudents === 'function') refreshStudents();
+        if (typeof loadAllData === 'function') {
+          loadAllData(user);
+        } else {
+          window.initialAuthUser = user;
+        }
       } else {
-        window.location.href = 'login.html';
+        window.location.href = 'index.html';
       }
     });
   </script>

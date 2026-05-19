@@ -36,6 +36,21 @@ let userData = {
 // ✅ API URL from config
 const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 
+// Helper to get authentication headers
+async function getAuthHeaders() {
+  const headers = {};
+  const auth = getFirebaseAuth();
+  if (auth && auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+    }
+  }
+  return headers;
+}
+
 
 
 // DOM Elements
@@ -187,6 +202,8 @@ function hideLoadingOverlay() {
   if (elements.loadingOverlay) {
     elements.loadingOverlay.classList.add('hidden');
   }
+  const authGuard = document.getElementById('auth-guard');
+  if (authGuard) authGuard.remove();
 }
 
 function showLoadingOverlay() {
@@ -308,7 +325,8 @@ window.clearAppCache = clearAppCache;
 async function fetchCloudinaryConfig() {
   try {
     console.log('☁️ Fetching Cloudinary config...');
-    const response = await fetch(`${API_BASE_URL}/config/cloudinary`);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/config/cloudinary`, { headers });
     const data = await response.json();
 
     if (data.success && data.config) {
@@ -368,10 +386,12 @@ async function uploadProfileImage(file, email) {
 
     const downloadURL = cloudinaryData.secure_url;
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/teacher/profile/${encodeURIComponent(email)}/image`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...authHeaders
       },
       body: JSON.stringify({ profileImageUrl: downloadURL })
     });
@@ -461,7 +481,8 @@ async function fetchTeacherProfile(email) {
   try {
     console.log('👤 Fetching teacher profile from database...');
 
-    const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
     const data = await response.json();
 
     if (data.success && data.teacher) {
@@ -485,49 +506,52 @@ window.fetchTeacherProfile = fetchTeacherProfile;
 
 function loadUserInfo() {
   return new Promise((resolve) => {
-    const auth = getFirebaseAuth();
-    const onAuthStateChanged = getOnAuthStateChanged();
+    const checkAuth = () => {
+      const auth = getFirebaseAuth();
+      const onAuthStateChanged = getOnAuthStateChanged();
 
-    if (auth && onAuthStateChanged) {
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          hideLoadingOverlay();
-          userData.userEmail = user.email;
-          userData.firebaseUid = user.uid;
-          window.currentUserEmail = user.email;
+      if (auth && onAuthStateChanged) {
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            hideLoadingOverlay();
+            userData.userEmail = user.email;
+            userData.firebaseUid = user.uid;
+            window.currentUserEmail = user.email;
 
-          // Load profile in background
-          fetchTeacherProfile(user.email).then(teacherProfile => {
-            if (teacherProfile) {
-              if (teacherProfile.name) {
-                userData.userName = teacherProfile.name;
+            // Load profile in background
+            fetchTeacherProfile(user.email).then(teacherProfile => {
+              if (teacherProfile) {
+                if (teacherProfile.name) {
+                  userData.userName = teacherProfile.name;
+                } else {
+                  userData.userName = user.displayName || user.email.split('@')[0];
+                }
+
+                if (teacherProfile.profileImageUrl) {
+                  userData.profileImageUrl = teacherProfile.profileImageUrl;
+                }
               } else {
                 userData.userName = user.displayName || user.email.split('@')[0];
               }
 
-              if (teacherProfile.profileImageUrl) {
-                userData.profileImageUrl = teacherProfile.profileImageUrl;
-              }
-            } else {
-              userData.userName = user.displayName || user.email.split('@')[0];
-            }
+              updateUserDisplay(userData.userName, userData.userEmail, userData.profileImageUrl);
+            });
 
-            updateUserDisplay(userData.userName, userData.userEmail, userData.profileImageUrl);
-          });
-
-          console.log('✅ User authenticated:', user.email);
-          resolve(user);
-        } else {
-          console.log('⚠️ No user authenticated');
-          hideLoadingOverlay();
-          resolve(null);
-        }
-      });
-    } else {
-      console.log('⚠️ Firebase auth not available');
-      hideLoadingOverlay();
-      resolve(null);
-    }
+            console.log('✅ User authenticated:', user.email);
+            resolve(user);
+          } else {
+            console.log('⚠️ No user authenticated');
+            hideLoadingOverlay();
+            window.location.replace('index.html');
+            resolve(null);
+          }
+        });
+      } else {
+        console.log('⚠️ Firebase auth not available, retrying in 100ms...');
+        setTimeout(checkAuth, 100);
+      }
+    };
+    checkAuth();
   });
 }
 
@@ -1638,6 +1662,12 @@ async function cachedFetch(url, options = {}) {
   const cacheKey = url;
   const cached = apiCache.get(cacheKey);
   if (cached && !options.noCache) return cached;
+
+  const authHeaders = await getAuthHeaders();
+  options.headers = {
+    ...options.headers,
+    ...authHeaders
+  };
 
   const response = await fetch(url, options);
   const data = await response.json();

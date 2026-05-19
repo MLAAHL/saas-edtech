@@ -175,6 +175,9 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Enforce Firebase Auth middleware for all subsequent teacher/profile routes
+router.use(firebaseAuth);
+
 // ============================================================================
 // GET ALL STREAMS
 // ============================================================================

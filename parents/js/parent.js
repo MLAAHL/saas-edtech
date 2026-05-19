@@ -135,7 +135,7 @@ async function performLookup(sid, skipRegister = false) {
   try {
     const res = await fetch(`${API}/parent/lookup`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID: sid })
+      body: JSON.stringify({ studentID: sid, username: sid, password: window._uucmsPassword })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Student not found');
@@ -179,7 +179,9 @@ async function performLookup(sid, skipRegister = false) {
 document.getElementById('lookupForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const sid = document.getElementById('studentIDInput').value.trim();
-  if (!sid) return;
+  window._uucmsPassword = document.getElementById('uucmsPasswordInput').value.trim();
+  
+  if (!sid || !window._uucmsPassword) return;
   await performLookup(sid, false);
 });
 
@@ -201,6 +203,7 @@ function switchTab(tab) {
   if (tab === 'daily') loadDailyAttendance();
   else if (tab === 'full') loadFullAttendance();
   else if (tab === 'recent') loadRecentAttendance();
+  else if (tab === 'uucms') loadUUCMSData();
 }
 
 // ===== DATE =====
@@ -324,3 +327,77 @@ async function loadRecentAttendance() {
     document.getElementById('recentList').innerHTML = `<div class="empty-state"><span class="material-symbols-rounded">error</span><p>${err.message}</p></div>`;
   } finally { hideLoading(); }
 }
+
+// ===== UUCMS =====
+async function loadUUCMSData() {
+  if (!currentStudent) return;
+  showLoading();
+  try {
+    const res = await fetch(`${API}/parent/dashboard/${currentStudent.studentID}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    // With auto-sync on login, we should always have some data or sync pending
+    document.getElementById('uucmsLoginArea').classList.add('hidden');
+    document.getElementById('uucmsDashboard').classList.remove('hidden');
+    renderUUCMSDashboard(data);
+  } catch (err) {
+    console.error('UUCMS Load Error:', err);
+  } finally { hideLoading(); }
+}
+
+function renderUUCMSDashboard(data) {
+  // Render Stats
+  const att = data.uucmsAttendance;
+  const res = data.uucmsResults;
+  
+  document.getElementById('uucmsStats').innerHTML = `
+    <div class="summary-card" style="background: linear-gradient(135deg, #4F46E5, #7C3AED);">
+      <p class="summary-label" style="color:rgba(255,255,255,0.8)">UUCMS Academic Sync</p>
+      <div class="big-percent" style="color:white">${att ? att.overallPercentage : '--'}%</div>
+      <div class="summary-row">
+        <div class="stat-pill" style="background:rgba(255,255,255,0.2); color:white">CGPA: ${res ? res.cgpa : 'N/A'}</div>
+        <div class="stat-pill" style="background:rgba(255,255,255,0.2); color:white">SGPA: ${res ? res.sgpa : 'N/A'}</div>
+      </div>
+      <p style="font-size:10px; color:rgba(255,255,255,0.6); margin-top:10px;">Last Synced: ${new Date(data.syncStatus?.lastSynced || Date.now()).toLocaleString()}</p>
+    </div>
+  `;
+
+  // Render Marks
+  if (data.uucmsMarks) {
+    document.getElementById('uucmsMarks').innerHTML = `
+      <div class="section-header"><h3 class="section-title">Internal Marks</h3></div>
+      ${data.uucmsMarks.subjects.map(s => `
+        <div class="record-card">
+          <div class="rc-top"><span class="rc-subject">${s.subjectName}</span><span class="rc-time">${s.totalObtained}/${s.totalMax}</span></div>
+          <div class="rc-bottom">
+            ${s.components.map(c => `<span class="stat-pill" style="font-size:10px">${c.name}: ${c.obtainedMarks}</span>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  // Render Exam Results
+  if (data.uucmsResults) {
+    const res = data.uucmsResults;
+    document.getElementById('uucmsMarks').innerHTML += `
+      <div class="section-header" style="margin-top:20px;"><h3 class="section-title">Semester Exam Results</h3></div>
+      <div class="record-card" style="border-left: 4px solid #10B981;">
+         <div class="rc-top"><span class="rc-subject">Semester ${res.semester} Summary</span><span class="rc-time">SGPA: ${res.sgpa}</span></div>
+         <div class="rc-bottom"><span class="status-badge present">${res.resultStatus || 'Declared'}</span></div>
+      </div>
+      ${res.subjects.map(s => `
+        <div class="record-card">
+          <div class="rc-top"><span class="rc-subject">${s.subjectName}</span><span class="rc-time">${s.totalMarks} / 100</span></div>
+          <div class="rc-bottom">
+            <span class="stat-pill" style="font-size:10px">IA: ${s.internalMarks}</span>
+            <span class="stat-pill" style="font-size:10px">SEE: ${s.externalMarks}</span>
+            <span class="status-badge ${s.result === 'Pass' ? 'present' : 'absent'}" style="padding: 2px 8px; font-size:10px;">${s.grade}</span>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+}
+

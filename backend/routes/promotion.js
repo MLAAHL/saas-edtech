@@ -36,6 +36,11 @@ async function getDatabase() {
   }
 }
 
+const firebaseAuth = require('../middleware/firebaseAuth');
+
+// Enforce auth for all promotion endpoints
+router.use(firebaseAuth);
+
 // ============================================================================
 // 1. GET ALL STREAMS (NO /api/ PREFIX!)
 // ============================================================================

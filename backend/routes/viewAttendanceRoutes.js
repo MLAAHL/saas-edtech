@@ -6,6 +6,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
 const router = express.Router();
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 // Import WhatsApp Service
 const whatsappService = require('../services/whatsappService');
@@ -201,8 +202,11 @@ function filterStudentsBySubject(students, subjectDetails, manualLanguage = null
 // ============================================================================
 
 router. get('/absence-notification-page', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/absence-notification. html'));
+  res.sendFile(path.join(__dirname, '../public/absence-notification.html'));
 });
+
+// Enforce Firebase Auth middleware for all attendance, stream, and subject database APIs
+router.use(firebaseAuth);
 
 // ============================================================================
 // STREAMS AND SEMESTERS ROUTES (NEW)
@@ -801,7 +805,7 @@ router.put('/attendance/:id', async (req, res) => {
 // DELETE - Remove record
 router.delete('/attendance/:id', async (req, res) => {
   try {
-    const authUser = req.body.operatorEmail || req.user?.email || 'Unknown';
+    const authUser = req.body.operatorEmail || req.user?.email || req.firebaseUser?.email || 'Unknown';
     const record = await Attendance.findByIdAndUpdate(
       req.params.id, 
       { 

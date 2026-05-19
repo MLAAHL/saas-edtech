@@ -22,6 +22,7 @@ const checkDB = (req, res, next) => {
 };
 
 router.use(checkDB);
+router.use(firebaseAuth);
 
 // ============================================================================
 // GET ENROLLMENTS FOR A SUBJECT

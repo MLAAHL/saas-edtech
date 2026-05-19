@@ -7,11 +7,35 @@ const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 let allTeachers = [];
 let deleteTargetUid = null;
 
+// Helper to get authentication headers
+let currentUserObj = null;
+
+async function getAuthHeaders() {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    const currentUser = currentUserObj || (window.firebaseAuth && window.firebaseAuth.currentUser);
+    if (currentUser) {
+        try {
+            const token = await currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+            console.error('Error getting auth token:', error);
+        }
+    } else {
+        console.warn('Firebase Auth or User not available for headers');
+    }
+
+    return headers;
+}
+
 // ============================================================================
 // LOAD TEACHERS
 // ============================================================================
 
-async function loadTeachers() {
+async function loadTeachers(user) {
+    if (user) currentUserObj = user;
     const loadingEl = document.getElementById('loadingState');
     const emptyEl = document.getElementById('emptyState');
     const tableEl = document.getElementById('teachersTable');
@@ -21,7 +45,8 @@ async function loadTeachers() {
         emptyEl.style.display = 'none';
         tableEl.style.display = 'none';
 
-        const res = await fetch(`${API_BASE_URL}/firebase-users`);
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API_BASE_URL}/firebase-users`, { headers });
         const data = await res.json();
 
         if (!data.success) {
@@ -171,9 +196,13 @@ async function createTeacher() {
         addBtn.disabled = true;
         addBtn.textContent = 'Creating...';
 
+        const authHeaders = await getAuthHeaders();
         const res = await fetch(`${API_BASE_URL}/firebase-users`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                ...authHeaders,
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ email, password, displayName })
         });
 
@@ -218,8 +247,10 @@ async function confirmDelete() {
         btn.disabled = true;
         btn.textContent = 'Deleting...';
 
+        const authHeaders = await getAuthHeaders();
         const res = await fetch(`${API_BASE_URL}/firebase-users/${deleteTargetUid}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: authHeaders
         });
 
         const data = await res.json();
@@ -246,9 +277,13 @@ async function confirmDelete() {
 
 async function toggleDisable(uid, disabled) {
     try {
+        const authHeaders = await getAuthHeaders();
         const res = await fetch(`${API_BASE_URL}/firebase-users/${uid}/disable`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                ...authHeaders,
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ disabled })
         });
 
@@ -298,9 +333,13 @@ async function confirmResetPassword() {
         btn.disabled = true;
         btn.textContent = 'Updating...';
 
+        const authHeaders = await getAuthHeaders();
         const res = await fetch(`${API_BASE_URL}/firebase-users/${resetTargetUid}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                ...authHeaders,
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ password: newPassword })
         });
 
@@ -424,5 +463,4 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     });
 });
 
-// Load on start
-document.addEventListener('DOMContentLoaded', loadTeachers);
+

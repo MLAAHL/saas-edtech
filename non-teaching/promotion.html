@@ -623,30 +623,180 @@
         transform: rotate(360deg);
       }
     }
+
+    /* ══════════ PREMIUM PASSWORD MODAL ══════════ */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(12, 12, 14, 0.85);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .password-modal {
+      width: 400px;
+      max-width: 90%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hover);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      padding: 24px;
+      transform: scale(0.9) translateY(10px);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .modal-overlay.active .password-modal {
+      transform: scale(1) translateY(0);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .modal-header .material-symbols-rounded {
+      font-size: 24px;
+      color: var(--amber);
+      background: var(--amber-dim);
+      padding: 8px;
+      border-radius: 10px;
+    }
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .modal-body p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .password-input-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .password-input-wrapper input {
+      width: 100%;
+      height: 46px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 16px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .password-input-wrapper input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px var(--purple-dim);
+    }
+    .password-error {
+      font-size: 12px;
+      color: var(--red);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .btn-modal {
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .btn-modal-cancel {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-modal-cancel:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-primary);
+    }
+    .btn-modal-confirm {
+      background: var(--purple);
+      color: #000;
+      font-weight: 600;
+    }
+    .btn-modal-confirm:hover {
+      opacity: 0.9;
+    }
+    .btn-modal-confirm:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    body.auth-loading {
+      display: none !important;
+    }
   </style>
 </head>
 
-<body>
+<body class="auth-loading">
   <aside class="sidebar">
     <div class="sb-logo"><img src="logo.png" alt="Logo"></div>
     <div class="sb-group">
-      <a href="dashboard.html" class="sb-link"><span class="material-symbols-rounded">dashboard</span>Dashboard</a>
-      <a href="students.html" class="sb-link"><span class="material-symbols-rounded">group</span>Students</a>
-      <a href="report.html" class="sb-link"><span class="material-symbols-rounded">description</span>Reports</a>
-      <a href="view-attendance.html" class="sb-link"><span class="material-symbols-rounded">assignment</span>View
-        Attendance</a>
-      <a href="promotion.html" class="sb-link active"><span
-          class="material-symbols-rounded">trending_up</span>Promote</a>
+      <a href="dashboard.html" class="sb-link">
+        <span class="material-symbols-rounded">dashboard</span> Dashboard
+      </a>
+      <a href="students.html" class="sb-link">
+        <span class="material-symbols-rounded">group</span> Students
+      </a>
+      <a href="report.html" class="sb-link">
+        <span class="material-symbols-rounded">description</span> Reports
+      </a>
+      <a href="view-attendance.html" class="sb-link">
+        <span class="material-symbols-rounded">assignment</span> View Attendance
+      </a>
+      <a href="promotion.html" class="sb-link active">
+        <span class="material-symbols-rounded">trending_up</span> Promote
+      </a>
     </div>
+
     <div class="sb-divider"></div>
+
     <div class="sb-group">
-      <a href="ai-assistant.html" class="sb-link"><span class="material-symbols-rounded">auto_awesome</span>AI
-        Assistant</a>
-      <a href="teachers.html" class="sb-link"><span class="material-symbols-rounded">person</span>Teachers</a>
-      <a href="mentorship.html" class="sb-link"><span class="material-symbols-rounded">school</span>Mentors</a>
-      <a href="msg.html" class="sb-link" id="nav-whatsapp"><span
-          class="material-symbols-rounded">chat</span>WhatsApp</a>
+      <a href="ai-assistant.html" class="sb-link">
+        <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
+      </a>
+      <a href="teachers.html" class="sb-link">
+        <span class="material-symbols-rounded">badge</span> Teachers
+      </a>
+      <a href="parents-status.html" class="sb-link">
+        <span class="material-symbols-rounded">notifications</span> Parent Status
+      </a>
     </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-group">
+      <a href="mentorship.html" class="sb-link">
+        <span class="material-symbols-rounded">school</span> Mentors
+      </a>
+    </div>
+
     <div class="sb-divider"></div>
     <div class="sb-bottom"><button class="sb-logout" id="logoutBtn"><span
           class="material-symbols-rounded">logout</span>Log Out</button></div>
@@ -781,12 +931,15 @@
   <!-- Firebase Auth -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { firebaseConfig } from './firebase-config.js';
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     window.firebaseAuth = auth;
+    window.firebaseOnAuthStateChanged = onAuthStateChanged;
+    window.EmailAuthProvider = EmailAuthProvider;
+    window.reauthenticateWithCredential = reauthenticateWithCredential;
 
     async function fetchTeacherProfile(email) {
       try {
@@ -815,11 +968,12 @@
     }
 
     document.getElementById("logoutBtn").onclick = () => {
-      signOut(auth).then(() => { localStorage.clear(); sessionStorage.clear(); window.location.replace("login.html"); });
+      signOut(auth).then(() => { localStorage.clear(); sessionStorage.clear(); window.location.replace("index.html"); });
     };
 
     onAuthStateChanged(auth, async (user) => {
       if (user && user.email) {
+        document.body.classList.remove('auth-loading');
         let name = user.displayName || user.email.split('@')[0].replace(/[._]/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         const profile = await fetchTeacherProfile(user.email);
         if (profile) name = profile.name;
@@ -831,80 +985,35 @@
         }
 
         if (typeof loadStreamsFromDatabase === 'function') loadStreamsFromDatabase();
-      } else { window.location.href = 'login.html'; }
+      } else { window.location.href = 'index.html'; }
     });
   </script>
 
-  <script>
-    document.getElementById('promotionStream').addEventListener('change', function () {
-      document.getElementById('loadBtn').disabled = !this.value;
-      document.getElementById('statsRow').classList.add('hidden');
-      document.getElementById('promotionPreview').classList.add('hidden');
-      document.getElementById('emptyState').classList.remove('hidden');
-    });
 
-    async function loadStreams() {
-      try {
-        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-streams`);
-        const data = await res.json();
-        if (data.success && data.streams) {
-          const sel = document.getElementById('promotionStream');
-          sel.innerHTML = '<option value="">-- Select Stream --</option>';
-          data.streams.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.name; opt.textContent = s.name;
-            sel.appendChild(opt);
-          });
-        }
-      } catch (e) { console.error(e); }
-    }
+  <!-- Premium Password Confirmation Modal -->
+  <div class="modal-overlay" id="passwordModalOverlay">
+    <div class="password-modal">
+      <div class="modal-header">
+        <span class="material-symbols-rounded">security</span>
+        <h3>Security Verification</h3>
+      </div>
+      <div class="modal-body">
+        <p id="passwordModalDescription">Please enter your password to confirm and authorize this academic promotion action.</p>
+        <div class="password-input-wrapper">
+          <input type="password" id="confirmPasswordInput" placeholder="Enter your password" autocomplete="current-password">
+          <div class="password-error hidden" id="passwordErrorMsg">
+            <span class="material-symbols-rounded" style="font-size: 14px;">error</span>
+            <span id="passwordErrorText">Incorrect password. Please try again.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-modal-cancel" id="cancelPasswordBtn">Cancel</button>
+        <button class="btn-modal btn-modal-confirm" id="confirmPasswordBtn">Verify & Proceed</button>
+      </div>
+    </div>
+  </div>
 
-    async function loadPromotionPreview() {
-      const stream = document.getElementById('promotionStream').value;
-      const btn = document.getElementById('loadBtn');
-      const original = btn.innerHTML;
-      btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>';
-
-      try {
-        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/simple-promotion-preview/${encodeURIComponent(stream)}`);
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('totalStudents').textContent = data.totalStudents || 0;
-          document.getElementById('willGraduate').textContent = data.semesterBreakdown?.semester6 || 0;
-          document.getElementById('willPromote').textContent = (data.totalStudents || 0) - (data.semesterBreakdown?.semester6 || 0);
-          document.getElementById('sem1Empty').textContent = data.semesterBreakdown?.semester1 || 0;
-
-          const grid = document.getElementById('semesterGrid');
-          grid.innerHTML = '';
-          for (let i = 1; i <= 6; i++) {
-            const count = data.semesterBreakdown?.[`semester${i}`] || 0;
-            grid.innerHTML += `<div class="semester-box"><div class="semester-number">${count}</div><div class="semester-name">Sem ${i}</div></div>`;
-          }
-
-          const flow = document.getElementById('promotionFlow');
-          flow.innerHTML = (data.promotionPreview || []).map(f => {
-            const m = f.match(/Sem (\d) → (Sem \d|Graduate) \((\d+) students\)/);
-            return m ? `<div class="flow-card"><span>Sem ${m[1]} → ${m[2]}</span><span class="flow-count">${m[3]}</span></div>`
-              : `<div class="flow-card">${f}</div>`;
-          }).join('');
-
-          const undoRes = await fetch(`${window.APP_CONFIG.API_BASE_URL}/can-undo-promotion/${encodeURIComponent(stream)}`);
-          const undoData = await undoRes.json();
-          if (undoData.success && undoData.canUndo) {
-            document.getElementById('undoInfo').textContent = `${undoData.hoursOld}h old · ${undoData.studentsInBackup} students`;
-            document.getElementById('undoSection').classList.remove('hidden');
-          } else {
-            document.getElementById('undoSection').classList.add('hidden');
-          }
-
-          document.getElementById('emptyState').classList.add('hidden');
-          document.getElementById('statsRow').classList.remove('hidden');
-          document.getElementById('promotionPreview').classList.remove('hidden');
-        }
-      } catch (e) { alert('Load failed'); }
-      btn.disabled = false; btn.innerHTML = original;
-    }
-  </script>
   <script src="js/promotion.js"></script>
 </body>
 

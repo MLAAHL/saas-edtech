@@ -2,9 +2,31 @@ const API = window.APP_CONFIG.API_BASE_URL;
 
 let allStudents = [];
 
-async function fetchStatus() {
+// Helper to get authentication headers
+async function getAuthHeaders(user) {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    const currentUser = user || (window.firebaseAuth && window.firebaseAuth.currentUser);
+    if (currentUser) {
+        try {
+            const token = await currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+            console.error('Error getting auth token:', error);
+        }
+    } else {
+        console.warn('Firebase Auth or User not available for headers');
+    }
+
+    return headers;
+}
+
+async function fetchStatus(user) {
     try {
-        const res = await fetch(`${API}/parent/status-report`);
+        const headers = await getAuthHeaders(user);
+        const res = await fetch(`${API}/parent/status-report`, { headers });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
 
@@ -115,7 +137,6 @@ function filterData() {
     renderTable(filtered);
 }
 
-// Initial fetch
-fetchStatus();
-// Refresh every 10 seconds for real-time updates
-setInterval(fetchStatus, 10000);
+// Expose globally for firebase script to trigger once authenticated
+window.fetchStatus = fetchStatus;
+

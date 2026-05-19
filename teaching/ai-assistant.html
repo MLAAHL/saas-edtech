@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <style id="auth-guard">body { opacity: 0 !important; pointer-events: none; }</style>
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1062,12 +1063,20 @@
     import { firebaseConfig } from './firebase-config.js';
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    window.firebaseAuth = auth;
     onAuthStateChanged(auth, async user => {
-      if (!user) return window.location.href = 'login.html';
+      if (!user) return window.location.replace('index.html');
+      const authGuard = document.getElementById('auth-guard');
+      if (authGuard) authGuard.remove();
       const email = user.email;
       let displayName = email.split('@')[0].replace(/[._]/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       try {
-        const res = await fetch(window.APP_CONFIG.API_BASE_URL + '/teacher/profile/email/' + encodeURIComponent(email));
+        const token = await user.getIdToken();
+        const res = await fetch(window.APP_CONFIG.API_BASE_URL + '/teacher/profile/email/' + encodeURIComponent(email), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         const data = await res.json();
         if (data.success && data.teacher && data.teacher.name) displayName = data.teacher.name;
       } catch (e) { }
@@ -1267,9 +1276,18 @@
       convHistory.push({ role: 'user', content: txt });
       showTyping();
       try {
+        var token = '';
+        if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+          token = await window.firebaseAuth.currentUser.getIdToken();
+        }
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers['Authorization'] = 'Bearer ' + token;
+        }
+
         var res = await fetch(API_BASE + CHAT_EP, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({ question: txt, history: convHistory.slice(0, -1) })
         });
         var data = await res.json();
@@ -1308,8 +1326,13 @@
     renderDrawer();
 
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').catch(function () { });
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => { console.log('SW registered'); setInterval(() => reg.update(), 60000); })
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED') window.location.reload();
       });
     }
   </script>

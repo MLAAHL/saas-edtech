@@ -51,29 +51,34 @@ const classInfoCard = document.getElementById('classInfoCard');
 
 function loadUserInfo() {
   return new Promise((resolve) => {
-    const auth = getFirebaseAuth();
-    const onAuthStateChanged = getOnAuthStateChanged();
+    const checkAuth = () => {
+      const auth = getFirebaseAuth();
+      const onAuthStateChanged = getOnAuthStateChanged();
 
-    if (auth && onAuthStateChanged) {
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          userData.userName = user.displayName || user.email.split('@')[0];
-          userData.userEmail = user.email;
-          userData.firebaseUid = user.uid;
-          userData.idToken = await user.getIdToken();
+      if (auth && onAuthStateChanged) {
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const authGuard = document.getElementById('auth-guard');
+            if (authGuard) authGuard.remove();
+            userData.userName = user.displayName || user.email.split('@')[0];
+            userData.userEmail = user.email;
+            userData.firebaseUid = user.uid;
+            userData.idToken = await user.getIdToken();
 
-          console.log('✅ User authenticated:', userData.userEmail);
-          resolve(user);
-        } else {
-          console.log('⚠️ No user authenticated');
-          window.location.href = 'index.html';
-          resolve(null);
-        }
-      });
-    } else {
-      console.log('⚠️ Firebase auth not available');
-      setTimeout(() => loadUserInfo(), 500);
-    }
+            console.log('✅ User authenticated:', userData.userEmail);
+            resolve(user);
+          } else {
+            console.log('⚠️ No user authenticated');
+            window.location.href = 'index.html';
+            resolve(null);
+          }
+        });
+      } else {
+        console.log('⚠️ Firebase auth not available, retrying in 100ms...');
+        setTimeout(checkAuth, 100);
+      }
+    };
+    checkAuth();
   });
 }
 
@@ -203,9 +208,18 @@ async function loadSubjectMetadata(stream, semester, subjectName) {
 
     const url = `${API_BASE_URL}/subjects/find?stream=${encodeURIComponent(stream)}&semester=${semester}&name=${encodeURIComponent(subjectName)}`;
 
-    const response = await fetch(url, {
-      headers: { 'Cache-Control': 'no-cache' }
-    });
+    const headers = { 'Cache-Control': 'no-cache' };
+    const auth = getFirebaseAuth();
+    if (auth && auth.currentUser) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      } catch (err) {
+        console.error('❌ Error getting ID token:', err);
+      }
+    }
+
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.warn('⚠️ Subject metadata not found');
@@ -601,13 +615,25 @@ async function loadStudentsFromDatabase(classInfo) {
     const url = `${API_BASE_URL}/students/${encodeURIComponent(classInfo.stream)}/sem${classInfo.semester}`;
     console.log('🔗 Fetching fresh data:', url);
 
+    const headers = {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Accept': 'application/json'
+    };
+
+    const auth = getFirebaseAuth();
+    if (auth && auth.currentUser) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      } catch (err) {
+        console.error('❌ Error getting ID token:', err);
+      }
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Accept': 'application/json'
-      }
+      headers: headers
     });
 
     if (!response.ok) {
@@ -856,9 +882,16 @@ async function moveQueueItemToCompleted(stats) {
   }
 
   try {
+    const headers = { 
+      'Content-Type': 'application/json' 
+    };
+    if (userData.idToken) {
+      headers['Authorization'] = `Bearer ${userData.idToken}`;
+    }
+
     const deleteResponse = await fetch(`${API_BASE_URL}/teacher/queue/${queueItemId}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({ teacherEmail: userData.userEmail })
     });
 
@@ -879,9 +912,16 @@ async function moveQueueItemToCompleted(stats) {
       durationHours: stats.durationHours || 1
     };
 
+    const completedHeaders = { 
+      'Content-Type': 'application/json' 
+    };
+    if (userData.idToken) {
+      completedHeaders['Authorization'] = `Bearer ${userData.idToken}`;
+    }
+
     const completedResponse = await fetch(`${API_BASE_URL}/teacher/completed`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: completedHeaders,
       body: JSON.stringify({
         teacherEmail: userData.userEmail,
         completedClass: completedClass
@@ -1225,12 +1265,17 @@ function setupSubmitButton() {
               requestBody.electiveSubject = selectedElective;
             }
 
+            const headers = {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            };
+            if (userData.idToken) {
+              headers['Authorization'] = `Bearer ${userData.idToken}`;
+            }
+
             const res = await fetch(apiUrl, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-              },
+              headers: headers,
               body: JSON.stringify(requestBody)
             });
 

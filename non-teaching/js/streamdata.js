@@ -18,14 +18,17 @@ let editingRowId = null;
 let selectedStudents = new Set();
 
 // Helper to get authentication headers
+let currentUserObj = null;
+
 async function getAuthHeaders() {
     const headers = {
         'Content-Type': 'application/json'
     };
 
-    if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+    const currentUser = currentUserObj || (window.firebaseAuth && window.firebaseAuth.currentUser);
+    if (currentUser) {
         try {
-            const token = await window.firebaseAuth.currentUser.getIdToken();
+            const token = await currentUser.getIdToken();
             headers['Authorization'] = `Bearer ${token}`;
         } catch (error) {
             console.error('Error getting auth token:', error);
@@ -42,12 +45,15 @@ async function getAuthHeaders() {
 // INITIALIZATION
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function () {
-    loadAllData();
     setupBulkUploadListener();
     setupSubjectBulkUploadListener();
+    if (window.initialAuthUser) {
+        loadAllData(window.initialAuthUser);
+    }
 });
 
-async function loadAllData() {
+async function loadAllData(user) {
+    if (user) currentUserObj = user;
     // Load streams first, then students (students filter needs streams)
     await loadStreams();
     await loadSubjects();
@@ -233,7 +239,8 @@ async function bulkDeleteSelected() {
 async function loadStudents() {
     showLoading(true);
     try {
-        const response = await fetch(`${API_BASE_URL}/students/all`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/students/all`, { headers });
         const data = await response.json();
 
         if (data.success) {
@@ -852,7 +859,8 @@ async function processSubjectBulkUpload() {
 async function loadStreams() {
     showLoading(true);
     try {
-        const response = await fetch(`${API_BASE_URL}/students/management/streams`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/students/management/streams`, { headers });
         const data = await response.json();
 
         if (data.success) {
@@ -1000,7 +1008,8 @@ function refreshStreams() {
 async function loadSubjects() {
     showLoading(true);
     try {
-        const response = await fetch(`${API_BASE_URL}/students/management/subjects`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/students/management/subjects`, { headers });
         const data = await response.json();
 
         if (data.success) {

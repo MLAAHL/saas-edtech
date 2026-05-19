@@ -2,6 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
+const firebaseAuth = require('../middleware/firebaseAuth');
 
 // Middleware to check DB connection
 const checkDB = (req, res, next) => {
@@ -17,6 +18,7 @@ const checkDB = (req, res, next) => {
 };
 
 router.use(checkDB);
+router.use(firebaseAuth);
 
 // ============================================================================
 // GET AVAILABLE STREAMS FOR DROPDOWN

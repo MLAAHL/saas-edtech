@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <style id="auth-guard">body { opacity: 0 !important; pointer-events: none; }</style>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Attendance Register | Smart Attendance</title>
@@ -477,6 +478,24 @@
       color: #6366F1;
     }
   </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+    window.firebaseOnAuthStateChanged = onAuthStateChanged;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('auth-guard')?.remove();
+      } else {
+        window.location.replace('index.html');
+      }
+    });
+  </script>
 </head>
 
 
@@ -603,8 +622,11 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('Service Worker registered'))
+          .then(reg => { console.log('SW registered'); setInterval(() => reg.update(), 60000); })
           .catch(err => console.log('Service Worker registration failed', err));
+      });
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED') window.location.reload();
       });
     }
   </script>

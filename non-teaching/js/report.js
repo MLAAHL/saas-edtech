@@ -18,6 +18,29 @@ function getApiUrl(endpoint, params = '') {
   return `${API_CONFIG.BASE_URL}${path}`;
 }
 
+// Helper to get authentication headers
+let currentUserObj = null;
+
+async function getAuthHeaders() {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  const currentUser = currentUserObj || (window.firebaseAuth && window.firebaseAuth.currentUser);
+  if (currentUser) {
+    try {
+      const token = await currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+    }
+  } else {
+    console.warn('Firebase Auth or User not available for headers');
+  }
+
+  return headers;
+}
+
 // Global variables
 let currentReportData = null;
 let notificationTimeout = null;
@@ -31,8 +54,15 @@ document.addEventListener('DOMContentLoaded', async function () {
   console.log('📊 Student Attendance Report System initialized');
   console.log('📍 Backend URL:', API_CONFIG.BASE_URL);
   addNotificationStyles();
-  await loadAvailableStreams();
+  if (window.initialAuthUser) {
+    initReport(window.initialAuthUser);
+  }
 });
+
+function initReport(user) {
+  if (user) currentUserObj = user;
+  loadAvailableStreams();
+}
 
 // ============================================================================
 // NOTIFICATION STYLES
@@ -115,7 +145,8 @@ async function loadAvailableStreams() {
     const url = getApiUrl(API_CONFIG.ENDPOINTS.AVAILABLE_STREAMS);
     console.log('📚 Loading streams from:', url);
 
-    const response = await fetch(url);
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -227,7 +258,8 @@ async function generateReport() {
     const url = getApiUrl(API_CONFIG.ENDPOINTS.STUDENT_REPORT, `${stream}/sem${semester}`);
     console.log(`📊 Generating report from:`, url);
 
-    const response = await fetch(url);
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Server error' }));

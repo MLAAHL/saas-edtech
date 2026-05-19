@@ -868,30 +868,56 @@
         transform: rotate(360deg);
       }
     }
+    body.auth-loading {
+      display: none !important;
+    }
   </style>
 </head>
 
-<body>
+<body class="auth-loading">
   <!-- ══════════ SIDEBAR ══════════ -->
   <aside class="sidebar">
     <div class="sb-logo"><img src="logo.png" alt="Logo"></div>
     <div class="sb-group">
-      <a href="dashboard.html" class="sb-link"><span class="material-symbols-rounded">dashboard</span>Dashboard</a>
-      <a href="students.html" class="sb-link"><span class="material-symbols-rounded">group</span>Students</a>
-      <a href="report.html" class="sb-link active"><span class="material-symbols-rounded">description</span>Reports</a>
-      <a href="view-attendance.html" class="sb-link"><span class="material-symbols-rounded">assignment</span>View
-        Attendance</a>
-      <a href="promotion.html" class="sb-link"><span class="material-symbols-rounded">trending_up</span>Promote</a>
+      <a href="dashboard.html" class="sb-link">
+        <span class="material-symbols-rounded">dashboard</span> Dashboard
+      </a>
+      <a href="students.html" class="sb-link">
+        <span class="material-symbols-rounded">group</span> Students
+      </a>
+      <a href="report.html" class="sb-link active">
+        <span class="material-symbols-rounded">description</span> Reports
+      </a>
+      <a href="view-attendance.html" class="sb-link">
+        <span class="material-symbols-rounded">assignment</span> View Attendance
+      </a>
+      <a href="promotion.html" class="sb-link">
+        <span class="material-symbols-rounded">trending_up</span> Promote
+      </a>
     </div>
+
     <div class="sb-divider"></div>
+
     <div class="sb-group">
-      <a href="ai-assistant.html" class="sb-link"><span class="material-symbols-rounded">auto_awesome</span>AI
-        Assistant</a>
-      <a href="teachers.html" class="sb-link"><span class="material-symbols-rounded">person</span>Teachers</a>
-      <a href="mentorship.html" class="sb-link"><span class="material-symbols-rounded">school</span>Mentors</a>
-      <a href="msg.html" class="sb-link" id="nav-whatsapp"><span
-          class="material-symbols-rounded">chat</span>WhatsApp</a>
+      <a href="ai-assistant.html" class="sb-link">
+        <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
+      </a>
+      <a href="teachers.html" class="sb-link">
+        <span class="material-symbols-rounded">badge</span> Teachers
+      </a>
+      <a href="parents-status.html" class="sb-link">
+        <span class="material-symbols-rounded">notifications</span> Parent Status
+      </a>
     </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-group">
+      <a href="mentorship.html" class="sb-link">
+        <span class="material-symbols-rounded">school</span> Mentors
+      </a>
+    </div>
+
     <div class="sb-divider"></div>
     <div class="sb-bottom"><button class="sb-logout" id="logoutBtn"><span
           class="material-symbols-rounded">logout</span>Log Out</button></div>
@@ -1024,8 +1050,13 @@
 
     async function fetchTeacherProfile(email) {
       try {
+        const headers = {};
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         const url = `${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { headers });
         const data = await response.json();
         return data.success && data.teacher ? data.teacher : null;
       } catch (error) { return null; }
@@ -1050,11 +1081,12 @@
     }
 
     document.getElementById("logoutBtn").onclick = () => {
-      signOut(auth).then(() => { localStorage.clear(); sessionStorage.clear(); window.location.replace("login.html"); });
+      signOut(auth).then(() => { localStorage.clear(); sessionStorage.clear(); window.location.replace("index.html"); });
     };
 
     onAuthStateChanged(auth, async (user) => {
       if (user && user.email) {
+        document.body.classList.remove('auth-loading');
         let displayName = user.displayName || user.email.split('@')[0].replace(/[._]/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         const profile = await fetchTeacherProfile(user.email);
         if (profile && profile.name) displayName = profile.name;
@@ -1065,22 +1097,39 @@
           initProfileUpload(user.email);
         }
 
-        if (typeof initReport === 'function') initReport();
-      } else { window.location.href = 'login.html'; }
+        if (typeof initReport === 'function') initReport(user);
+      } else { window.location.href = 'index.html'; }
     });
   </script>
 
   <script>
     let currentReportData = null;
+    let currentUserObj = null;
 
-    function initReport() {
+    async function getAuthHeaders() {
+      const headers = {};
+      const currentUser = currentUserObj || (window.firebaseAuth && window.firebaseAuth.currentUser);
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+          console.error('Error getting auth token:', error);
+        }
+      }
+      return headers;
+    }
+
+    function initReport(user) {
+      if (user) currentUserObj = user;
       loadAvailableStreams();
     }
 
     async function loadAvailableStreams() {
       const streamSelect = document.getElementById('reportStream');
       try {
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-streams`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-streams`, { headers });
         const data = await response.json();
         if (data.success && data.streams) {
           streamSelect.innerHTML = '<option value="">Select Academic Stream</option>';
@@ -1098,7 +1147,8 @@
       const genBtn = document.getElementById('generateBtn');
       if (!this.value) { semSelect.disabled = true; genBtn.disabled = true; return; }
       try {
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-semesters/${encodeURIComponent(this.value)}`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/available-semesters/${encodeURIComponent(this.value)}`, { headers });
         const data = await response.json();
         if (data.success && data.semesters) {
           semSelect.innerHTML = '<option value="">Select Semester</option>';
@@ -1123,7 +1173,8 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="loading-spinner"></span> Generating...';
       try {
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/student-subject-report/${encodeURIComponent(stream)}/sem${sem}`);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reports/student-subject-report/${encodeURIComponent(stream)}/sem${sem}`, { headers });
         const data = await response.json();
         if (data.success) { currentReportData = data; displayReport(data); }
       } catch (e) { console.error(e); }

@@ -6,6 +6,7 @@ const compression = require("compression");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require('./config/firebase-admin');
+const firebaseAuth = require('./middleware/firebaseAuth');
 
 const app = express();
 app.set("trust proxy", 1); // Trust Render's proxy for rate limiting
@@ -71,7 +72,7 @@ app.use('/api/promotion', strictLimiter);
 const corsOptions = {
   origin: '*', // Allow ALL origins
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cache-Control", "Expires", "Pragma"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cache-Control", "Expires", "Pragma", "x-student-id"],
   credentials: false // Disable credentials for easier cross-origin access
 };
 
@@ -167,7 +168,7 @@ const parentRoutes = require("./routes/parentRoutes");
 // ============================================================================
 
 // Cloudinary config
-app.get("/api/config/cloudinary", (req, res) => {
+app.get("/api/config/cloudinary", firebaseAuth, (req, res) => {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
 
