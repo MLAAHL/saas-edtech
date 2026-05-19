@@ -40,8 +40,13 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
   </noscript>
 
+  <style id="auth-guard">body { opacity: 0 !important; transition: opacity 0.3s ease; }</style>
   <script>
-    // Splash screen removed for WebView compatibility.
+    // Fallback: if Firebase takes too long, show the login form anyway after 2 seconds
+    window._authGuardTimeout = setTimeout(function() {
+      var guard = document.getElementById('auth-guard');
+      if (guard) guard.remove();
+    }, 2000);
   </script>
 
   <script type="module">
@@ -67,13 +72,14 @@
 
     // Check auth state immediately when Firebase loads
     onAuthStateChanged(auth, (user) => {
+      clearTimeout(window._authGuardTimeout);
       if (user) {
-        // User is logged in - redirect to myclass immediately
-        console.log('✅ User authenticated, redirecting to myclass.html');
+        // User is logged in - redirect without ever showing login form
         window.location.replace('myclass.html');
       } else {
-        // User is not logged in - form is already visible
-        console.log('👋 No active session, form ready');
+        // User is not logged in - reveal login form smoothly
+        var guard = document.getElementById('auth-guard');
+        if (guard) guard.remove();
       }
     });
   </script>
