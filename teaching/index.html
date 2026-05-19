@@ -134,50 +134,7 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     }
 
-    /* State-of-the-Art Glowing Ambient Background Blobs for Glass Refraction */
-    .bg-blobs {
-      position: fixed;
-      width: 100vw;
-      height: 100vh;
-      top: 0;
-      left: 0;
-      z-index: 1;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.15;
-      animation: floatBlob 20s infinite alternate ease-in-out;
-    }
-
-    .blob-1 {
-      width: 320px;
-      height: 320px;
-      background: #6366F1; /* Primary Indigo */
-      top: -60px;
-      right: -60px;
-    }
-
-    .blob-2 {
-      width: 380px;
-      height: 380px;
-      background: #3B82F6; /* Matching Sky Blue */
-      bottom: -80px;
-      left: -80px;
-    }
-
-    @keyframes floatBlob {
-      0% {
-        transform: translate(0, 0) scale(1);
-      }
-      100% {
-        transform: translate(50px, 40px) scale(1.15);
-      }
-    }
+    /* Background blobs removed for Android WebView GPU performance and stability */
 
     /* Premium App Container matching myclass.html structure */
     .main-content {
@@ -190,11 +147,9 @@
       z-index: 10;
     }
 
-    /* Premium Light Glassmorphism Login Card matching myclass.html cards exactly */
+    /* Premium Login Card (Optimized for Android WebView: solid bg instead of GPU-crashing blur) */
     .glass-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(28px);
-      -webkit-backdrop-filter: blur(28px);
+      background: rgba(255, 255, 255, 0.95); /* Solid premium white instead of heavy blur */
       border: 1px solid var(--glass-border);
       border-radius: 32px;
       box-shadow: var(--glass-shadow);
@@ -204,6 +159,7 @@
       flex-direction: column;
       align-items: center;
       position: relative;
+      overflow: hidden; /* Prevent pseudo elements from overflowing and causing GPU spikes */
     }
 
     /* Shiny top overlay light effect */
@@ -390,11 +346,7 @@
 </head>
 
 <body>
-  <!-- Ambient background refraction blobs -->
-  <div class="bg-blobs">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-  </div>
+  <!-- Background blobs removed for GPU stability -->
 
   <!-- Noise Overlay -->
   <div class="noise-overlay"></div>
