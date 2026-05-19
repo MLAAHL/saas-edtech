@@ -1188,6 +1188,9 @@
       display: none !important;
       pointer-events: none !important;
     }
+    body.auth-loading {
+      display: none !important;
+    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -1207,18 +1210,7 @@
 
     console.log('✅ Firebase Auth initialized (Cloudinary for storage)');
 
-    // Fetch teacher profile
-    async function fetchTeacherProfile(email) {
-      try {
-        // ✅ FIXED: Added API_BASE_URL prefix
-        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
-        const data = await response.json();
-        return data.success && data.teacher ? data.teacher : null;
-      } catch (error) {
-        console.error('❌ Error fetching profile:', error);
-        return null;
-      }
-    }
+
 
     // Update avatar display
     function updateAvatar(email, displayName, profileImageUrl) {
@@ -1255,7 +1247,6 @@
 
     // Make functions globally available
     window.updateAvatar = updateAvatar;
-    window.fetchTeacherProfile = fetchTeacherProfile;
 
     // Console Welcome Message
     console.log("%cSmart Attendance ✨", "color: #4F46E5; font-size: 24px; font-weight: bold;");
@@ -1272,7 +1263,7 @@
 
 </head>
 
-<body>
+<body class="auth-loading">
   <!-- Simple Loading Screen -->
   <!-- Simple Loading Screen -->
   <div id="loadingOverlay" class="loading-overlay">

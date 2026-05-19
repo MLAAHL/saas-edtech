@@ -36,13 +36,17 @@ let userData = {
 // ✅ API URL from config
 const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 
+// Global variable to hold user object for immediate auth headers access
+let currentUserObj = null;
+
 // Helper to get authentication headers
 async function getAuthHeaders() {
   const headers = {};
   const auth = getFirebaseAuth();
-  if (auth && auth.currentUser) {
+  const user = currentUserObj || (auth ? auth.currentUser : null);
+  if (user) {
     try {
-      const token = await auth.currentUser.getIdToken();
+      const token = await user.getIdToken();
       headers['Authorization'] = `Bearer ${token}`;
     } catch (error) {
       console.error('Error getting auth token:', error);
@@ -513,6 +517,7 @@ function loadUserInfo() {
       if (auth && onAuthStateChanged) {
         onAuthStateChanged(auth, async (user) => {
           if (user) {
+            currentUserObj = user; // Store globally for immediate access
             hideLoadingOverlay();
             userData.userEmail = user.email;
             userData.firebaseUid = user.uid;
@@ -538,10 +543,12 @@ function loadUserInfo() {
             });
 
             console.log('✅ User authenticated:', user.email);
+            document.body.classList.remove('auth-loading');
             resolve(user);
           } else {
             console.log('⚠️ No user authenticated');
             hideLoadingOverlay();
+            document.body.classList.remove('auth-loading');
             window.location.replace('index.html');
             resolve(null);
           }
@@ -563,11 +570,13 @@ async function fetchStreamsFromDatabase() {
   try {
     console.log('📚 Fetching streams from database...');
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/streams`, {
       method: 'GET',
       headers: {
         'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Pragma': 'no-cache',
+        ...authHeaders
       }
     });
 
@@ -825,12 +834,14 @@ async function loadSubjectsForCreation(stream, semester) {
     const url = `${API_BASE_URL}/teacher/streams/${encodeURIComponent(stream)}/sem${semester}/subjects`;
     console.log('📡 Fetching subjects from:', url);
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Pragma': 'no-cache',
+        ...authHeaders
       }
     });
 
@@ -1050,11 +1061,13 @@ async function saveSubjectToDatabase(subjectData, retryCount = 0) {
   try {
     console.log('💾 Saving subject to database...');
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/teacher/subjects`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        ...authHeaders
       },
       body: JSON.stringify({
         teacherEmail: userData.userEmail,
@@ -1094,9 +1107,10 @@ async function loadSubjectsFromDatabase() {
 
     console.log('📥 Loading teacher subjects...');
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(
       `${API_BASE_URL}/teacher/subjects?email=${encodeURIComponent(userData.userEmail)}`,
-      { headers: { 'Cache-Control': 'no-cache' } }
+      { headers: { 'Cache-Control': 'no-cache', ...authHeaders } }
     );
 
     const data = await response.json();
@@ -1121,9 +1135,10 @@ async function loadQueueFromDatabase() {
 
     console.log('📥 Loading queue...');
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(
       `${API_BASE_URL}/teacher/queue?email=${encodeURIComponent(userData.userEmail)}`,
-      { headers: { 'Cache-Control': 'no-cache' } }
+      { headers: { 'Cache-Control': 'no-cache', ...authHeaders } }
     );
 
     const data = await response.json();
@@ -1143,9 +1158,10 @@ async function saveQueueToDatabase() {
   try {
     if (!userData.userEmail) return;
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/teacher/queue`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         teacherEmail: userData.userEmail,
         queueData: attendanceQueue
@@ -1173,9 +1189,10 @@ async function loadCompletedFromDatabase() {
 
     console.log('📥 Loading completed...');
 
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(
       `${API_BASE_URL}/teacher/completed?email=${encodeURIComponent(userData.userEmail)}`,
-      { headers: { 'Cache-Control': 'no-cache' } }
+      { headers: { 'Cache-Control': 'no-cache', ...authHeaders } }
     );
 
     const data = await response.json();
@@ -1193,9 +1210,10 @@ async function loadCompletedFromDatabase() {
 
 async function saveCompletedToDatabase(completedClass) {
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/teacher/completed`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         teacherEmail: userData.userEmail,
         completedClass: completedClass
@@ -1538,9 +1556,10 @@ async function deleteSubject(subjectId) {
   if (!confirmed) return;
 
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/teacher/subjects/${subjectId}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({ teacherEmail: userData.userEmail })
     });
 
@@ -1724,9 +1743,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Start loading user info (required first)
     const userPromise = loadUserInfo();
 
-    // Start preloading streams in parallel (doesn't need auth)
-    const streamsPromise = fetchStreamsFromDatabase();
-
     // Wait for user auth
     await userPromise;
 
@@ -1739,9 +1755,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Save email for next instant load
     localStorage.setItem('lastUserEmail', userData.userEmail);
 
+    // Start fetching streams (now authenticated, auth headers are ready)
+    const streamsPromise = fetchStreamsFromDatabase();
+
     // Load remaining data in parallel
     await Promise.all([
-      streamsPromise, // Already started
+      streamsPromise,
       fetchCloudinaryConfig(),
       loadAllData()
     ]);

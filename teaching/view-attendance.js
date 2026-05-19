@@ -1,12 +1,16 @@
 const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 console.log('🔧 API Base URL:', API_BASE_URL);
 
+// Global variable to hold user object for immediate auth headers access
+let currentUserObj = null;
+
 // Helper to get authentication headers
 async function getAuthHeaders() {
   const headers = {};
-  if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+  const user = currentUserObj || (window.firebaseAuth ? window.firebaseAuth.currentUser : null);
+  if (user) {
     try {
-      const token = await window.firebaseAuth.currentUser.getIdToken();
+      const token = await user.getIdToken();
       headers['Authorization'] = `Bearer ${token}`;
     } catch (error) {
       console.error('Error getting auth token:', error);
@@ -336,6 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (auth && onAuthStateChanged) {
       onAuthStateChanged(auth, async (user) => {
         if (user) {
+          currentUserObj = user; // Store for immediate access
           console.log('✅ Auth ready - loading streams for user:', user.email);
           try {
             await loadStreams();
