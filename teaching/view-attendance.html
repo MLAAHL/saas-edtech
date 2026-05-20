@@ -626,7 +626,9 @@
           .catch(err => console.log('Service Worker registration failed', err));
       });
       navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'SW_UPDATED') window.location.reload();
+        if (event.data && event.data.type === 'SW_UPDATED') {
+          console.log('SW updated to version:', event.data.version);
+        }
       });
     }
   </script>
