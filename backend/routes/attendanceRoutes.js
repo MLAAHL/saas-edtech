@@ -656,19 +656,27 @@ router.put('/attendance/bulk/:stream/sem:semester/:subject/:date', async (req, r
     if (!req.db) {
       return res.status(503).json({ success: false, error: 'Database unavailable' });
     }
+
+    if (!updates || !Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'No updates provided' });
+    }
     
-    const updatePromises = updates.map(update => {
-      return Attendance.findByIdAndUpdate(
-        update.sessionId,
-        { 
-          studentsPresent: update.studentsPresent,
-          presentCount: update.studentsPresent.length
+    const { ObjectId } = require('mongodb');
+    const bulkOps = updates.map(update => ({
+      updateOne: {
+        filter: { _id: new ObjectId(update.sessionId) },
+        update: {
+          $set: {
+            studentsPresent: update.studentsPresent,
+            presentCount: update.studentsPresent.length,
+            absentCount: Math.max(0, (update.totalStudents || 0) - update.studentsPresent.length)
+          }
         }
-      );
-    });
+      }
+    }));
     
-    const results = await Promise.all(updatePromises);
-    const totalModified = results.filter(r => r !== null).length;
+    const result = await req.db.collection('attendance').bulkWrite(bulkOps, { ordered: false });
+    const totalModified = result.modifiedCount || 0;
     
     clearCachePattern(`attendance:${stream}`);
     
@@ -708,7 +716,8 @@ router.put('/attendance/bulk-update-sessions', async (req, res) => {
         update: {
           $set: {
             studentsPresent: update.studentsPresent,
-            presentCount: update.studentsPresent.length
+            presentCount: update.studentsPresent.length,
+            absentCount: Math.max(0, (update.totalStudents || 0) - update.studentsPresent.length)
           }
         }
       }
@@ -720,7 +729,7 @@ router.put('/attendance/bulk-update-sessions', async (req, res) => {
     
     for (let i = 0; i < bulkOps.length; i += CHUNK_SIZE) {
       const chunk = bulkOps.slice(i, i + CHUNK_SIZE);
-      const result = await req.db.collection('attendances').bulkWrite(chunk, { ordered: false });
+      const result = await req.db.collection('attendance').bulkWrite(chunk, { ordered: false });
       totalModified += result.modifiedCount || 0;
       console.log(`  ✅ Chunk ${Math.floor(i / CHUNK_SIZE) + 1}: ${result.modifiedCount} modified`);
     }

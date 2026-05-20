@@ -409,59 +409,48 @@
     }
 
     /* ==========================
-       YOUR GLASS BOTTOM NAV (Full Width Update)
+       BOTTOM TAB BAR (Full-width native app style)
        ========================== */
     .bottom-nav {
       position: fixed;
-      bottom: 24px;
-      left: 20px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.5);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 10px;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      background: white;
+      padding: 8px 12px;
       display: flex;
       align-items: center;
       justify-content: space-around;
-      border-radius: 24px;
-      border: 1px solid var(--glass-border);
-      box-shadow: var(--glass-shadow);
+      border-radius: 100px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
       z-index: 999;
     }
 
     .nav-item {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
       cursor: pointer;
-      color: #64748B;
+      color: #B0B8C4;
       border: none;
       background: transparent;
-      padding: 12px;
-      border-radius: 16px;
-      height: 48px;
-      overflow: hidden;
-      white-space: nowrap;
+      padding: 6px 12px;
+      border-radius: 100px;
+      text-decoration: none;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       flex: 1;
-      /* Allow items to grow */
-      max-width: 120px;
-      /* Prevent them getting too wide on desktop */
     }
 
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.5);
+      color: #64748B;
     }
 
     .nav-item.active {
       background: #1E293B;
       color: white;
-      padding: 12px 20px;
-      box-shadow: 0 8px 20px -6px rgba(30, 41, 59, 0.4);
-      flex: 1.5;
-      /* Grow active item slightly more */
-      max-width: 160px;
+      box-shadow: 0 4px 14px -3px rgba(30, 41, 59, 0.4);
     }
 
     .nav-item .material-symbols-rounded {
@@ -475,13 +464,10 @@
     }
 
     .nav-label {
-      display: none;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .nav-item.active .nav-label {
-      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 4px;
+      transition: all 0.3s;
     }
 
 
