@@ -14,7 +14,12 @@ const ProfileHandler = {
         if (this.cloudinaryConfig) return this.cloudinaryConfig;
 
         try {
-            const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/config/cloudinary`);
+            const headers = {};
+            if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+                const token = await window.firebaseAuth.currentUser.getIdToken();
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/config/cloudinary`, { headers });
             const data = await response.json();
             if (data.success && data.config) {
                 this.cloudinaryConfig = data.config;
@@ -59,9 +64,14 @@ const ProfileHandler = {
             const imageUrl = cloudData.secure_url;
 
             // 2. Update Backend
+            const headers = { 'Content-Type': 'application/json' };
+            if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+                const token = await window.firebaseAuth.currentUser.getIdToken();
+                headers['Authorization'] = `Bearer ${token}`;
+            }
             const backendRes = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/${encodeURIComponent(email)}/image`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ profileImageUrl: imageUrl })
             });
 

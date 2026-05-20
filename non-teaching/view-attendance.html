@@ -975,8 +975,13 @@
 
     async function fetchTeacherProfile(email) {
         try {
+            const headers = {};
+            if (auth.currentUser) {
+                const token = await auth.currentUser.getIdToken();
+                headers['Authorization'] = `Bearer ${token}`;
+            }
             const url = `${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers });
             const data = await response.json();
             return data.success && data.teacher ? data.teacher : null;
         } catch (error) { return null; }

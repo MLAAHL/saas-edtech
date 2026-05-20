@@ -943,7 +943,12 @@
 
     async function fetchTeacherProfile(email) {
       try {
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const headers = {};
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
         const data = await response.json();
         return data.success ? data.teacher : null;
       } catch (e) { return null; }

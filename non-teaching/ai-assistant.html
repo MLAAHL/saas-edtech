@@ -1180,7 +1180,12 @@
 
     async function fetchTeacherProfile(email) {
       try {
-        const r = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const headers = {};
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const r = await fetch(`${window.APP_CONFIG.API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
         if (r.ok) {
           const d = await r.json();
           return d.success ? d.teacher : null;

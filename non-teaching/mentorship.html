@@ -1108,7 +1108,12 @@
 
     async function fetchTeacherProfile(email) {
       try {
-        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
+        const headers = {};
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
         const data = await response.json();
         return data.success && data.teacher ? data.teacher : null;
       } catch { return null; }
@@ -1181,10 +1186,9 @@
       `;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`);
-        const data = await res.json();
-        if (data.success && data.teacher) {
-          const mentees = data.teacher.mentees || [];
+        const teacher = await fetchTeacherProfile(email);
+        if (teacher) {
+          const mentees = teacher.mentees || [];
           document.getElementById('menteeCountHeader').textContent = `(${mentees.length})`;
           renderMentees(mentees);
         }
