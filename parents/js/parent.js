@@ -58,12 +58,12 @@ async function safeRegisterPush(studentID) {
           });
         });
         
-        // Removed the alert. Capacitor doesn't show system notifications in foreground by default,
-        // but we can try falling back to Web Notification API if permitted, or do nothing
-        // and rely on background pushes like a normal app.
         PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          if (Notification.permission === 'granted') {
-            new Notification(notification.title, { body: notification.body });
+          console.log('Foreground Push received:', notification);
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+              new Notification(notification.title, { body: notification.body });
+            } catch(e) {}
           }
         });
       }
@@ -96,13 +96,12 @@ async function safeRegisterPush(studentID) {
         
         messaging.onMessage((payload) => {
           console.log('Foreground Message: ', payload);
-          // Show a standard system notification instead of an in-app alert!
-          if (Notification.permission === 'granted') {
-            navigator.serviceWorker.getRegistration().then(function(reg) {
-              if (reg) {
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            navigator.serviceWorker.ready.then(function(reg) {
+              if (reg && reg.showNotification) {
                 reg.showNotification(payload.notification.title, {
                   body: payload.notification.body,
-                  icon: '/icon.png', // Add your app icon here if you have one
+                  icon: '/icon.png',
                   data: payload.data
                 });
               } else {
@@ -110,7 +109,7 @@ async function safeRegisterPush(studentID) {
                   body: payload.notification.body
                 });
               }
-            });
+            }).catch(e => console.error("SW notification error", e));
           }
         });
       } else {
