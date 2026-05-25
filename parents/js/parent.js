@@ -101,6 +101,7 @@ async function safeRegisterPush(studentID) {
               if (reg && reg.showNotification) {
                 reg.showNotification(payload.notification.title, {
                   body: payload.notification.body,
+                  icon: '/icon-192.png',
                   data: payload.data
                 });
               } else {
