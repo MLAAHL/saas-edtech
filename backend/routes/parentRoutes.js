@@ -291,7 +291,7 @@ router.get('/daily/:studentID', parentAuth, async (req, res) => {
     const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
-    const targetDateStr = date || new Date().toISOString().split('T')[0];
+    const targetDateStr = date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const query = { stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, ...buildDateQuery(targetDateStr) };
     const records = await req.db.collection('attendance').find(query).toArray();
     
@@ -373,7 +373,7 @@ router.get('/recent/:studentID', parentAuth, async (req, res) => {
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const dateStrings = [];
-    for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); dateStrings.push(d.toISOString().split('T')[0]); }
+    for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); dateStrings.push(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })); }
     const endD = new Date(); endD.setHours(23, 59, 59, 999);
     const startD = new Date(); startD.setDate(startD.getDate() - 7); startD.setHours(0, 0, 0, 0);
 
@@ -393,7 +393,7 @@ router.get('/recent/:studentID', parentAuth, async (req, res) => {
 
     const recentDays = {};
     filtered.forEach(record => {
-      const dateStr = typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0];
+      const dateStr = typeof record.date === 'string' ? record.date : new Date(record.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const present = isStudentPresent(record.studentsPresent, student);
       if (!recentDays[dateStr]) recentDays[dateStr] = { date: dateStr, classes: [], present: 0, absent: 0, total: 0 };
       recentDays[dateStr].classes.push({ subject: record.subject, time: record.time, isPresent: present });

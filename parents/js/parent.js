@@ -358,7 +358,7 @@ function switchTab(tab) {
 
 // ===== DATE =====
 function setTodayDate() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA');
   document.getElementById('dailyDate').value = today;
   updateDateLabel();
 }
@@ -369,7 +369,7 @@ function updateDateLabel() {
 function changeDate(delta) {
   const input = document.getElementById('dailyDate');
   const d = new Date(input.value); d.setDate(d.getDate() + delta);
-  input.value = d.toISOString().split('T')[0];
+  input.value = d.toLocaleDateString('en-CA');
   updateDateLabel();
   loadDailyAttendance();
 }
