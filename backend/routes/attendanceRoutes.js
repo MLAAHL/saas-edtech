@@ -39,12 +39,28 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         },
         android: {
           priority: 'high',
-          notification: { sound: 'default' }
+          notification: { 
+            sound: 'default',
+            channelId: 'smart_attendance_channel'
+          }
         },
         apns: {
+          headers: {
+            'apns-priority': '10',
+            'apns-push-type': 'alert'
+          },
           payload: {
-            aps: { sound: 'default' }
+            aps: { 
+              sound: 'default',
+              badge: 1,
+              'content-available': 1
+            }
           }
+        },
+        data: {
+          type: 'attendance_alert',
+          subject: subject,
+          date: date
         },
         tokens: [...new Set(absentTokens)] // unique tokens
       };

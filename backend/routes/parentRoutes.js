@@ -2,6 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const firebaseAuth = require('../middleware/firebaseAuth');
+const parentAuth = require('../middleware/parentAuth');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 router.use((req, res, next) => {
   const db = req.app.locals.db || req.app.get('db');
@@ -69,8 +72,8 @@ function isRecordRelevant(record, student) {
   return true;
 }
 
-// POST - Lookup student
-router.post('/lookup', async (req, res) => {
+// POST - Check if student exists and if parent password is set
+router.post('/check-status', async (req, res) => {
   try {
     const { studentID } = req.body;
     if (!studentID || studentID.trim() === '') return res.status(400).json({ success: false, error: 'Student ID is required' });
@@ -82,8 +85,72 @@ router.post('/lookup', async (req, res) => {
 
     res.json({
       success: true,
-      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester,
-        parentPhone: student.parentPhone ? '****' + student.parentPhone.slice(-4) : null }
+      hasPassword: !!student.parentPassword
+    });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// POST - Set parent password (First time login)
+router.post('/set-password', async (req, res) => {
+  try {
+    const { studentID, password } = req.body;
+    if (!studentID || !password) return res.status(400).json({ success: false, error: 'Student ID and password are required' });
+    const tid = studentID.trim();
+    const col = req.db.collection('students');
+    
+    let student = await col.findOne({ studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
+
+    if (student.parentPassword) return res.status(400).json({ success: false, error: 'Password already set' });
+
+    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    await col.updateOne({ _id: student._id }, { $set: { parentPassword: hashedPassword } });
+
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// POST - Parent Login
+router.post('/login', async (req, res) => {
+  try {
+    const { studentID, password } = req.body;
+    if (!studentID || !password) return res.status(400).json({ success: false, error: 'Student ID and password required' });
+    const tid = studentID.trim();
+    const col = req.db.collection('students');
+    
+    let student = await col.findOne({ studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
+    if (!student.parentPassword) return res.status(400).json({ success: false, error: 'Password not set for this account' });
+
+    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    if (student.parentPassword !== hashedPassword) {
+      return res.status(401).json({ success: false, error: 'Invalid password' });
+    }
+
+    const JWT_SECRET = process.env.JWT_SECRET || 'fallback_parent_secret_key_123';
+    const token = jwt.sign({ studentID: student.studentID }, JWT_SECRET, { expiresIn: '7d' });
+
+    await col.updateOne({ _id: student._id }, { $set: { 'parentAuth.lastLogin': new Date() } });
+
+    res.json({
+      success: true,
+      token,
+      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester }
+    });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// GET - Get current parent/student info (Auto-login)
+router.get('/me', parentAuth, async (req, res) => {
+  try {
+    const studentID = req.parentSession.studentID;
+    const col = req.db.collection('students');
+    const student = await col.findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
+    
+    res.json({
+      success: true,
+      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester }
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -217,7 +284,7 @@ router.get('/status-report', firebaseAuth, async (req, res) => {
 
 
 // GET - Daily attendance
-router.get('/daily/:studentID', async (req, res) => {
+router.get('/daily/:studentID', parentAuth, async (req, res) => {
   try {
     const { studentID } = req.params;
     const { date } = req.query;
@@ -252,7 +319,7 @@ router.get('/daily/:studentID', async (req, res) => {
 });
 
 // GET - Full/Overall attendance
-router.get('/full/:studentID', async (req, res) => {
+router.get('/full/:studentID', parentAuth, async (req, res) => {
   try {
     const { studentID } = req.params;
     const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
@@ -299,7 +366,7 @@ router.get('/full/:studentID', async (req, res) => {
 });
 
 // GET - Recent 7 days
-router.get('/recent/:studentID', async (req, res) => {
+router.get('/recent/:studentID', parentAuth, async (req, res) => {
   try {
     const { studentID } = req.params;
     const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
@@ -343,6 +410,170 @@ router.get('/recent/:studentID', async (req, res) => {
       })
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// GET - UUCMS dashboard data for a student
+router.get('/dashboard/:studentID', parentAuth, async (req, res) => {
+  try {
+    const { studentID } = req.params;
+    const tid = studentID.trim();
+    
+    // 1. Get student
+    const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
+
+    // 2. Fetch cache from Upstash Redis using the student's register number or studentID
+    const uucmsId = student.registerNumber || student.studentID || tid;
+    
+    const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    
+    if (!upstashUrl || !upstashToken) {
+      return res.status(503).json({
+        success: false,
+        error: 'UUCMS Sync service unavailable (credentials not configured)'
+      });
+    }
+
+    const axios = require('axios');
+    
+    // Helper to fetch key from Upstash Redis REST API
+    const fetchKey = async (key) => {
+      try {
+        const response = await axios.get(`${upstashUrl}/get/${key}`, {
+          headers: { Authorization: `Bearer ${upstashToken}` },
+          timeout: 5000
+        });
+        if (response.data && response.data.result) {
+          return JSON.parse(response.data.result);
+        }
+        return null;
+      } catch (err) {
+        console.error(`[PARENTS] Failed to fetch cache for key ${key}: ${err.message}`);
+        return null;
+      }
+    };
+
+    // Fetch profile, ia-marks, results, attendance concurrently
+    const [profile, iaMarks, results, attendance] = await Promise.all([
+      fetchKey(`uucms:cache:${uucmsId}:profile`),
+      fetchKey(`uucms:cache:${uucmsId}:ia-marks`),
+      fetchKey(`uucms:cache:${uucmsId}:results`),
+      fetchKey(`uucms:cache:${uucmsId}:attendance`)
+    ]);
+
+    // Check if we got any data
+    if (!profile && !iaMarks && !results && !attendance) {
+      return res.json({
+        success: true,
+        uucmsAttendance: null,
+        uucmsResults: null,
+        uucmsMarks: null,
+        syncStatus: {
+          lastSynced: null,
+          isSyncing: student.syncStatus?.isSyncing || false,
+          error: student.syncStatus?.error || 'No academic data synced yet.'
+        }
+      });
+    }
+
+    // 3. Format overall attendance percentage
+    const latestAttendanceSem = attendance?.semesters && attendance.semesters.length > 0
+      ? attendance.semesters[attendance.semesters.length - 1]
+      : null;
+
+    let overallPercentage = '--';
+    if (latestAttendanceSem && latestAttendanceSem.subjects) {
+      let totalPct = 0;
+      let subjectCount = 0;
+      latestAttendanceSem.subjects.forEach(sub => {
+        if (sub.percentage !== undefined) {
+          totalPct += sub.percentage;
+          subjectCount++;
+        }
+      });
+      if (subjectCount > 0) {
+        overallPercentage = Math.round(totalPct / subjectCount);
+      }
+    } else if (profile && profile.overallPercentage !== undefined) {
+      overallPercentage = profile.overallPercentage;
+    }
+
+    const uucmsAttendance = {
+      overallPercentage
+    };
+
+    // 4. Format exam results
+    const latestResultSem = results?.semesters && results.semesters.length > 0
+      ? results.semesters[results.semesters.length - 1]
+      : null;
+
+    const uucmsResults = latestResultSem ? {
+      semester: latestResultSem.termName,
+      sgpa: latestResultSem.sgpa || results.sgpa || '0',
+      cgpa: latestResultSem.cgpa || results.cgpa || '0',
+      resultStatus: latestResultSem.result || 'Declared',
+      subjects: (latestResultSem.subjects || []).map(s => ({
+        subjectName: s.name,
+        totalMarks: s.marksScored,
+        internalMarks: s.iaMarks,
+        externalMarks: s.seeMarks,
+        grade: s.letterGrade,
+        result: s.result
+      }))
+    } : null;
+
+    // 5. Format internal assessment marks
+    const latestMarksSem = iaMarks?.semesters && iaMarks.semesters.length > 0
+      ? iaMarks.semesters[iaMarks.semesters.length - 1]
+      : null;
+
+    const uucmsMarks = { subjects: [] };
+    if (latestMarksSem && latestMarksSem.subjects) {
+      const subjectsMap = {};
+      latestMarksSem.subjects.forEach(sub => {
+        const key = sub.courseName || sub.courseCode || 'Unknown';
+        if (!subjectsMap[key]) {
+          subjectsMap[key] = {
+            subjectName: key,
+            totalObtained: 0,
+            totalMax: 0,
+            components: []
+          };
+        }
+        subjectsMap[key].totalObtained += sub.marksScored || 0;
+        subjectsMap[key].totalMax += sub.maxMarks || 0;
+        subjectsMap[key].components.push({
+          name: sub.component || 'Internal',
+          obtainedMarks: sub.marksScored || 0
+        });
+      });
+      uucmsMarks.subjects = Object.values(subjectsMap);
+    }
+
+    // 6. Format sync status
+    const lastSyncedTime = results?.lastSync || iaMarks?.lastSync || attendance?.lastSync || profile?.lastSynced || new Date();
+    const syncStatus = {
+      lastSynced: lastSyncedTime,
+      isSyncing: student.syncStatus?.isSyncing || false,
+      error: student.syncStatus?.error || null
+    };
+
+    res.json({
+      success: true,
+      uucmsAttendance,
+      uucmsResults,
+      uucmsMarks,
+      syncStatus,
+      rawResults: results,
+      rawIaMarks: iaMarks,
+      rawAttendance: attendance
+    });
+
+  } catch (error) {
+    console.error('[PARENTS] Dashboard sync error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 module.exports = router;
