@@ -60,10 +60,22 @@ async function safeRegisterPush(studentID) {
         
         PushNotifications.addListener('pushNotificationReceived', (notification) => {
           console.log('Foreground Push received:', notification);
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            try {
-              new Notification(notification.title, { body: notification.body });
-            } catch(e) {}
+          // Android WebViews don't support Web Notifications. Show a custom toast.
+          const toast = document.createElement('div');
+          toast.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#1E4D2B; color:white; padding:16px; border-radius:12px; z-index:9999; box-shadow:0 10px 30px rgba(0,0,0,0.3); max-width:90%; width:350px; transition:0.3s; animation: slideDown 0.5s ease; display:flex; flex-direction:column; gap:4px;';
+          toast.innerHTML = `<div style="font-weight:bold;font-size:16px;">${notification.title}</div><div style="font-size:14px;opacity:0.9;">${notification.body}</div>`;
+          document.body.appendChild(toast);
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px)';
+            setTimeout(() => toast.remove(), 300);
+          }, 4000);
+          
+          if (!document.getElementById('toastStyle')) {
+            const style = document.createElement('style');
+            style.id = 'toastStyle';
+            style.innerHTML = `@keyframes slideDown { from { top:-50px; opacity:0; } to { top:20px; opacity:1; } }`;
+            document.head.appendChild(style);
           }
         });
       }
@@ -101,12 +113,13 @@ async function safeRegisterPush(studentID) {
               if (reg && reg.showNotification) {
                 reg.showNotification(payload.notification.title, {
                   body: payload.notification.body,
-                  icon: '/icon-192.png',
+                  icon: 'icon-192.png',
                   data: payload.data
                 });
               } else {
                 new Notification(payload.notification.title, {
-                  body: payload.notification.body
+                  body: payload.notification.body,
+                  icon: 'icon-192.png'
                 });
               }
             }).catch(e => console.error("SW notification error", e));
