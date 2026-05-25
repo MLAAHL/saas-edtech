@@ -631,9 +631,14 @@ if (isAndroidApp) {
   let ptrStartY = 0;
   let ptrCurrentY = 0;
   let isPulling = false;
+  
+  const getScrollTop = () => {
+    const scrollContainer = document.querySelector('.screen.active .scroll-content');
+    return scrollContainer ? scrollContainer.scrollTop : window.scrollY;
+  };
 
   document.addEventListener('touchstart', (e) => {
-    if (window.scrollY === 0) {
+    if (getScrollTop() <= 0) {
       ptrStartY = e.touches[0].clientY;
       isPulling = true;
     }
@@ -647,7 +652,7 @@ if (isAndroidApp) {
     ptrCurrentY = e.touches[0].clientY;
     const pullDistance = ptrCurrentY - ptrStartY;
     
-    if (pullDistance > 0 && window.scrollY === 0) {
+    if (pullDistance > 0 && getScrollTop() <= 0) {
       const yOffset = Math.min(pullDistance, 100);
       ptrIndicator.style.transform = `translate(-50%, ${yOffset}px)`;
       const icon = ptrIndicator.querySelector('span');
@@ -663,7 +668,7 @@ if (isAndroidApp) {
     if (!ptrIndicator) return;
     
     const pullDistance = ptrCurrentY - ptrStartY;
-    if (pullDistance > 80 && window.scrollY === 0) {
+    if (pullDistance > 80 && getScrollTop() <= 0) {
       ptrIndicator.classList.add('refreshing');
       ptrIndicator.style.transform = `translate(-50%, 80px)`;
       setTimeout(() => {

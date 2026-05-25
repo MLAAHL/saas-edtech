@@ -27,6 +27,7 @@ body {
   height: 100dvh;
   overflow: hidden;
   position: relative;
+  overscroll-behavior-y: none;
 }
 /* Abstract Background Orbs to give glass effect something to blur */
 body::before, body::after {
