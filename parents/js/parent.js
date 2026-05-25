@@ -58,8 +58,13 @@ async function safeRegisterPush(studentID) {
           });
         });
         
+        // Removed the alert. Capacitor doesn't show system notifications in foreground by default,
+        // but we can try falling back to Web Notification API if permitted, or do nothing
+        // and rely on background pushes like a normal app.
         PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          alert(`${notification.title}\n${notification.body}`);
+          if (Notification.permission === 'granted') {
+            new Notification(notification.title, { body: notification.body });
+          }
         });
       }
       return;
@@ -91,7 +96,22 @@ async function safeRegisterPush(studentID) {
         
         messaging.onMessage((payload) => {
           console.log('Foreground Message: ', payload);
-          alert(`${payload.notification.title}\n${payload.notification.body}`);
+          // Show a standard system notification instead of an in-app alert!
+          if (Notification.permission === 'granted') {
+            navigator.serviceWorker.getRegistration().then(function(reg) {
+              if (reg) {
+                reg.showNotification(payload.notification.title, {
+                  body: payload.notification.body,
+                  icon: '/icon.png', // Add your app icon here if you have one
+                  data: payload.data
+                });
+              } else {
+                new Notification(payload.notification.title, {
+                  body: payload.notification.body
+                });
+              }
+            });
+          }
         });
       } else {
         console.log('Web Push permission denied.');
@@ -624,10 +644,6 @@ async function processNotifications(recentDays) {
   }
 }
 
-// ===== PULL TO REFRESH LOGIC (Only for Android App) =====
-const isAndroidApp = /Android.*wv/.test(navigator.userAgent) || typeof Android !== 'undefined' || window.matchMedia('(display-mode: standalone)').matches;
-
-if (isAndroidApp) {
   let ptrStartY = 0;
   let ptrCurrentY = 0;
   let isPulling = false;
@@ -680,4 +696,3 @@ if (isAndroidApp) {
     ptrStartY = 0;
     ptrCurrentY = 0;
   }, { passive: true });
-}
