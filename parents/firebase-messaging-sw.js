@@ -21,8 +21,7 @@ try {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
     const notificationTitle = payload.notification.title || "Attendance Update";
     const notificationOptions = {
-      body: payload.notification.body,
-      icon: '/icon-192x192.png' // Replace with your actual icon
+      body: payload.notification.body
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
