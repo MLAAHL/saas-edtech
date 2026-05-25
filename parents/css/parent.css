@@ -225,8 +225,13 @@ body::after {
 
 /* FLOATING NAV */
 .floating-nav {
-  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-  width: calc(100% - 48px); max-width: 400px;
+  position: fixed; 
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px)); 
+  left: 50%; 
+  transform: translateX(-50%);
+  width: calc(100% - 48px); 
+  max-width: 400px;
+  z-index: 1000;
 }
 .nav-platter {
   background: rgba(255, 255, 255, 0.4);
