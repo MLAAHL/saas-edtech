@@ -624,51 +624,55 @@ async function processNotifications(recentDays) {
   }
 }
 
-// ===== PULL TO REFRESH LOGIC =====
-let ptrStartY = 0;
-let ptrCurrentY = 0;
-let isPulling = false;
+// ===== PULL TO REFRESH LOGIC (Only for Android App) =====
+const isAndroidApp = /Android.*wv/.test(navigator.userAgent) || typeof Android !== 'undefined' || window.matchMedia('(display-mode: standalone)').matches;
 
-document.addEventListener('touchstart', (e) => {
-  if (window.scrollY === 0) {
-    ptrStartY = e.touches[0].clientY;
-    isPulling = true;
-  }
-}, { passive: true });
+if (isAndroidApp) {
+  let ptrStartY = 0;
+  let ptrCurrentY = 0;
+  let isPulling = false;
 
-document.addEventListener('touchmove', (e) => {
-  if (!isPulling) return;
-  const ptrIndicator = document.getElementById('ptrIndicator');
-  if (!ptrIndicator) return;
-  
-  ptrCurrentY = e.touches[0].clientY;
-  const pullDistance = ptrCurrentY - ptrStartY;
-  
-  if (pullDistance > 0 && window.scrollY === 0) {
-    const yOffset = Math.min(pullDistance, 100);
-    ptrIndicator.style.transform = `translate(-50%, ${yOffset}px)`;
-    const icon = ptrIndicator.querySelector('span');
-    if (icon) icon.style.transform = `rotate(${yOffset * 3}deg)`;
-  }
-}, { passive: true });
+  document.addEventListener('touchstart', (e) => {
+    if (window.scrollY === 0) {
+      ptrStartY = e.touches[0].clientY;
+      isPulling = true;
+    }
+  }, { passive: true });
 
-document.addEventListener('touchend', (e) => {
-  if (!isPulling) return;
-  isPulling = false;
-  
-  const ptrIndicator = document.getElementById('ptrIndicator');
-  if (!ptrIndicator) return;
-  
-  const pullDistance = ptrCurrentY - ptrStartY;
-  if (pullDistance > 80 && window.scrollY === 0) {
-    ptrIndicator.classList.add('refreshing');
-    ptrIndicator.style.transform = `translate(-50%, 80px)`;
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  } else {
-    ptrIndicator.style.transform = `translate(-50%, 0)`;
-  }
-  ptrStartY = 0;
-  ptrCurrentY = 0;
-}, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!isPulling) return;
+    const ptrIndicator = document.getElementById('ptrIndicator');
+    if (!ptrIndicator) return;
+    
+    ptrCurrentY = e.touches[0].clientY;
+    const pullDistance = ptrCurrentY - ptrStartY;
+    
+    if (pullDistance > 0 && window.scrollY === 0) {
+      const yOffset = Math.min(pullDistance, 100);
+      ptrIndicator.style.transform = `translate(-50%, ${yOffset}px)`;
+      const icon = ptrIndicator.querySelector('span');
+      if (icon) icon.style.transform = `rotate(${yOffset * 3}deg)`;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (!isPulling) return;
+    isPulling = false;
+    
+    const ptrIndicator = document.getElementById('ptrIndicator');
+    if (!ptrIndicator) return;
+    
+    const pullDistance = ptrCurrentY - ptrStartY;
+    if (pullDistance > 80 && window.scrollY === 0) {
+      ptrIndicator.classList.add('refreshing');
+      ptrIndicator.style.transform = `translate(-50%, 80px)`;
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } else {
+      ptrIndicator.style.transform = `translate(-50%, 0)`;
+    }
+    ptrStartY = 0;
+    ptrCurrentY = 0;
+  }, { passive: true });
+}
