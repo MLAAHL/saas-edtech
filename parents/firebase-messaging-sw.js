@@ -19,10 +19,14 @@ try {
 
   messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    const notificationTitle = payload.notification.title || "Attendance Update";
+    // Support both data-only and notification payloads
+    const notificationTitle = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || "Attendance Update";
+    const notificationBody = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || "";
     const notificationOptions = {
-      body: payload.notification.body,
-      icon: 'icon-192.png'
+      body: notificationBody,
+      icon: 'icon-192.png',
+      requireInteraction: true,
+      vibrate: [200, 100, 200]
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);

@@ -108,17 +108,23 @@ async function safeRegisterPush(studentID) {
         
         messaging.onMessage((payload) => {
           console.log('Foreground Message: ', payload);
+          // Support both notification and data-only payloads
+          const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'Attendance Update';
+          const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
+          
           if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             navigator.serviceWorker.ready.then(function(reg) {
               if (reg && reg.showNotification) {
-                reg.showNotification(payload.notification.title, {
-                  body: payload.notification.body,
+                reg.showNotification(title, {
+                  body: body,
                   icon: 'icon-192.png',
-                  data: payload.data
+                  data: payload.data,
+                  requireInteraction: true,
+                  vibrate: [200, 100, 200]
                 });
               } else {
-                new Notification(payload.notification.title, {
-                  body: payload.notification.body,
+                new Notification(title, {
+                  body: body,
                   icon: 'icon-192.png'
                 });
               }

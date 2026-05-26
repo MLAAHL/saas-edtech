@@ -292,7 +292,7 @@ router.get('/daily/:studentID', parentAuth, async (req, res) => {
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const targetDateStr = date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-    const query = { stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, ...buildDateQuery(targetDateStr) };
+    const query = { stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, isDeleted: { $ne: true }, ...buildDateQuery(targetDateStr) };
     const records = await req.db.collection('attendance').find(query).toArray();
     
     records.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
@@ -326,7 +326,7 @@ router.get('/full/:studentID', parentAuth, async (req, res) => {
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const records = await req.db.collection('attendance').find({
-      stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester
+      stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, isDeleted: { $ne: true }
     }).sort({ date: -1 }).toArray();
     
     records.sort((a, b) => {
@@ -378,7 +378,7 @@ router.get('/recent/:studentID', parentAuth, async (req, res) => {
     const startD = new Date(); startD.setDate(startD.getDate() - 7); startD.setHours(0, 0, 0, 0);
 
     const records = await req.db.collection('attendance').find({
-      stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester,
+      stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, isDeleted: { $ne: true },
       $or: [{ date: { $in: dateStrings } }, { date: { $gte: startD, $lte: endD } }]
     }).sort({ date: -1 }).toArray();
     

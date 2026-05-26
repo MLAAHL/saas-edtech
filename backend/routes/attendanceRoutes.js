@@ -32,35 +32,59 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     });
 
     if (absentTokens.length > 0) {
+      const notifTitle = 'Attendance Alert';
+      const notifBody = `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`;
+      
       const message = {
-        notification: {
-          title: 'Attendance Alert',
-          body: `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`
+        // Data-only message: bypasses Android Doze mode for instant delivery
+        data: {
+          type: 'attendance_alert',
+          title: notifTitle,
+          body: notifBody,
+          subject: subject,
+          date: date,
+          timestamp: Date.now().toString()
         },
         android: {
           priority: 'high',
+          ttl: 0,  // deliver immediately, don't batch
           notification: { 
+            title: notifTitle,
+            body: notifBody,
             sound: 'default',
-            channelId: 'smart_attendance_channel'
+            channelId: 'smart_attendance_channel',
+            priority: 'max',
+            defaultVibrateTimings: true,
+            visibility: 'public'
           }
         },
         apns: {
           headers: {
             'apns-priority': '10',
-            'apns-push-type': 'alert'
+            'apns-push-type': 'alert',
+            'apns-expiration': '0'
           },
           payload: {
             aps: { 
+              alert: { title: notifTitle, body: notifBody },
               sound: 'default',
               badge: 1,
-              'content-available': 1
+              'content-available': 1,
+              'mutable-content': 1
             }
           }
         },
-        data: {
-          type: 'attendance_alert',
-          subject: subject,
-          date: date
+        webpush: {
+          headers: {
+            'Urgency': 'high',
+            'TTL': '0'
+          },
+          notification: {
+            title: notifTitle,
+            body: notifBody,
+            requireInteraction: true,
+            icon: 'icon-192.png'
+          }
         },
         tokens: [...new Set(absentTokens)] // unique tokens
       };
