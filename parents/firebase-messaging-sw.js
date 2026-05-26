@@ -17,20 +17,6 @@ try {
   firebase.initializeApp(firebaseConfig);
   const messaging = firebase.messaging();
 
-  messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    // Support both data-only and notification payloads
-    const notificationTitle = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || "Attendance Update";
-    const notificationBody = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || "";
-    const notificationOptions = {
-      body: notificationBody,
-      icon: 'icon-192.png',
-      requireInteraction: true,
-      vibrate: [200, 100, 200]
-    };
-
-    self.registration.showNotification(notificationTitle, notificationOptions);
-  });
 } catch(e) {
   console.log("Firebase SW init failed. Remember to add your config!");
 }

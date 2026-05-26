@@ -10,6 +10,10 @@ router.use((req, res, next) => {
   const db = req.app.locals.db || req.app.get('db');
   if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
   req.db = db;
+  // Prevent browser caching for all parent API routes to ensure real-time data
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   next();
 });
 
