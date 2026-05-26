@@ -17,6 +17,22 @@ try {
   firebase.initializeApp(firebaseConfig);
   const messaging = firebase.messaging();
 
+  messaging.onBackgroundMessage(function(payload) {
+    console.log('[firebase-messaging-sw.js] Received background message ', payload);
+    
+    // Support both notification and data payloads
+    const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'Update';
+    const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
+    
+    const notificationOptions = {
+      body: body,
+      icon: '/icon-192.png',
+      data: payload.data || {}
+    };
+
+    self.registration.showNotification(title, notificationOptions);
+  });
+
 } catch(e) {
   console.log("Firebase SW init failed. Remember to add your config!");
 }
