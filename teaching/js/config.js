@@ -55,5 +55,5 @@
 })();
 
 window.APP_CONFIG = {
-  API_BASE_URL: 'https://mlaahl.online/api'
-};
+  API_BASE_URL: 'https://mlaahl.online/api',
+  UUCMS_API_URL: 'https://mlaahl.online',};

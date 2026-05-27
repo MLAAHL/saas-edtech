@@ -1330,7 +1330,11 @@ async function saveAttendance() {
         showNotification(`Successfully updated ${result.modified} record(s)`, 'success');
 
         isEditMode = false;
-        if (saveAttendanceBtn) saveAttendanceBtn.classList.add('hidden');
+        if (saveAttendanceBtn) {
+          saveAttendanceBtn.classList.add('hidden');
+          saveAttendanceBtn.disabled = false;
+          saveAttendanceBtn.innerHTML = originalHTML;
+        }
         if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
         if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
         if (deleteAttendanceBtn) deleteAttendanceBtn.classList.remove('hidden');
@@ -1390,6 +1394,8 @@ async function saveAttendance() {
 
         isEditMode = false;
         saveAttendanceBtn.classList.add('hidden');
+        saveAttendanceBtn.disabled = false;
+        saveAttendanceBtn.innerHTML = originalHTML;
         cancelEditBtn.classList.add('hidden');
         editAttendanceBtn.classList.remove('hidden');
 

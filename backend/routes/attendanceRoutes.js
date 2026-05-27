@@ -518,11 +518,14 @@ router.get('/attendance/register/:stream/sem:semester/:subject', async (req, res
     }
     
     const studentsCollection = req.db.collection('students');
-    const students = await studentsCollection.find({
+    let students = await studentsCollection.find({
       stream: { $regex: new RegExp(`^${stream}$`, 'i') },
       semester: semesterNumber,
       isActive: true
     }).sort({ studentID: 1 }).toArray();
+    
+    const subjectDetails = await getSubjectDetails(req.db, stream, semester, subject);
+    students = filterStudentsBySubject(students, subjectDetails);
     
     const studentsWithAttendance = students.map(student => {
       let presentCount = 0;
@@ -608,11 +611,14 @@ router.get('/attendance/date/:stream/sem:semester/:subject/:date', async (req, r
     }
     
     const studentsCollection = req.db.collection('students');
-    const students = await studentsCollection.find({
+    let students = await studentsCollection.find({
       stream: { $regex: new RegExp(`^${stream}$`, 'i') },
       semester: semesterNumber,
       isActive: true
     }).sort({ studentID: 1 }).toArray();
+    
+    const subjectDetails = await getSubjectDetails(req.db, stream, semester, subject);
+    students = filterStudentsBySubject(students, subjectDetails);
     
     const studentsWithSessions = students.map(student => ({
       studentID: student.studentID,
