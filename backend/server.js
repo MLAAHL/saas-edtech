@@ -70,10 +70,14 @@ app.use('/api/promotion', strictLimiter);
 // CORS CONFIGURATION
 // ============================================================================
 
+const envOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) 
+  : [];
+
 const allowedOrigins = [
-  'https://teachingstaff.netlify.app',
-  'https://dataentrymla.netlify.app',
-  'https://mlaahl.online',
+  ...envOrigins,
+  'https://parents.mlaahl.online',
+  'https://admin.mlaahl.online',
   'http://localhost:8003',
   'http://localhost:5000'
 ];
