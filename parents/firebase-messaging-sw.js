@@ -79,3 +79,9 @@ self.addEventListener('notificationclick', function(event) {
     })
   );
 });
+
+// Standard fetch handler required for PWA installability
+self.addEventListener('fetch', function(event) {
+  // Let requests pass through normally.
+  // An active fetch listener is required by browsers to trigger the PWA install prompt.
+});
