@@ -19,7 +19,9 @@ const studentSchema = new mongoose.Schema({
     error: String
   },
   isActive: { type: Boolean, default: true },
+  parentPassword: { type: String, default: null },
   fcmTokens: [String],
+  webPushSubscriptions: { type: [Object], default: [] },
   lastLogin: Date,
   notificationStatus: { type: String, enum: ['granted', 'denied', 'pending', 'not_supported'], default: 'pending' },
   uucmsProfile: {

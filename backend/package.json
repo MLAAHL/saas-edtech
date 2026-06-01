@@ -3,9 +3,11 @@
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.12.2",
     "axios-cookiejar-support": "^7.0.0",
+    "bcrypt": "^6.0.0",
     "body-parser": "^1.20.3",
     "cheerio": "^1.2.0",
     "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.6.1",
@@ -24,6 +26,7 @@
     "morgan": "^1.10.1",
     "ngrok": "^5.0.0-beta.2",
     "tough-cookie": "^6.0.1",
-    "twilio": "^5.9.0"
+    "twilio": "^5.9.0",
+    "web-push": "^3.6.7"
   }
 }

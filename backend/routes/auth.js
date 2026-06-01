@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
 // IMPORTANT: In production, store this in your .env file
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || "AIzaSyDmvzNuE-szbAkFjeEjCNFJK-65sC0_IfE";
@@ -84,6 +85,70 @@ router.post('/login', async (req, res) => {
         res.status(401).json({
             success: false,
             error: errorMap[errorMessage] || 'Invalid email or password'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/auth/refresh
+ * @desc    Refresh parent portal access token using httpOnly refresh token cookie
+ */
+router.post('/refresh', async (req, res) => {
+    try {
+        const refreshToken = req.cookies.parentRefreshToken;
+
+        if (!refreshToken) {
+            return res.status(401).json({
+                success: false,
+                error: 'Refresh token missing. Please log in again.'
+            });
+        }
+
+        const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'smart_parent_portal_jwt_refresh_secret_key_987';
+        
+        // Verify the refresh token
+        let decoded;
+        try {
+            decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        } catch (err) {
+            console.error('❌ [AUTH] Refresh token verification failed:', err.message);
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid or expired refresh token. Please log in again.'
+            });
+        }
+
+        const studentID = decoded.studentID;
+        const db = req.app.locals.db || req.app.get('db');
+        if (!db) {
+            return res.status(503).json({ success: false, error: 'Database unavailable' });
+        }
+
+        // Verify the student still exists and is active
+        const student = await db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
+        if (!student) {
+            return res.status(401).json({
+                success: false,
+                error: 'Account not found or inactive. Please log in again.'
+            });
+        }
+
+        // Issue a new short-lived access token
+        const JWT_SECRET = process.env.JWT_SECRET || 'fallback_parent_secret_key_123';
+        const token = jwt.sign({ studentID: student.studentID }, JWT_SECRET, { expiresIn: '15m' });
+
+        console.log(`🔄 [AUTH] Refreshed access token successfully for: ${student.studentID}`);
+
+        res.json({
+            success: true,
+            token
+        });
+
+    } catch (error) {
+        console.error('❌ [AUTH] Token refresh error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error during token refresh'
         });
     }
 });

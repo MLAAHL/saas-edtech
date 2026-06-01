@@ -5,6 +5,7 @@ const firebaseAuth = require('../middleware/firebaseAuth');
 const parentAuth = require('../middleware/parentAuth');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 router.use((req, res, next) => {
   const db = req.app.locals.db || req.app.get('db');
@@ -107,7 +108,8 @@ router.post('/set-password', async (req, res) => {
 
     if (student.parentPassword) return res.status(400).json({ success: false, error: 'Password already set' });
 
-    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    // Hash the password with bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
     await col.updateOne({ _id: student._id }, { $set: { parentPassword: hashedPassword } });
 
     res.json({ success: true });
@@ -126,13 +128,40 @@ router.post('/login', async (req, res) => {
     if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
     if (!student.parentPassword) return res.status(400).json({ success: false, error: 'Password not set for this account' });
 
-    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-    if (student.parentPassword !== hashedPassword) {
+    // Verify password with Bcrypt and fallback to SHA-256 for migration
+    let isMatch = false;
+    if (student.parentPassword.startsWith('$2b$') || student.parentPassword.startsWith('$2a$')) {
+      isMatch = await bcrypt.compare(password, student.parentPassword);
+    } else {
+      // Fallback check using SHA256
+      const sha256Hash = crypto.createHash('sha256').update(password).digest('hex');
+      if (student.parentPassword === sha256Hash) {
+        isMatch = true;
+        // Transparently upgrade to bcrypt
+        const bcryptHash = await bcrypt.hash(password, 10);
+        await col.updateOne({ _id: student._id }, { $set: { parentPassword: bcryptHash } });
+        console.log(`[PARENTS] Upgraded password hash to bcrypt for: ${student.studentID}`);
+      }
+    }
+
+    if (!isMatch) {
       return res.status(401).json({ success: false, error: 'Invalid password' });
     }
 
     const JWT_SECRET = process.env.JWT_SECRET || 'fallback_parent_secret_key_123';
-    const token = jwt.sign({ studentID: student.studentID }, JWT_SECRET, { expiresIn: '7d' });
+    const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'smart_parent_portal_jwt_refresh_secret_key_987';
+
+    // Issue tokens: 15-minute access token, 30-day refresh token
+    const token = jwt.sign({ studentID: student.studentID }, JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign({ studentID: student.studentID }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
+
+    // Set refresh token cookie (httpOnly, secure, sameSite: none)
+    res.cookie('parentRefreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true, // required for sameSite: 'none'
+      sameSite: 'none',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
 
     await col.updateOne({ _id: student._id }, { $set: { 'parentAuth.lastLogin': new Date() } });
 

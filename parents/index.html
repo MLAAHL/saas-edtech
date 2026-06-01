@@ -65,38 +65,12 @@
       </div>
 
       <div class="glass-login-panel">
-        <!-- Step 1: Lookup UUCMS ID -->
-        <form id="lookupForm" class="login-form">
+        <!-- Login Form -->
+        <form id="loginForm" class="login-form">
           <div class="input-grp">
             <span class="material-symbols-rounded">person</span>
-            <input type="text" id="studentIDInput" placeholder="UUCMS ID" required autocomplete="off">
+            <input type="text" id="loginIDInput" placeholder="UUCMS ID" required autocomplete="off">
           </div>
-          <button type="submit" class="glass-btn-primary" id="lookupBtn">
-            <span id="lookupText">Continue</span>
-            <div class="spinner hidden" id="lookupSpinner"></div>
-          </button>
-        </form>
-
-        <!-- Step 2: Set Password (First time) -->
-        <form id="setPasswordForm" class="login-form hidden">
-          <p style="color: var(--text-dark); margin-bottom: 16px; font-weight: 500;">Please set a new password for the Parents Portal.</p>
-          <div class="input-grp">
-            <span class="material-symbols-rounded">lock</span>
-            <input type="password" id="newPasswordInput" placeholder="New Password" required>
-          </div>
-          <div class="input-grp">
-            <span class="material-symbols-rounded">lock_reset</span>
-            <input type="password" id="confirmPasswordInput" placeholder="Confirm Password" required>
-          </div>
-          <button type="submit" class="glass-btn-primary" id="setPwdBtn">
-            <span id="setPwdText">Create Password</span>
-            <div class="spinner hidden" id="setPwdSpinner"></div>
-          </button>
-        </form>
-
-        <!-- Step 3: Login (Returning user) -->
-        <form id="loginForm" class="login-form hidden">
-          <p style="color: var(--text-dark); margin-bottom: 16px; font-weight: 500;">Welcome back. Please enter your password.</p>
           <div class="input-grp">
             <span class="material-symbols-rounded">lock</span>
             <input type="password" id="loginPasswordInput" placeholder="Password" required>
@@ -105,6 +79,32 @@
             <span id="loginText">Login</span>
             <div class="spinner hidden" id="loginSpinner"></div>
           </button>
+          <div class="form-toggle">
+            <p>First time here? <a href="#" onclick="toggleAuthMode('signup')">Sign up</a></p>
+          </div>
+        </form>
+
+        <!-- Sign Up Form -->
+        <form id="signupForm" class="login-form hidden">
+          <div class="input-grp">
+            <span class="material-symbols-rounded">person</span>
+            <input type="text" id="signupIDInput" placeholder="UUCMS ID" required autocomplete="off">
+          </div>
+          <div class="input-grp">
+            <span class="material-symbols-rounded">lock</span>
+            <input type="password" id="signupPasswordInput" placeholder="New Password" required>
+          </div>
+          <div class="input-grp">
+            <span class="material-symbols-rounded">lock_reset</span>
+            <input type="password" id="signupConfirmPasswordInput" placeholder="Confirm Password" required>
+          </div>
+          <button type="submit" class="glass-btn-primary" id="signupBtn">
+            <span id="signupText">Sign Up</span>
+            <div class="spinner hidden" id="signupSpinner"></div>
+          </button>
+          <div class="form-toggle">
+            <p>Already have an account? <a href="#" onclick="toggleAuthMode('login')">Login</a></p>
+          </div>
         </form>
         
         <p class="error-msg hidden" id="loginError"></p>

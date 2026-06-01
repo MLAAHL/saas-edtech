@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const compression = require("compression");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -69,11 +70,33 @@ app.use('/api/promotion', strictLimiter);
 // CORS CONFIGURATION
 // ============================================================================
 
+const allowedOrigins = [
+  'https://teachingstaff.netlify.app',
+  'https://dataentrymla.netlify.app',
+  'https://mlaahl.online',
+  'http://localhost:8003',
+  'http://localhost:5000'
+];
+
 const corsOptions = {
-  origin: '*', // Allow ALL origins
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    // Check if localhost or Capacitor
+    const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+    const isCapacitor = origin === 'http://localhost' || origin === 'capacitor://localhost';
+    
+    if (allowedOrigins.includes(origin) || isLocalhost || isCapacitor) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Origin rejected: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cache-Control", "Expires", "Pragma", "x-student-id"],
-  credentials: false // Disable credentials for easier cross-origin access
+  credentials: true
 };
 
 app.use(cors(corsOptions));
@@ -86,6 +109,7 @@ app.options('*', cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
 
 // ============================================================================
 // CACHING MIDDLEWARE FOR FASTER RESPONSES
@@ -162,6 +186,7 @@ const notificationsRoutes = require("./routes/notifications");
 const firebaseUsersRoutes = require("./routes/firebaseUsers");
 const mentorshipRoutes = require("./routes/mentorship");
 const parentRoutes = require("./routes/parentRoutes");
+const pushRoutes = require("./routes/pushRoutes");
 
 // ============================================================================
 // STANDALONE API ENDPOINTS
@@ -246,6 +271,7 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/firebase-users", strictLimiter, firebaseUsersRoutes);
 app.use("/api/mentorship", mentorshipRoutes);
 app.use("/api/parent", parentRoutes);
+app.use("/api/push", pushRoutes);
 
 // ✅ PROMOTION ROUTES - BEFORE ATTENDANCE (Critical!)
 app.use("/api", promotionRoutes);

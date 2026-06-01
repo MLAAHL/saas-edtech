@@ -19,7 +19,8 @@ async function logout() {
       await fetch(`${API}/parent/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentID: currentStudent.studentID })
+        body: JSON.stringify({ studentID: currentStudent.studentID }),
+        credentials: 'include'
       });
     } catch (e) { console.error('Logout report failed:', e); }
   }
@@ -33,6 +34,22 @@ async function logout() {
   showScreen('loginScreen'); 
 }
 
+// Helper: Convert base64 VAPID key to Uint8Array
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 // ===== PUSH NOTIFICATIONS =====
 async function safeRegisterPush(studentID) {
   try {
@@ -42,8 +59,6 @@ async function safeRegisterPush(studentID) {
       const { PushNotifications } = window.Capacitor.Plugins;
       
       const permStatus = await PushNotifications.requestPermissions();
-      
-      // Report notification status to backend
       await reportNotificationStatus(studentID, permStatus.receive === 'granted' ? 'granted' : 'denied');
       
       if (permStatus.receive === 'granted') {
@@ -51,10 +66,11 @@ async function safeRegisterPush(studentID) {
         
         PushNotifications.addListener('registration', async (token) => {
           console.log('Firebase Push Token:', token.value);
-          await fetch(`${API}/parent/register-fcm`, {
+          await fetch(`${API}/push/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentID: studentID, fcmToken: token.value })
+            body: JSON.stringify({ studentID: studentID, platform: 'android', token: token.value }),
+            credentials: 'include'
           });
         });
         
@@ -82,60 +98,42 @@ async function safeRegisterPush(studentID) {
       return;
     }
 
-    // 2. Web Push (For iOS PWA / Desktop Web)
-    if (window.firebase && window.APP_CONFIG.FIREBASE_CONFIG && window.APP_CONFIG.FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
-      console.log('Using Web Firebase Push (PWA)');
-      if (!firebase.apps.length) {
-        firebase.initializeApp(window.APP_CONFIG.FIREBASE_CONFIG);
-      }
+    // 2. Standard Web Push (For iOS PWA / Desktop Web)
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      console.log('Using standard Web Push for iOS PWA / Desktop Web');
       
-      const messaging = firebase.messaging();
       const permission = await Notification.requestPermission();
-      
-      // Report notification status to backend
       await reportNotificationStatus(studentID, permission === 'granted' ? 'granted' : 'denied');
       
       if (permission === 'granted') {
-        const token = await messaging.getToken({ vapidKey: window.APP_CONFIG.FIREBASE_CONFIG.vapidKey });
-        if (token) {
-          console.log('Web FCM Token:', token);
-          await fetch(`${API}/parent/register-fcm`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentID: studentID, fcmToken: token })
-          });
-        }
+        const reg = await navigator.serviceWorker.ready;
         
-        messaging.onMessage((payload) => {
-          console.log('Foreground Message: ', payload);
-          // Support both notification and data-only payloads
-          const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'Attendance Update';
-          const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
-          
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            navigator.serviceWorker.ready.then(function(reg) {
-              if (reg && reg.showNotification) {
-                reg.showNotification(title, {
-                  body: body,
-                  icon: 'icon-192.png',
-                  data: payload.data,
-                  requireInteraction: true,
-                  vibrate: [200, 100, 200]
-                });
-              } else {
-                new Notification(title, {
-                  body: body,
-                  icon: 'icon-192.png'
-                });
-              }
-            }).catch(e => console.error("SW notification error", e));
-          }
+        // Fetch VAPID key from backend
+        const keyRes = await fetch(`${API}/push/vapid-public-key`);
+        const keyData = await keyRes.json();
+        if (!keyData.success) throw new Error('VAPID key retrieval failed');
+        
+        const applicationServerKey = urlBase64ToUint8Array(keyData.publicKey);
+        
+        // Subscribe using PushManager
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey
+        });
+        
+        console.log('Successfully subscribed to Web Push:', subscription);
+        
+        // Register Web Push subscription in backend
+        await fetch(`${API}/push/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentID, platform: 'ios', subscription }),
+          credentials: 'include'
         });
       } else {
         console.log('Web Push permission denied.');
       }
     } else {
-      // No push support at all
       await reportNotificationStatus(studentID, 'not_supported');
       console.log('Push Notifications not available on this device/browser.');
     }
@@ -150,7 +148,8 @@ async function reportNotificationStatus(studentID, status) {
     await fetch(`${API}/parent/update-notification-status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID, status })
+      body: JSON.stringify({ studentID, status }),
+      credentials: 'include'
     });
     console.log('Notification status reported:', status);
   } catch (e) { console.error('Failed to report notification status:', e); }
@@ -162,7 +161,8 @@ async function reportActivity(studentID) {
     await fetch(`${API}/parent/update-activity`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID })
+      body: JSON.stringify({ studentID }),
+      credentials: 'include'
     });
   } catch (e) { console.error('Failed to report activity:', e); }
 }
@@ -176,11 +176,37 @@ function startHeartbeat(studentID) {
 
 // ===== AUTHENTICATION WRAPPER =====
 async function authFetch(url, options = {}) {
-  const token = localStorage.getItem('parentAuthToken');
+  let token = localStorage.getItem('parentAuthToken');
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   
-  const res = await fetch(url, { ...options, headers });
+  let res = await fetch(url, { ...options, headers, credentials: 'include' });
+  if (res.status === 401) {
+    try {
+      console.log('Access token expired, attempting silent refresh...');
+      const refreshRes = await fetch(`${API}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      const refreshData = await refreshRes.json();
+      if (refreshData.success && refreshData.token) {
+        console.log('Token refreshed successfully');
+        localStorage.setItem('parentAuthToken', refreshData.token);
+        
+        // Retry original request with the new token
+        headers['Authorization'] = `Bearer ${refreshData.token}`;
+        res = await fetch(url, { ...options, headers, credentials: 'include' });
+      } else {
+        throw new Error('Refresh token invalid or expired');
+      }
+    } catch (e) {
+      console.error('Silent refresh failed, logging out:', e);
+      logout();
+      throw new Error('Session expired. Please log in again.');
+    }
+  }
+  
   if (res.status === 401) {
     logout();
     throw new Error('Session expired. Please log in again.');
@@ -188,70 +214,25 @@ async function authFetch(url, options = {}) {
   return res;
 }
 
-// ===== STUDENT LOOKUP =====
+// ===== STUDENT LOOKUP / LOGIN =====
 let currentPendingStudentID = null;
 
-async function checkStatus(sid) {
-  const btn = document.getElementById('lookupBtn');
-  const txt = document.getElementById('lookupText');
-  const spin = document.getElementById('lookupSpinner');
-  const err = document.getElementById('loginError');
-  
-  txt.textContent = 'Searching...'; spin.classList.remove('hidden'); btn.disabled = true; err.classList.add('hidden');
-
-  try {
-    const res = await fetch(`${API}/parent/check-status`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID: sid })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Student not found');
-    
-    currentPendingStudentID = sid;
-    document.getElementById('lookupForm').classList.add('hidden');
-    
-    if (data.hasPassword) {
-      document.getElementById('loginForm').classList.remove('hidden');
-    } else {
-      document.getElementById('setPasswordForm').classList.remove('hidden');
-    }
-  } catch (error) {
-    err.textContent = error.message; err.classList.remove('hidden');
-  } finally {
-    txt.textContent = 'Continue'; spin.classList.add('hidden'); btn.disabled = false;
-  }
-}
-
-async function setPassword(sid, password, confirmPassword) {
+function toggleAuthMode(mode) {
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
   const err = document.getElementById('loginError');
   err.classList.add('hidden');
-  if (password !== confirmPassword) {
-    err.textContent = "Passwords do not match!"; err.classList.remove('hidden');
-    return;
-  }
   
-  const btn = document.getElementById('setPwdBtn');
-  const txt = document.getElementById('setPwdText');
-  const spin = document.getElementById('setPwdSpinner');
-  txt.textContent = 'Saving...'; spin.classList.remove('hidden'); btn.disabled = true;
-  
-  try {
-    const res = await fetch(`${API}/parent/set-password`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID: sid, password })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-    
-    await performLogin(sid, password);
-  } catch (error) {
-    err.textContent = error.message; err.classList.remove('hidden');
-  } finally {
-    txt.textContent = 'Create Password'; spin.classList.add('hidden'); btn.disabled = false;
+  if (mode === 'signup') {
+    loginForm.classList.add('hidden');
+    signupForm.classList.remove('hidden');
+  } else {
+    signupForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
   }
 }
 
-async function performLogin(sid, password) {
+async function handleLogin(sid, pwd) {
   const btn = document.getElementById('loginBtn');
   const txt = document.getElementById('loginText');
   const spin = document.getElementById('loginSpinner');
@@ -265,10 +246,11 @@ async function performLogin(sid, password) {
   try {
     const res = await fetch(`${API}/parent/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID: sid, password })
+      body: JSON.stringify({ studentID: sid, password: pwd }),
+      credentials: 'include'
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    if (!data.success) throw new Error(data.error || 'Login failed');
     
     localStorage.setItem('parentAuthToken', data.token);
     setupDashboard(data.student);
@@ -280,6 +262,57 @@ async function performLogin(sid, password) {
     if(btn) btn.disabled = false;
   }
 }
+
+async function handleSignup(sid, pwd, confirmPwd) {
+  const btn = document.getElementById('signupBtn');
+  const txt = document.getElementById('signupText');
+  const spin = document.getElementById('signupSpinner');
+  const err = document.getElementById('loginError');
+  
+  err.classList.add('hidden');
+  if (pwd !== confirmPwd) {
+    err.textContent = "Passwords do not match!"; err.classList.remove('hidden');
+    return;
+  }
+
+  if(txt) txt.textContent = 'Signing up...'; 
+  if(spin) spin.classList.remove('hidden'); 
+  if(btn) btn.disabled = true; 
+
+  try {
+    // Check status first to see if student exists
+    const checkRes = await fetch(`${API}/parent/check-status`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentID: sid })
+    });
+    const checkData = await checkRes.json();
+    if (!checkData.success) throw new Error(checkData.error || 'Student not found');
+    
+    if (checkData.hasPassword) {
+      throw new Error('This UUCMS ID is already registered. Please login.');
+    }
+    
+    // Proceed to set password
+    const setRes = await fetch(`${API}/parent/set-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentID: sid, password: pwd })
+    });
+    const setData = await setRes.json();
+    if (!setData.success) throw new Error(setData.error);
+    
+    // Login automatically
+    await handleLogin(sid, pwd);
+    
+  } catch (error) {
+    err.textContent = error.message; err.classList.remove('hidden');
+  } finally {
+    if(txt) txt.textContent = 'Sign Up'; 
+    if(spin) spin.classList.add('hidden'); 
+    if(btn) btn.disabled = false;
+  }
+}
+
+
 
 function setupDashboard(studentData) {
   currentStudent = studentData;
@@ -314,30 +347,32 @@ async function checkNotifications() {
   }
 }
 
-document.getElementById('lookupForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const sid = document.getElementById('studentIDInput').value.trim();
-  if (!sid) return;
-  await checkStatus(sid);
-});
-
-document.getElementById('setPasswordForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const pwd = document.getElementById('newPasswordInput').value;
-  const conf = document.getElementById('confirmPasswordInput').value;
-  if (!pwd || !currentPendingStudentID) return;
-  await setPassword(currentPendingStudentID, pwd, conf);
-});
-
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const sid = document.getElementById('loginIDInput').value.trim();
   const pwd = document.getElementById('loginPasswordInput').value;
-  if (!pwd || !currentPendingStudentID) return;
-  await performLogin(currentPendingStudentID, pwd);
+  if (!sid || !pwd) return;
+  await handleLogin(sid, pwd);
+});
+
+document.getElementById('signupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const sid = document.getElementById('signupIDInput').value.trim();
+  const pwd = document.getElementById('signupPasswordInput').value;
+  const conf = document.getElementById('signupConfirmPasswordInput').value;
+  if (!sid || !pwd) return;
+  await handleSignup(sid, pwd, conf);
 });
 
 // Auto-login on boot
 document.addEventListener('DOMContentLoaded', async () => {
+  // Register Service Worker for PWA / Web Push
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  }
+
   const token = localStorage.getItem('parentAuthToken');
   if (token) {
     try {

@@ -3,6 +3,19 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const admin = require('../config/firebase-admin');
 const firebaseAuth = require('../middleware/firebaseAuth');
+const webpush = require('web-push');
+
+// Set VAPID details if configured
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    'mailto:office@mlaacademy.edu',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log('✅ Web Push VAPID details configured successfully');
+} else {
+  console.warn('⚠️ Web Push VAPID keys not configured in environment variables');
+}
 
 // helper function to send push notifications to absent students' parents
 async function notifyAbsentParents(req, db, stream, semester, subject, date, time, studentsPresentArray) {
@@ -14,8 +27,13 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       isActive: true
     }).toArray();
 
-    let absentTokens = [];
-    
+    const notifTitle = 'Attendance Alert';
+    const notifBody = `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`;
+
+    const absentAndroidTokens = [];
+    const tokenToStudentId = {}; // Maps token string to MongoDB ObjectId to delete on failure
+    const webPushTasks = [];
+
     allStudents.forEach(student => {
       const sid = (student.studentID || '').trim();
       const sname = (student.name || '').trim();
@@ -26,17 +44,58 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
                entry === sname || entry.toLowerCase() === sname.toLowerCase();
       });
 
-      if (!isPresent && student.fcmTokens && student.fcmTokens.length > 0) {
-        absentTokens.push(...student.fcmTokens);
+      if (!isPresent) {
+        // 1. Android FCM tokens
+        if (student.fcmTokens && student.fcmTokens.length > 0) {
+          student.fcmTokens.forEach(t => {
+            if (t && typeof t === 'string') {
+              absentAndroidTokens.push(t);
+              tokenToStudentId[t] = student._id;
+            }
+          });
+        }
+
+        // 2. iOS Web Push subscriptions
+        if (student.webPushSubscriptions && student.webPushSubscriptions.length > 0) {
+          const payload = JSON.stringify({
+            title: notifTitle,
+            body: notifBody,
+            data: {
+              type: 'attendance_alert',
+              subject: subject,
+              date: date,
+              timestamp: Date.now().toString()
+            }
+          });
+
+          student.webPushSubscriptions.forEach(sub => {
+            if (sub && sub.endpoint) {
+              webPushTasks.push((async () => {
+                try {
+                  await webpush.sendNotification(sub, payload);
+                  console.log(`📡 [WEBPUSH] Successfully sent alert to endpoint: ${sub.endpoint}`);
+                } catch (err) {
+                  console.error(`❌ [WEBPUSH] Send failed for student ${student.studentID}:`, err.message);
+                  // Prune dead subscriptions (410 Gone, 404 Not Found)
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    console.log(`🧹 [WEBPUSH] Pruning dead subscription for student: ${student.studentID}`);
+                    await col.updateOne(
+                      { _id: student._id },
+                      { $pull: { webPushSubscriptions: sub } }
+                    );
+                  }
+                }
+              })());
+            }
+          });
+        }
       }
     });
 
-    if (absentTokens.length > 0) {
-      const notifTitle = 'Attendance Alert';
-      const notifBody = `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`;
-      
+    // 1. Dispatch Android FCM multicast
+    if (absentAndroidTokens.length > 0) {
+      const uniqueTokens = [...new Set(absentAndroidTokens)];
       const message = {
-        // Data-only message: bypasses Android Doze mode for instant delivery
         data: {
           type: 'attendance_alert',
           title: notifTitle,
@@ -47,7 +106,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         },
         android: {
           priority: 'high',
-          ttl: 0,  // deliver immediately, don't batch
+          ttl: 0,
           notification: { 
             title: notifTitle,
             body: notifBody,
@@ -74,32 +133,18 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
             }
           }
         },
-        webpush: {
-          headers: {
-            'Urgency': 'high',
-            'TTL': '0'
-          },
-          notification: {
-            title: notifTitle,
-            body: notifBody,
-            requireInteraction: true,
-            icon: 'icon-192.png'
-          }
-        },
-        tokens: [...new Set(absentTokens)] // unique tokens
+        tokens: uniqueTokens
       };
-      const uniqueTokens = message.tokens;
-      
+
       const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(`📡 Sent FCM Push to ${uniqueTokens.length} devices. Success: ${response.successCount}, Failed: ${response.failureCount}`);
+      console.log(`📡 [FCM] Sent Push to ${uniqueTokens.length} devices. Success: ${response.successCount}, Failed: ${response.failureCount}`);
       
-      // Clean up invalid/stale tokens (app uninstalled, notifications blocked, etc.)
+      // Clean up invalid/stale FCM tokens
       if (response.failureCount > 0) {
         const failedTokens = [];
         response.responses.forEach((resp, idx) => {
           if (!resp.success) {
             const errorCode = resp.error?.code || '';
-            // These error codes mean the token is permanently invalid
             if (errorCode === 'messaging/registration-token-not-registered' ||
                 errorCode === 'messaging/invalid-registration-token' ||
                 errorCode === 'messaging/invalid-argument') {
@@ -109,23 +154,33 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         });
         
         if (failedTokens.length > 0) {
-          console.log(`🧹 Removing ${failedTokens.length} stale FCM tokens`);
-          const col = db.collection('students');
-          // Remove stale tokens from all students that have them
+          console.log(`🧹 [FCM] Removing ${failedTokens.length} stale FCM tokens`);
+          for (const token of failedTokens) {
+            const studentId = tokenToStudentId[token];
+            if (studentId) {
+              await col.updateOne(
+                { _id: studentId },
+                { $pull: { fcmTokens: token } }
+              );
+            }
+          }
+          // Mark students with zero tokens & subscriptions remaining as 'denied'
           await col.updateMany(
-            { fcmTokens: { $in: failedTokens } },
-            { $pullAll: { fcmTokens: failedTokens } }
-          );
-          // Mark students with zero tokens remaining as 'denied'
-          await col.updateMany(
-            { fcmTokens: { $size: 0 } },
+            { fcmTokens: { $size: 0 }, webPushSubscriptions: { $size: 0 } },
             { $set: { notificationStatus: 'denied' } }
           );
         }
       }
     }
+
+    // 2. Dispatch iOS PWA Web Push notifications in parallel
+    if (webPushTasks.length > 0) {
+      console.log(`📡 [WEBPUSH] Dispatching Web Push alerts to ${webPushTasks.length} subscriptions...`);
+      await Promise.allSettled(webPushTasks);
+    }
+
   } catch (err) {
-    console.error('❌ FCM Push Notification Error:', err);
+    console.error('❌ Push Notification Dispatch Error:', err);
   }
 }
 
