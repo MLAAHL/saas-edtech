@@ -71,9 +71,10 @@
             <span class="material-symbols-rounded">person</span>
             <input type="text" id="loginIDInput" placeholder="UUCMS ID" required autocomplete="off">
           </div>
-          <div class="input-grp">
+          <div class="input-grp password-grp">
             <span class="material-symbols-rounded">lock</span>
             <input type="password" id="loginPasswordInput" placeholder="Password" required>
+            <span class="material-symbols-rounded eye-icon" onclick="togglePassword('loginPasswordInput', this)">visibility</span>
           </div>
           <button type="submit" class="glass-btn-primary" id="loginBtn">
             <span id="loginText">Login</span>
@@ -90,13 +91,15 @@
             <span class="material-symbols-rounded">person</span>
             <input type="text" id="signupIDInput" placeholder="UUCMS ID" required autocomplete="off">
           </div>
-          <div class="input-grp">
+          <div class="input-grp password-grp">
             <span class="material-symbols-rounded">lock</span>
             <input type="password" id="signupPasswordInput" placeholder="New Password" required>
+            <span class="material-symbols-rounded eye-icon" onclick="togglePassword('signupPasswordInput', this)">visibility</span>
           </div>
-          <div class="input-grp">
+          <div class="input-grp password-grp">
             <span class="material-symbols-rounded">lock_reset</span>
             <input type="password" id="signupConfirmPasswordInput" placeholder="Confirm Password" required>
+            <span class="material-symbols-rounded eye-icon" onclick="togglePassword('signupConfirmPasswordInput', this)">visibility</span>
           </div>
           <button type="submit" class="glass-btn-primary" id="signupBtn">
             <span id="signupText">Sign Up</span>
