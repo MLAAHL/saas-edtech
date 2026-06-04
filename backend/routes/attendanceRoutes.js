@@ -74,17 +74,31 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
             if (sub && sub.endpoint) {
               webPushTasks.push((async () => {
                 try {
+                  const now = new Date();
                   await webpush.sendNotification(sub, payload);
                   console.log(`📡 [WEBPUSH] Successfully sent alert to endpoint: ${sub.endpoint}`);
+                  await col.updateOne(
+                      { _id: student._id },
+                      { $set: { notificationStatus: 'granted', lastNotificationSent: now, lastNotificationDelivered: now } }
+                  );
                 } catch (err) {
+                  const now = new Date();
                   console.error(`❌ [WEBPUSH] Send failed for student ${student.studentID}:`, err.message);
                   // Prune dead subscriptions (410 Gone, 404 Not Found)
                   if (err.statusCode === 410 || err.statusCode === 404) {
                     console.log(`🧹 [WEBPUSH] Pruning dead subscription for student: ${student.studentID}`);
                     await col.updateOne(
                       { _id: student._id },
-                      { $pull: { webPushSubscriptions: sub } }
+                      { 
+                          $pull: { webPushSubscriptions: sub },
+                          $set: { notificationStatus: 'revoked', notificationRevokedAt: now, lastNotificationSent: now, lastNotificationFailed: now }
+                      }
                     );
+                  } else {
+                      await col.updateOne(
+                          { _id: student._id },
+                          { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
+                      );
                   }
                 }
               })());
@@ -145,36 +159,47 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       const response = await admin.messaging().sendEachForMulticast(message);
       console.log(`📡 [FCM] Sent Push to ${uniqueTokens.length} devices. Success: ${response.successCount}, Failed: ${response.failureCount}`);
       
-      // Clean up invalid/stale FCM tokens
-      if (response.failureCount > 0) {
-        const failedTokens = [];
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
+      const now = new Date();
+      
+      // Process responses
+      for (let idx = 0; idx < response.responses.length; idx++) {
+        const resp = response.responses[idx];
+        const token = uniqueTokens[idx];
+        const studentId = tokenToStudentId[token];
+        if (!studentId) continue;
+        
+        if (resp.success) {
+            await col.updateOne(
+                { _id: studentId },
+                { $set: { 
+                    notificationStatus: 'granted',
+                    lastNotificationSent: now,
+                    lastNotificationDelivered: now
+                }}
+            );
+        } else {
             const errorCode = resp.error?.code || '';
             if (errorCode === 'messaging/registration-token-not-registered' ||
                 errorCode === 'messaging/invalid-registration-token' ||
                 errorCode === 'messaging/invalid-argument') {
-              failedTokens.push(uniqueTokens[idx]);
+                await col.updateOne(
+                    { _id: studentId },
+                    { 
+                        $pull: { fcmTokens: token },
+                        $set: { appStatus: 'app_removed', appRemovedAt: now, lastNotificationSent: now, lastNotificationFailed: now }
+                    }
+                );
+            } else if (errorCode === 'messaging/message-rate-exceeded') {
+                await col.updateOne(
+                    { _id: studentId },
+                    { $set: { notificationStatus: 'blocked', lastNotificationSent: now, lastNotificationFailed: now } }
+                );
+            } else {
+                await col.updateOne(
+                    { _id: studentId },
+                    { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
+                );
             }
-          }
-        });
-        
-        if (failedTokens.length > 0) {
-          console.log(`🧹 [FCM] Removing ${failedTokens.length} stale FCM tokens`);
-          for (const token of failedTokens) {
-            const studentId = tokenToStudentId[token];
-            if (studentId) {
-              await col.updateOne(
-                { _id: studentId },
-                { $pull: { fcmTokens: token } }
-              );
-            }
-          }
-          // Mark students with zero tokens & subscriptions remaining as 'denied'
-          await col.updateMany(
-            { fcmTokens: { $size: 0 }, webPushSubscriptions: { $size: 0 } },
-            { $set: { notificationStatus: 'denied' } }
-          );
         }
       }
     }

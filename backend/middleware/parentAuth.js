@@ -17,6 +17,25 @@ const parentAuth = async (req, res, next) => {
     const JWT_SECRET = process.env.JWT_SECRET || 'fallback_parent_secret_key_123';
     const decoded = jwt.verify(token, JWT_SECRET);
     
+    // Fetch student from DB to check jwtVersion
+    const db = req.app.locals.db || req.app.get('db');
+    if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+    const student = await db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${decoded.studentID}$`, 'i') } });
+    
+    if (!student) {
+      return res.status(401).json({ success: false, error: 'Student account not found' });
+    }
+
+    const currentVersion = student.jwtVersion || 1;
+    const tokenVersion = decoded.jwtVersion || 1;
+    
+    if (tokenVersion !== currentVersion) {
+        return res.status(401).json({ 
+            error: 'SESSION_INVALIDATED',
+            message: 'Your password was reset. Please sign in again.'
+        });
+    }
+
     // Attach studentID to request
     req.parentSession = {
       studentID: decoded.studentID

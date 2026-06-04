@@ -6,6 +6,13 @@ const parentAuth = require('../middleware/parentAuth');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const rateLimit = require('express-rate-limit');
+
+const resetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 requests per window
+    message: { success: false, error: 'Too many password reset requests from this IP, please try again after 15 minutes.' }
+});
 
 router.use((req, res, next) => {
   const db = req.app.locals.db || req.app.get('db');
@@ -155,9 +162,11 @@ router.post('/login', async (req, res) => {
     const JWT_SECRET = process.env.JWT_SECRET || 'fallback_parent_secret_key_123';
     const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'smart_parent_portal_jwt_refresh_secret_key_987';
 
+    const jwtVersion = student.jwtVersion || 1;
+
     // Issue tokens: 15-minute access token, 30-day refresh token
-    const token = jwt.sign({ studentID: student.studentID }, JWT_SECRET, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ studentID: student.studentID }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
 
     // Set refresh token cookie (httpOnly, secure, sameSite: none)
     res.cookie('parentRefreshToken', refreshToken, {
@@ -167,7 +176,7 @@ router.post('/login', async (req, res) => {
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
-    await col.updateOne({ _id: student._id }, { $set: { 'parentAuth.lastLogin': new Date() } });
+    await col.updateOne({ _id: student._id }, { $set: { 'parentAuth.lastLogin': new Date(), appStatus: 'active' } });
 
     res.json({
       success: true,
@@ -218,7 +227,7 @@ router.post('/register-fcm', async (req, res) => {
 });
 
 // POST - Update Activity (Login)
-router.post('/update-activity', async (req, res) => {
+router.post('/update-activity', parentAuth, async (req, res) => {
   try {
     const { studentID } = req.body;
     if (!studentID) return res.status(400).json({ success: false, error: 'Student ID is required' });
@@ -230,7 +239,7 @@ router.post('/update-activity', async (req, res) => {
     
     await col.updateOne(
       { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },
-      { $set: { lastLogin: new Date() } }
+      { $set: { lastLogin: new Date(), appStatus: 'active' } }
     );
     
     res.json({ success: true, message: 'Activity updated' });
@@ -238,7 +247,7 @@ router.post('/update-activity', async (req, res) => {
 });
 
 // POST - Update Notification Status
-router.post('/update-notification-status', async (req, res) => {
+router.post('/update-notification-status', parentAuth, async (req, res) => {
   try {
     const { studentID, status } = req.body; // status: 'granted', 'denied', 'not_supported'
     if (!studentID || !status) return res.status(400).json({ success: false, error: 'Missing parameters' });
@@ -256,18 +265,32 @@ router.post('/update-notification-status', async (req, res) => {
 });
 
 // POST - Logout (Clear activity)
-router.post('/logout', async (req, res) => {
+router.post('/logout', parentAuth, async (req, res) => {
   try {
-    const { studentID } = req.body;
-    if (!studentID) return res.status(400).json({ success: false, error: 'Student ID is required' });
-    
+    const { fcmToken, reason } = req.body;
+    const studentID = req.parentSession.studentID;
     const tid = studentID.trim();
-    // Clear all push tokens and mark as denied on logout
+    
+    // Create the update payload
+    let updatePayload = {
+      $set: { 
+        appStatus: 'logged_out',
+        lastLogout: new Date(),
+        logoutReason: reason || 'user_logout'
+      }
+    };
+    
+    // If fcmToken is provided, pull it from the array
+    if (fcmToken) {
+        updatePayload.$pull = { fcmTokens: fcmToken };
+    } else {
+        // Fallback: clear all if no specific token provided
+        updatePayload.$set.fcmTokens = [];
+    }
+
     await req.db.collection('students').updateOne(
       { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },
-      { 
-        $set: { fcmTokens: [], notificationStatus: 'denied' }
-      }
+      updatePayload
     );
     
     // Clear the refresh token cookie
@@ -277,25 +300,79 @@ router.post('/logout', async (req, res) => {
       sameSite: 'none'
     });
     
-    res.json({ success: true, message: 'Logged out and tokens cleared' });
+    res.json({ success: true, message: 'Logged out and token cleared' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 // POST - Admin reset parent password
-router.post('/admin-reset-password', firebaseAuth, async (req, res) => {
+router.post('/admin-reset-password', resetLimiter, firebaseAuth, async (req, res) => {
   try {
-    const { studentID, newPassword } = req.body;
-    if (!studentID || !newPassword) return res.status(400).json({ success: false, error: 'Student ID and new password required' });
+    const { studentID } = req.body;
+    if (!studentID) return res.status(400).json({ success: false, error: 'Student ID required' });
     
     const db = req.db;
     const col = db.collection('students');
     const student = await col.findOne({ studentID: { $regex: new RegExp(`^${studentID.trim()}$`, 'i') } });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
     
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await col.updateOne({ _id: student._id }, { $set: { parentPassword: hashedPassword } });
+    const newJwtVersion = Date.now();
+    await col.updateOne(
+        { _id: student._id }, 
+        { 
+            $unset: { parentPassword: "" },
+            $set: { jwtVersion: newJwtVersion, appStatus: 'logged_out', fcmTokens: [] }
+        }
+    );
+    
+    // Audit Log
+    await db.collection('adminLogs').insertOne({
+        action: 'password_reset',
+        performedBy: req.user.email,
+        targetStudentId: student.studentID,
+        timestamp: new Date(),
+        ipAddress: req.ip
+    });
     
     res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Admin bulk reset parents
+router.post('/bulk-reset', resetLimiter, firebaseAuth, async (req, res) => {
+  try {
+    const { studentIDs } = req.body;
+    if (!Array.isArray(studentIDs) || studentIDs.length === 0) {
+        return res.status(400).json({ success: false, error: 'Valid array of student IDs required' });
+    }
+    
+    const db = req.db;
+    const col = db.collection('students');
+    
+    const newJwtVersion = Date.now();
+    
+    // Use regex to match all IDs case-insensitively
+    const idRegexes = studentIDs.map(id => new RegExp(`^${id.trim()}$`, 'i'));
+    
+    const result = await col.updateMany(
+        { studentID: { $in: idRegexes } }, 
+        { 
+            $unset: { parentPassword: "" },
+            $set: { jwtVersion: newJwtVersion, appStatus: 'logged_out', fcmTokens: [] }
+        }
+    );
+    
+    // Audit Log
+    await db.collection('adminLogs').insertOne({
+        action: 'bulk_password_reset',
+        performedBy: req.user.email,
+        targetCount: result.modifiedCount,
+        timestamp: new Date(),
+        ipAddress: req.ip
+    });
+    
+    res.json({ success: true, message: `Successfully reset ${result.modifiedCount} accounts` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -306,42 +383,58 @@ router.get('/status-report', firebaseAuth, async (req, res) => {
   try {
     const col = req.db.collection('students');
     const students = await col.find({ isActive: true }, {
-      projection: { studentID: 1, name: 1, stream: 1, semester: 1, lastLogin: 1, notificationStatus: 1, fcmTokens: 1 }
+      projection: { 
+        studentID: 1, name: 1, stream: 1, semester: 1, lastLogin: 1, fcmTokens: 1,
+        appStatus: 1, appRemovedAt: 1, lastLogout: 1, logoutReason: 1,
+        notificationStatus: 1, notificationRevokedAt: 1, lastNotificationSent: 1, 
+        lastNotificationDelivered: 1, lastNotificationFailed: 1 
+      }
     }).toArray();
 
+    // Summary counts can be handled by the frontend, but we return a basic total here
     const total = students.length;
-    const now = new Date();
-    const oneDayAgo = now.getTime() - (24 * 60 * 60 * 1000);
-    
-    // Define "Active" exactly like the frontend does
-    const activeCount = students.filter(s => {
-      const isOnline = Array.isArray(s.fcmTokens) && s.fcmTokens.length > 0 && s.notificationStatus === 'granted';
-      // If notifications are off, they are still "Active" if they have logged in recently
-      const isRecent = s.lastLogin && (new Date(s.lastLogin).getTime() > oneDayAgo);
-      return isOnline || isRecent;
-    }).length;
-    
-    // Notifications ON count only includes those who actually have them granted
-    const notificationsGranted = students.filter(s => s.notificationStatus === 'granted').length;
 
     res.json({
       success: true,
-      summary: {
-        total,
-        active: activeCount,
-        inactive: total - activeCount,
-        notificationsGranted,
-        notificationsDenied: total - notificationsGranted
-      },
-      students: students.map(s => ({
-        studentID: s.studentID,
-        name: s.name,
-        stream: s.stream,
-        semester: s.semester,
-        lastLogin: s.lastLogin,
-        notificationStatus: s.notificationStatus || 'pending',
-        hasTokens: Array.isArray(s.fcmTokens) && s.fcmTokens.length > 0
-      }))
+      summary: { total }, // Detail processing moved to frontend for precise states
+      students: students.map(s => {
+        const hasTokens = Array.isArray(s.fcmTokens) && s.fcmTokens.length > 0;
+        
+        let computedAppStatus = s.appStatus;
+        if (!computedAppStatus) {
+            const isRecentLogin = s.lastLogin && (new Date() - new Date(s.lastLogin) < 24 * 60 * 60 * 1000);
+            if (isRecentLogin || hasTokens) {
+                computedAppStatus = 'active';
+            } else if (s.lastLogin) {
+                computedAppStatus = 'logged_out'; 
+            } else {
+                computedAppStatus = 'never_registered';
+            }
+        }
+        
+        let computedNotifStatus = s.notificationStatus;
+        if (!computedNotifStatus || computedNotifStatus === 'pending') {
+            computedNotifStatus = hasTokens ? 'granted' : 'not_asked';
+        }
+
+        return {
+          studentID: s.studentID,
+          name: s.name,
+          stream: s.stream,
+          semester: s.semester,
+          lastLogin: s.lastLogin,
+          hasTokens,
+          appStatus: computedAppStatus,
+          appRemovedAt: s.appRemovedAt,
+          lastLogout: s.lastLogout,
+          logoutReason: s.logoutReason,
+          notificationStatus: computedNotifStatus,
+          notificationRevokedAt: s.notificationRevokedAt,
+          lastNotificationSent: s.lastNotificationSent,
+          lastNotificationDelivered: s.lastNotificationDelivered,
+          lastNotificationFailed: s.lastNotificationFailed
+        };
+      })
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

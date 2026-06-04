@@ -26,10 +26,24 @@ function togglePassword(inputId, iconEl) {
 async function logout() { 
   if (currentStudent) {
     try {
+      // Get the FCM token if available on Android
+      let fcmToken = null;
+      if (window.Capacitor && window.Capacitor.Plugins.PushNotifications) {
+          try {
+              // Note: We might not have a direct way to retrieve the current token synchronously, 
+              // but if we store it locally or just pass null, the backend fallback clears all.
+              fcmToken = localStorage.getItem('lastFcmToken') || null;
+          } catch(e) {}
+      }
+      
+      let token = localStorage.getItem('parentAuthToken');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       await fetch(`${API}/parent/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentID: currentStudent.studentID }),
+        headers: headers,
+        body: JSON.stringify({ fcmToken: fcmToken, reason: 'user_logout' }),
         credentials: 'include'
       });
     } catch (e) { console.error('Logout report failed:', e); }
@@ -77,6 +91,7 @@ async function safeRegisterPush(studentID) {
         
         PushNotifications.addListener('registration', async (token) => {
           console.log('Firebase Push Token:', token.value);
+          localStorage.setItem('lastFcmToken', token.value);
           await fetch(`${API}/push/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -156,11 +171,9 @@ async function safeRegisterPush(studentID) {
 // Report notification permission status to backend
 async function reportNotificationStatus(studentID, status) {
   try {
-    await fetch(`${API}/parent/update-notification-status`, {
+    await authFetch(`${API}/parent/update-notification-status`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID, status }),
-      credentials: 'include'
+      body: JSON.stringify({ studentID, status })
     });
     console.log('Notification status reported:', status);
   } catch (e) { console.error('Failed to report notification status:', e); }
@@ -169,11 +182,9 @@ async function reportNotificationStatus(studentID, status) {
 // Report login activity to backend
 async function reportActivity(studentID) {
   try {
-    await fetch(`${API}/parent/update-activity`, {
+    await authFetch(`${API}/parent/update-activity`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID }),
-      credentials: 'include'
+      body: JSON.stringify({ studentID })
     });
   } catch (e) { console.error('Failed to report activity:', e); }
 }
@@ -192,7 +203,31 @@ async function authFetch(url, options = {}) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
   
   let res = await fetch(url, { ...options, headers, credentials: 'include' });
+  
   if (res.status === 401) {
+    // Clone response so we can read JSON without breaking it if we return it later
+    const clonedRes = res.clone();
+    try {
+        const data = await clonedRes.json();
+        if (data.error === 'SESSION_INVALIDATED') {
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            const errDiv = document.getElementById('loginError');
+            if (errDiv) {
+                errDiv.textContent = 'Your password was wiped by admin. Please create a new password using Sign Up.';
+                errDiv.classList.remove('hidden');
+            } else {
+                alert('Your password was wiped by admin. Please create a new password using Sign Up.');
+            }
+            
+            setTimeout(() => {
+                window.location.href = '/index.html'; // Or whatever the root login is
+            }, 2000);
+            return res; // Stop execution
+        }
+    } catch(e) {}
+    
     try {
       console.log('Access token expired, attempting silent refresh...');
       const refreshRes = await fetch(`${API}/auth/refresh`, {

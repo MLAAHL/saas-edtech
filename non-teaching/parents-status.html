@@ -10,82 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1" />
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/profile.css">
+
   <style>
-    :root {
-      --bg-root: #0C0C0E;
-      --bg-sidebar: #111113;
-      --bg-surface: #161618;
-      --bg-card: #1A1A1D;
-      --bg-card-hover: #1F1F22;
-      --bg-elevated: #242427;
-      --border: rgba(255, 255, 255, 0.05);
-      --border-hover: rgba(255, 255, 255, 0.09);
-      --text-primary: #E8E8EC;
-      --text-secondary: #8A8A92;
-      --text-muted: #4E4E56;
-      --green: #34D399;
-      --green-dim: rgba(52, 211, 153, 0.15);
-      --red: #F87171;
-      --red-dim: rgba(248, 113, 113, 0.15);
-      --amber: #FBBF24;
-      --amber-dim: rgba(251, 191, 36, 0.15);
-      --purple: #A78BFA;
-      --purple-dim: rgba(167, 139, 250, 0.12);
-      --sidebar-w: 220px;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: var(--bg-root); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; }
-
-    /* SIDEBAR (Match Dashboard) */
-    .sidebar { width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 12px; flex-shrink: 0; }
-    .sb-logo { padding: 4px 8px; margin-bottom: 20px; text-align: center; }
-    .sb-logo img { width: 100%; border-radius: 8px; }
-    .sb-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-size: 13px; font-weight: 500; transition: all 0.15s; }
-    .sb-link:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }
-    .sb-link.active { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); font-weight: 600; }
-    .sb-link .material-symbols-rounded { font-size: 18px; }
-    .sb-divider { height: 1px; background: var(--border); margin: 12px 8px; }
-    .sb-bottom { margin-top: auto; padding-top: 12px; }
-    .sb-logout { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; width: 100%; background: none; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s; }
-    .sb-logout:hover { background: var(--red-dim); color: var(--red); }
-    .sb-logout .material-symbols-rounded { font-size: 18px; }
-
-    /* MAIN */
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .topbar { padding: 24px 32px 0; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0; }
-    .topbar h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-    .scroll { flex: 1; overflow-y: auto; padding: 20px 32px 40px; }
-
-    /* STATS */
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; }
-    .stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
-    .stat-val { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
-    .stat-sub { font-size: 11px; color: var(--text-muted); }
-
-    /* TABLE AREA */
-    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .card-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .card-title { font-size: 15px; font-weight: 700; }
-    
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 12px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-    td { padding: 14px 20px; font-size: 13px; border-bottom: 1px solid var(--border); }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255, 255, 255, 0.02); }
-
-    .badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-    .badge.granted { background: var(--green-dim); color: var(--green); }
-    .badge.denied { background: var(--red-dim); color: var(--red); }
-    .badge.pending { background: rgba(255,255,255,0.05); color: var(--text-muted); }
-    
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-    .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
-    .status-dot.offline { background: var(--text-muted); }
-
-    .search-input { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 13px; width: 250px; }
-    .fcm-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--purple); background: var(--purple-dim); padding: 2px 6px; border-radius: 4px; }
     .modal {
       display: none;
       position: fixed;
@@ -105,7 +36,20 @@
       width: 100%;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
-    body.auth-loading { display: none !important; }
+    
+    .modern-btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--purple); color: #fff; }
+    .btn-primary:hover { background: #8B5CF6; }
+    .btn-text { background: transparent; color: var(--text-muted); }
+    .btn-text:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
   </style>
 </head>
 <body class="auth-loading">
@@ -167,9 +111,13 @@
     <div class="topbar">
       <div>
         <h1>Parent App Usage</h1>
-        <p style="color:var(--text-muted); font-size:12px;">Monitoring login activity and push notification permissions</p>
+        <p style="color:var(--text-muted); font-size:12px;">Monitoring app states, notifications, and passwords</p>
       </div>
-      <input type="text" id="studentSearch" class="search-input" placeholder="Search Student ID or Name...">
+      <div style="display:flex; gap:12px;">
+        <input type="text" id="studentSearch" class="search-input" placeholder="Search Student ID or Name...">
+        <button id="bulkResetBtn" class="modern-btn btn-primary" style="display:none;">Bulk Reset (0)</button>
+        <button id="exportBtn" class="modern-btn btn-text" style="background:rgba(255,255,255,0.05);">Export CSV</button>
+      </div>
     </div>
 
     <div class="scroll">
@@ -203,10 +151,12 @@
           <div style="display:flex; gap:10px;">
             <select id="filterStatus" class="search-input" style="width:150px;">
               <option value="all">All Status</option>
-              <option value="logged-in">Logged In</option>
-              <option value="not-logged-in">Not Logged In</option>
-              <option value="notif-granted">Notifications ON</option>
-              <option value="notif-denied">Notifications OFF</option>
+              <option value="active">🟢 Logged In</option>
+              <option value="registered">✅ Registered Accounts</option>
+              <option value="notif-granted">🔔 Notifs Granted</option>
+              <option value="logged_out">🟡 Logged Out</option>
+              <option value="app_removed">🔴 App Removed</option>
+              <option value="never_registered">⚪ Never Registered</option>
             </select>
           </div>
         </div>
@@ -214,11 +164,12 @@
           <table>
             <thead>
               <tr>
+                <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox"></th>
                 <th>Student</th>
                 <th>Stream / Sem</th>
-                <th>Login Status</th>
+                <th>App Status</th>
                 <th>Notifications</th>
-                <th>FCM Tokens</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="parentsTableBody">
@@ -230,23 +181,17 @@
     </div>
   </div>
 
-  <!-- Reset Password Modal -->
-  <div class="modal" id="resetPasswordModal">
-    <div class="modal-content" id="resetModalBox" style="max-width:400px; transform: scale(0.95); transition: 0.2s;">
-      <h2 style="margin-bottom:16px;">Reset Parent Password</h2>
-      <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">
-        Resetting password for: <strong id="resetStudentName" style="color:var(--text-primary);"></strong>
-        <input type="hidden" id="resetStudentID" />
+  <!-- Custom Alert/Confirm Modal -->
+  <div class="modal" id="customConfirmModal">
+    <div class="modal-content" id="customConfirmBox" style="max-width:400px; transform: scale(0.95); transition: 0.2s;">
+      <h2 id="customConfirmTitle" style="margin-bottom:16px;">Confirm Action</h2>
+      <p id="customConfirmMessage" style="font-size:14px; color:var(--text-secondary); margin-bottom:24px; line-height: 1.5;">
+        Are you sure?
       </p>
-      
-      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
-        <label style="font-size:11px; font-weight:600; color:var(--text-secondary);">New Password</label>
-        <input type="text" id="newPasswordInput" class="search-input" placeholder="Enter new minimum 4 chars password" />
-      </div>
 
       <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button onclick="closeResetModal()" class="modern-btn btn-text">Cancel</button>
-        <button onclick="submitResetPassword()" class="modern-btn btn-primary" id="resetSubmitBtn">Save Password</button>
+        <button class="modern-btn btn-text" id="customConfirmCancelBtn">Cancel</button>
+        <button class="modern-btn btn-primary" id="customConfirmOkBtn">Confirm</button>
       </div>
     </div>
   </div>

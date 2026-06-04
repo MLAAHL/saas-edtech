@@ -32,7 +32,7 @@ async function fetchStatus(user) {
 
         allStudents = data.students;
         updateSummary(data.summary);
-        renderTable(allStudents);
+        filterData(); // Applies search/filters then renders
         // Show last updated timestamp
         const el = document.getElementById('lastUpdated');
         if (el) el.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN');
@@ -43,40 +43,64 @@ async function fetchStatus(user) {
 }
 
 function updateSummary(s) {
-    document.getElementById('totalParents').textContent = s.total;
-    document.getElementById('loggedInCount').textContent = s.active;
+    const total = allStudents.length;
+    let active = 0;
+    let inactive = 0;
+    let notificationsGranted = 0;
+
+    allStudents.forEach(student => {
+        if (student.appStatus === 'active') active++;
+        else inactive++;
+
+        if (student.notificationStatus === 'granted') notificationsGranted++;
+    });
+
+    document.getElementById('totalParents').textContent = total;
+    document.getElementById('loggedInCount').textContent = active;
     document.getElementById('loggedInPercent').textContent = `Account Access Active`;
     
-    document.getElementById('notifOnCount').textContent = s.notificationsGranted;
-    document.getElementById('notifOnPercent').textContent = `${Math.round((s.notificationsGranted / s.total) * 100) || 0}% Alerts Ready`;
+    document.getElementById('notifOnCount').textContent = notificationsGranted;
+    document.getElementById('notifOnPercent').textContent = `${Math.round((notificationsGranted / total) * 100) || 0}% Alerts Ready`;
     
-    document.getElementById('notLoggedInCount').textContent = s.inactive;
+    document.getElementById('notLoggedInCount').textContent = inactive;
     document.getElementById('notLoggedInPercent').textContent = `No Activity (Offline)`;
 }
 
 function renderTable(students) {
     const tbody = document.getElementById('parentsTableBody');
     if (students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">No matching records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No matching records found</td></tr>';
         return;
     }
 
     tbody.innerHTML = students.map(s => {
-        const hasToken = s.hasTokens && s.notificationStatus === 'granted';
-        const isLogged = s.lastLogin; // Any login ever
-        const isRecent = s.lastLogin && new Date(s.lastLogin) > new Date(Date.now() - 24 * 60 * 60 * 1000); // Activity in last 24h
+        let appHtml = '';
+        if (s.appStatus === 'active') appHtml = `<div><span class="status-dot online"></span>🟢 Active</div>`;
+        else if (s.appStatus === 'logged_out') appHtml = `<div><span class="status-dot online" style="background:var(--amber); box-shadow:0 0 8px var(--amber)"></span>🟡 Logged Out</div>`;
+        else if (s.appStatus === 'app_removed') appHtml = `<div><span class="status-dot online" style="background:var(--red); box-shadow:0 0 8px var(--red)"></span>🔴 App Removed</div>`;
+        else appHtml = `<div><span class="status-dot offline"></span>⚪ Never Registered</div>`;
 
-        let statusHtml = '';
-        if (hasToken) {
-            statusHtml = `<div><span class="status-dot online"></span>Connected</div>`;
-        } else if (isRecent) {
-            statusHtml = `<div><span class="status-dot online" style="background:var(--amber); box-shadow:0 0 8px var(--amber)"></span>No Alerts</div>`;
-        } else {
-            statusHtml = `<div><span class="status-dot offline"></span>Disconnected</div>`;
+        let notifBadgeClass = 'pending';
+        let notifText = '⚪ Not Asked';
+        if (s.notificationStatus === 'granted') { notifBadgeClass = 'granted'; notifText = '🟢 Granted'; }
+        else if (s.notificationStatus === 'denied') { notifBadgeClass = 'denied'; notifText = '🔴 Denied'; }
+        else if (s.notificationStatus === 'blocked') { notifBadgeClass = 'denied'; notifText = '🟠 Blocked'; }
+        else if (s.notificationStatus === 'revoked') { notifBadgeClass = 'denied'; notifText = '⚫ Revoked'; }
+
+        let lastDeliveredHtml = '';
+        if (s.lastNotificationDelivered) {
+            lastDeliveredHtml = `<div style="font-size:10px; color:var(--green); margin-top:4px;">Delivered: ${formatTimestamp(s.lastNotificationDelivered)}</div>`;
+        } else if (s.lastNotificationFailed) {
+            lastDeliveredHtml = `<div style="font-size:10px; color:var(--red); margin-top:4px;">Failed: ${formatTimestamp(s.lastNotificationFailed)}</div>`;
         }
+
+        const canReset = s.appStatus !== 'never_registered';
 
         return `
         <tr>
+            <td>
+                <input type="checkbox" class="row-checkbox" value="${s.studentID}" ${canReset ? 'disabled' : ''}>
+            </td>
             <td>
                 <div style="font-weight:600; color:var(--text-primary)">${s.name}</div>
                 <div style="font-size:11px; color:var(--text-muted)">${s.studentID}</div>
@@ -86,24 +110,27 @@ function renderTable(students) {
                 <div style="font-size:11px; color:var(--text-muted)">Sem ${s.semester}</div>
             </td>
             <td>
-                ${statusHtml}
-                <div style="font-size:10px; color:var(--text-muted); margin-left:14px;">${s.lastLogin ? 'Last seen: ' + formatTimestamp(s.lastLogin) : 'Never seen'}</div>
+                ${appHtml}
+                <div style="font-size:10px; color:var(--text-muted); margin-left:14px;">
+                    ${s.lastLogin ? (s.appStatus === 'logged_out' ? 'Logged out: ' + formatTimestamp(s.lastLogout) : (s.appStatus === 'app_removed' ? 'Removed: ' + formatTimestamp(s.appRemovedAt) : 'Last seen: ' + formatTimestamp(s.lastLogin))) : 'Never seen'}
+                </div>
             </td>
             <td>
-                <span class="badge ${s.notificationStatus === 'granted' ? 'granted' : 'denied'}">${hasToken ? 'ACTIVE' : (isLogged ? 'OFF/MISSING' : 'PENDING')}</span>
+                <span class="badge ${notifBadgeClass}">${notifText}</span>
+                ${lastDeliveredHtml}
             </td>
             <td>
-                ${s.hasTokens ? 
-                    `<span class="fcm-pill"><span class="material-symbols-rounded" style="font-size:12px;">vibration</span> Linked</span>` : 
-                    `<span style="color:var(--text-muted); font-size:10px;">No Device</span>`}
-            </td>
-            <td>
+                ${canReset ? `
                 <button onclick="openResetModal('${s.studentID.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}')" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:11px; display:flex; align-items:center; gap:4px; transition:0.2s;">
                     <span class="material-symbols-rounded" style="font-size:14px;">key</span> Reset
                 </button>
+                ` : `<span style="font-size:11px; color:var(--text-muted);">Not Setup</span>`}
             </td>
         </tr>
     `}).join('');
+    
+    // Add event listeners to row checkboxes
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.addEventListener('change', updateBulkBtn));
 }
 
 function formatTimestamp(ts) {
@@ -111,57 +138,24 @@ function formatTimestamp(ts) {
     return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function openResetModal(studentID, studentName) {
-    document.getElementById('resetStudentID').value = studentID;
-    document.getElementById('resetStudentName').textContent = studentName;
-    document.getElementById('newPasswordInput').value = '';
-    
-    const modal = document.getElementById('resetPasswordModal');
-    const box = document.getElementById('resetModalBox');
-    modal.style.display = 'flex';
-    void modal.offsetWidth; // Reflow
-    modal.style.opacity = '1';
-    box.style.transform = 'scale(1)';
-}
-
-function closeResetModal() {
-    const modal = document.getElementById('resetPasswordModal');
-    const box = document.getElementById('resetModalBox');
-    modal.style.opacity = '0';
-    box.style.transform = 'scale(0.95)';
-    setTimeout(() => { modal.style.display = 'none'; }, 200);
-}
-
-async function submitResetPassword() {
-    const studentID = document.getElementById('resetStudentID').value;
-    const newPassword = document.getElementById('newPasswordInput').value;
-    const btn = document.getElementById('resetSubmitBtn');
-    
-    if (!newPassword || newPassword.length < 4) {
-        alert('Password must be at least 4 characters');
-        return;
-    }
-    
-    btn.textContent = 'Saving...';
-    btn.disabled = true;
+async function openResetModal(studentID, studentName) {
+    const confirmReset = await customConfirm('Reset Password', `Are you sure you want to reset the password for ${studentName}? They will be logged out and forced to sign up again.`);
+    if (!confirmReset) return;
     
     try {
         const headers = await getAuthHeaders();
         const res = await fetch(`${API}/parent/admin-reset-password`, {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify({ studentID, newPassword })
+            body: JSON.stringify({ studentID })
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
         
-        alert('Password reset successfully!');
-        closeResetModal();
+        await customConfirm('Success', `Password for ${studentName} was wiped! They must sign up again.`, true);
+        fetchStatus(); // Refresh table
     } catch (err) {
-        alert('Failed: ' + err.message);
-    } finally {
-        btn.textContent = 'Save Password';
-        btn.disabled = false;
+        await customConfirm('Error', 'Failed: ' + err.message, true);
     }
 }
 
@@ -176,18 +170,15 @@ function filterData() {
     const filtered = allStudents.filter(s => {
         const matchesSearch = (s.studentID || '').toLowerCase().includes(query) || (s.name || '').toLowerCase().includes(query);
         
-        const isOnline = s.hasTokens && s.notificationStatus === 'granted';
-        const isRecent = s.lastLogin && (new Date(Date.now() - new Date(s.lastLogin)) < 24 * 60 * 60 * 1000);
-
         let matchesStatus = true;
-        if (status === 'logged-in') {
-            matchesStatus = isOnline || isRecent;
-        } else if (status === 'not-logged-in') {
-            matchesStatus = !isOnline && !isRecent;
+        if (status === 'active') {
+            matchesStatus = s.appStatus === 'active';
+        } else if (status === 'registered') {
+            matchesStatus = s.appStatus !== 'never_registered';
         } else if (status === 'notif-granted') {
             matchesStatus = s.notificationStatus === 'granted';
-        } else if (status === 'notif-denied') {
-            matchesStatus = s.notificationStatus === 'denied';
+        } else if (status !== 'all') {
+            matchesStatus = s.appStatus === status;
         }
 
         return matchesSearch && matchesStatus;
@@ -196,6 +187,126 @@ function filterData() {
     renderTable(filtered);
 }
 
+// Select All Logic
+document.getElementById('selectAllCheckbox')?.addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+    document.querySelectorAll('.row-checkbox:not(:disabled)').forEach(cb => cb.checked = isChecked);
+    updateBulkBtn();
+});
+
+function updateBulkBtn() {
+    const btn = document.getElementById('bulkResetBtn');
+    if (!btn) return;
+    const checked = document.querySelectorAll('.row-checkbox:checked').length;
+    if (checked > 0) {
+        btn.style.display = 'block';
+        btn.textContent = `Bulk Reset (${checked})`;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+document.getElementById('bulkResetBtn')?.addEventListener('click', async () => {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    if (checkedBoxes.length === 0) return;
+    
+    const confirmReset = await customConfirm('Bulk Reset', `Are you sure you want to reset the password for ${checkedBoxes.length} selected accounts? They will be logged out and forced to sign up again.`);
+    if (!confirmReset) return;
+    
+    const studentIDs = Array.from(checkedBoxes).map(cb => cb.value);
+    const btn = document.getElementById('bulkResetBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API}/parent/bulk-reset`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ studentIDs })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        
+        await customConfirm('Success', `Successfully reset ${checkedBoxes.length} accounts`, true);
+        fetchStatus(); // refresh
+    } catch (err) {
+        await customConfirm('Error', 'Failed: ' + err.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.style.display = 'none';
+        document.getElementById('selectAllCheckbox').checked = false;
+    }
+});
+
+document.getElementById('exportBtn')?.addEventListener('click', () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Student Name,Student ID,Stream,Semester,App Status,Last Active Date,Notification Status,Last Notification Delivered\r\n";
+
+    allStudents.forEach(s => {
+        const name = `"${s.name || ''}"`;
+        const id = s.studentID || '';
+        const stream = s.stream || '';
+        const sem = s.semester || '';
+        const appStatus = s.appStatus || 'never_registered';
+        const lastActive = s.lastLogin ? new Date(s.lastLogin).toISOString() : 'Never';
+        const notifStatus = s.notificationStatus || 'not_asked';
+        const lastNotif = s.lastNotificationDelivered ? new Date(s.lastNotificationDelivered).toISOString() : (s.lastNotificationFailed ? 'Failed' : 'None');
+
+        csvContent += `${name},${id},${stream},${sem},${appStatus},${lastActive},${notifStatus},${lastNotif}\r\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `parent_status_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+function customConfirm(title, message, isAlert = false) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customConfirmModal');
+        const box = document.getElementById('customConfirmBox');
+        
+        document.getElementById('customConfirmTitle').textContent = title;
+        document.getElementById('customConfirmMessage').textContent = message;
+        
+        const cancelBtn = document.getElementById('customConfirmCancelBtn');
+        const okBtn = document.getElementById('customConfirmOkBtn');
+        
+        if (isAlert) {
+            cancelBtn.style.display = 'none';
+            okBtn.textContent = 'OK';
+        } else {
+            cancelBtn.style.display = 'block';
+            cancelBtn.textContent = 'Cancel';
+            okBtn.textContent = 'Confirm';
+        }
+        
+        modal.style.display = 'flex';
+        void modal.offsetWidth; // Reflow
+        modal.style.opacity = '1';
+        box.style.transform = 'scale(1)';
+        
+        const cleanup = () => {
+            modal.style.opacity = '0';
+            box.style.transform = 'scale(0.95)';
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+            
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+        };
+        
+        const onOk = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+        
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+    });
+}
+
+
 // Expose globally for firebase script to trigger once authenticated
 window.fetchStatus = fetchStatus;
-
