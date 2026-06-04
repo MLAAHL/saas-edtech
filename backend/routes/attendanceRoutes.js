@@ -88,7 +88,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
               webPushTasks.push((async () => {
                 try {
                   const now = new Date();
-                  const options = { urgency: 'high' }; // Force immediate delivery for Web Push
+                  const options = { urgency: 'high', TTL: 86400, topic: 'attendance' }; // Force immediate delivery for Web Push
                   await webpush.sendNotification(sub, payload, options);
                   console.log(`📡 [WEBPUSH] Successfully sent alert to endpoint: ${sub.endpoint}`);
                   dbUpdateTasks.push(
