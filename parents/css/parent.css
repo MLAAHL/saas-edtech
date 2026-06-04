@@ -71,7 +71,13 @@ body::after {
 .login-screen {
   align-items: center; justify-content: center;
 }
-.login-wrapper { padding: 24px; width: 100%; max-width: 420px; position: relative; z-index: 2; }
+.login-wrapper {
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 2;
+}
 
 .login-header-area {
   text-align: left;
@@ -147,9 +153,13 @@ body::after {
 /* DAHSBOARD */
 .main-screen { position: relative; }
 .main-header {
-  padding: 24px 24px 16px; display: flex; align-items: center; justify-content: space-between;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
-.user-chip { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.user-chip { display: flex; align-items: center; gap: 12px; cursor: pointer; min-width: 0; flex: 1; overflow: hidden; }
 .user-avatar-icon {
   width: 44px; height: 44px; border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.6); box-shadow: var(--shadow-soft);
@@ -160,10 +170,10 @@ body::after {
 .user-avatar-icon .material-symbols-rounded {
   font-size: 24px;
 }
-.user-text { display: flex; flex-direction: column; }
-.user-text .greeting { font-size: 13px; color: var(--text-grey); font-weight: 500; }
-.user-text .name { font-size: 16px; font-weight: 700; color: var(--text-dark); }
-.header-actions { display: flex; gap: 8px; }
+.user-text { display: flex; flex-direction: column; min-width: 0; }
+.user-text .greeting { font-size: 13px; color: var(--text-grey); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-text .name { font-size: 16px; font-weight: 700; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .icon-btn.soft {
   width: 40px; height: 40px; border-radius: 50%; border: none;
   background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);
@@ -288,7 +298,11 @@ body::after {
 }
 .drawer-overlay.show { opacity: 1; pointer-events: auto; }
 .notif-dropdown {
-  position: fixed; top: 60px; right: 20px; width: 320px; max-height: 400px;
+  position: fixed;
+  top: calc(80px + env(safe-area-inset-top, 0px));
+  right: 20px;
+  width: 320px;
+  max-height: 400px;
   background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   z-index: 1000; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -316,16 +330,28 @@ body.auto-login-in-progress #loginScreen {
 .drawer {
   position: fixed; top: 0; left: -320px; bottom: 0; width: 320px;
   background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(30px);
-  border-right: 1px solid white; z-index: 1000; padding: 30px 24px;
+  border-right: 1px solid white; z-index: 1000; padding: 0;
   transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex; flex-direction: column;
 }
 .drawer.show { left: 0; }
-.drawer-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+.drawer-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
 .drawer-student-profile { display: flex; gap: 14px; align-items: center; }
 .drawer-info .drawer-student-name { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 4px;}
 .drawer-info .drawer-student-meta { font-size: 13px; color: var(--text-grey); }
-.drawer-list { display: flex; flex-direction: column; gap: 12px; }
+.drawer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
 .drawer-item {
   display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px;
   color: var(--text-dark); font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s;

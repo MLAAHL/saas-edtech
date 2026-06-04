@@ -1,0 +1,136 @@
+/* ============================================================================
+   BASE CSS — Reset, variables, typography, scrollbars, global animations
+   ============================================================================ */
+
+/* ── CSS VARIABLES ───────────────────────────────────────────────────────── */
+:root {
+  --bg-root: #0C0C0E;
+  --bg-sidebar: #111113;
+  --bg-surface: #161618;
+  --bg-card: #1A1A1D;
+  --bg-card-hover: #1F1F22;
+  --bg-elevated: #242427;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(255, 255, 255, 0.09);
+  --text-primary: #E8E8EC;
+  --text-secondary: #8A8A92;
+  --text-muted: #4E4E56;
+  --green: #34D399;
+  --green-dim: rgba(52, 211, 153, 0.15);
+  --red: #F87171;
+  --red-dim: rgba(248, 113, 113, 0.15);
+  --amber: #FBBF24;
+  --amber-dim: rgba(251, 191, 36, 0.15);
+  --purple: #A78BFA;
+  --purple-dim: rgba(167, 139, 250, 0.12);
+  --blue: #60A5FA;
+  --blue-dim: rgba(96, 165, 250, 0.12);
+  --sidebar-w: 220px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── RESET ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ── TYPOGRAPHY ──────────────────────────────────────────────────────────── */
+body {
+  font-family: var(--font);
+  background: var(--bg-root);
+  color: var(--text-primary);
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── AUTH LOADING STATE ──────────────────────────────────────────────────── */
+body.auth-loading {
+  display: none !important;
+}
+
+/* ── SCROLLBARS ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A1A1A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3A3A3A;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4A4A4A;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3A3A3A #1A1A1A;
+}
+
+/* ── FOCUS RINGS ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+/* ── TRANSITIONS ─────────────────────────────────────────────────────────── */
+a, button, input, select, textarea {
+  transition: all 0.15s ease;
+}
+
+/* ── PAGE FADE-IN ────────────────────────────────────────────────────────── */
+.main {
+  animation: pageIn 0.15s ease;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── GLOBAL ANIMATIONS ──────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── SELECTION ───────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(167, 139, 250, 0.3);
+  color: #fff;
+}

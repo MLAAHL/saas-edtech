@@ -269,6 +269,11 @@ app.use("/api/teacher", teacherRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-assistant", aiAssistantRouter);
 app.use("/api/chatbot", chatbotRoutes);
+// Protect authentication endpoints from brute-force attacks
+app.use("/api/auth/login", strictLimiter);
+app.use("/api/parent/login", strictLimiter);
+app.use("/api/parent/set-password", strictLimiter);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/enrollments", enrollmentsRoutes);
 app.use("/api/notifications", notificationsRoutes);

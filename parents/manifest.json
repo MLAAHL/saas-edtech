@@ -1,20 +1,22 @@
 {
-  "name": "Smart Parent Portal",
-  "short_name": "Parent Portal",
+  "name": "MLAAHL Parents App",
+  "short_name": "MLAAHL Parents App",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#F8FAFC",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "logo-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "logo-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

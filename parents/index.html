@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Parent Portal</title>
+  <title>MLAAHL Parents App</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
   <link rel="manifest" href="manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
   <script src="js/config.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="css/parent.css?v=2">
@@ -28,7 +28,7 @@
   <!-- SIDE DRAWER -->
   <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
   <div class="drawer" id="drawer">
-    <div class="drawer-header" style="display: flex; flex-direction: column; align-items: center; position: relative; padding: 40px 20px 20px; border-bottom: 1px solid rgba(0,0,0,0.05);">
+    <div class="drawer-header">
       <button class="icon-btn" onclick="toggleDrawer()" style="position: absolute; top: 16px; right: 16px;">
         <span class="material-symbols-rounded">close</span>
       </button>
@@ -75,6 +75,9 @@
             <span class="material-symbols-rounded">lock</span>
             <input type="password" id="loginPasswordInput" placeholder="Password" required>
             <span class="material-symbols-rounded eye-icon" onclick="togglePassword('loginPasswordInput', this)">visibility</span>
+          </div>
+          <div style="text-align: right; margin-top: -8px; margin-bottom: 24px;">
+            <a href="#" onclick="showCustomDialog(); return false;" style="color: var(--primary); font-size: 13px; font-weight: 500; text-decoration: none; display: inline-block; padding: 4px;">Forgot Password?</a>
           </div>
           <button type="submit" class="glass-btn-primary" id="loginBtn">
             <span id="loginText">Login</span>
@@ -233,10 +236,10 @@
       <div class="spinner large"></div>
     </div>
 
-    <!-- Notification Dropdown -->
     <div class="notif-dropdown" id="notifDrawer">
-      <div style="background: rgba(33,37,41,0.02); border-bottom: 1px solid rgba(0,0,0,0.05); padding: 16px 24px;">
+      <div style="background: rgba(33,37,41,0.02); border-bottom: 1px solid rgba(0,0,0,0.05); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
         <h2 style="font-size: 16px; font-weight: 700; color: var(--text-dark); margin: 0;">Alerts</h2>
+        <button onclick="clearAlerts()" style="background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Mark as read</button>
       </div>
       <div style="padding: 16px 24px; flex: 1; overflow-y: auto;" id="notifList">
         <p style="color: var(--text-grey); font-size: 14px; text-align: center; margin-top: 20px;">You're all caught up!</p>
@@ -244,6 +247,36 @@
     </div>
 
   </div>
+
+  <!-- Custom Dialog Modal -->
+  <div id="customDialog" style="position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+    <div style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); width: 85%; max-width: 320px; border-radius: 24px; padding: 24px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.5); transform: translateY(20px); transition: transform 0.3s ease;" id="customDialogBox">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(33, 37, 41, 0.05); color: var(--text-dark); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <span class="material-symbols-rounded" style="font-size: 24px;">lock_person</span>
+      </div>
+      <h3 style="font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">Reset Password</h3>
+      <p style="font-size: 14px; color: var(--text-grey); line-height: 1.5; margin-bottom: 24px;">Please contact the college administration to change your password.</p>
+      <button onclick="closeCustomDialog()" style="width: 100%; padding: 14px; background: rgba(33, 37, 41, 0.9); color: white; border: none; border-radius: 100px; font-weight: 600; font-size: 15px; font-family: 'Outfit', sans-serif; cursor: pointer; transition: 0.2s;">Got it</button>
+    </div>
+  </div>
+
+  <script>
+    function showCustomDialog() {
+      const dialog = document.getElementById('customDialog');
+      const box = document.getElementById('customDialogBox');
+      dialog.style.display = 'flex';
+      void dialog.offsetWidth;
+      dialog.style.opacity = '1';
+      box.style.transform = 'translateY(0)';
+    }
+    function closeCustomDialog() {
+      const dialog = document.getElementById('customDialog');
+      const box = document.getElementById('customDialogBox');
+      dialog.style.opacity = '0';
+      box.style.transform = 'translateY(20px)';
+      setTimeout(() => { dialog.style.display = 'none'; }, 300);
+    }
+  </script>
 
   <script src="js/parent.js?v=3"></script>
 </body>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Purple background circle to match the logo style -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#2c1a63" />
+            <size android:width="24dp" android:height="24dp" />
+        </shape>
+    </item>
+
+    <!-- The college logo centered inside -->
+    <item
+        android:drawable="@mipmap/ic_launcher_foreground"
+        android:gravity="center"
+        android:top="3dp"
+        android:bottom="3dp"
+        android:left="3dp"
+        android:right="3dp" />
+</layer-list>

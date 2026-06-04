@@ -45,8 +45,10 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       });
 
       if (!isPresent) {
-        // 1. Android FCM tokens
-        if (student.fcmTokens && student.fcmTokens.length > 0) {
+        const hasFCM = student.fcmTokens && student.fcmTokens.length > 0;
+
+        // 1. Android FCM tokens - Always send to native app if installed
+        if (hasFCM) {
           student.fcmTokens.forEach(t => {
             if (t && typeof t === 'string') {
               absentAndroidTokens.push(t);
@@ -55,7 +57,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
           });
         }
 
-        // 2. iOS Web Push subscriptions
+        // 2. Web Push subscriptions - Send to PWA even if Android app is installed
         if (student.webPushSubscriptions && student.webPushSubscriptions.length > 0) {
           const payload = JSON.stringify({
             title: notifTitle,
@@ -96,6 +98,10 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     if (absentAndroidTokens.length > 0) {
       const uniqueTokens = [...new Set(absentAndroidTokens)];
       const message = {
+        notification: {
+          title: notifTitle,
+          body: notifBody
+        },
         data: {
           type: 'attendance_alert',
           title: notifTitle,
@@ -111,7 +117,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
             title: notifTitle,
             body: notifBody,
             sound: 'default',
-            channelId: 'smart_attendance_channel',
+            channelId: 'attendance_alerts',
             priority: 'max',
             defaultVibrateTimings: true,
             visibility: 'public'

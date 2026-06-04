@@ -101,9 +101,11 @@ router.post('/set-password', async (req, res) => {
     const { studentID, password } = req.body;
     if (!studentID || !password) return res.status(400).json({ success: false, error: 'Student ID and password are required' });
     const tid = studentID.trim();
+    // Escape regex characters to prevent NoSQL injection
+    const escapedTid = tid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const col = req.db.collection('students');
     
-    let student = await col.findOne({ studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true });
+    let student = await col.findOne({ studentID: { $regex: new RegExp(`^${escapedTid}$`, 'i') }, isActive: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
 
     if (student.parentPassword) return res.status(400).json({ success: false, error: 'Password already set' });
@@ -122,9 +124,11 @@ router.post('/login', async (req, res) => {
     const { studentID, password } = req.body;
     if (!studentID || !password) return res.status(400).json({ success: false, error: 'Student ID and password required' });
     const tid = studentID.trim();
+    // Escape regex characters to prevent NoSQL injection
+    const escapedTid = tid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const col = req.db.collection('students');
     
-    let student = await col.findOne({ studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true });
+    let student = await col.findOne({ studentID: { $regex: new RegExp(`^${escapedTid}$`, 'i') }, isActive: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
     if (!student.parentPassword) return res.status(400).json({ success: false, error: 'Password not set for this account' });
 
@@ -266,8 +270,35 @@ router.post('/logout', async (req, res) => {
       }
     );
     
+    // Clear the refresh token cookie
+    res.clearCookie('parentRefreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none'
+    });
+    
     res.json({ success: true, message: 'Logged out and tokens cleared' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// POST - Admin reset parent password
+router.post('/admin-reset-password', firebaseAuth, async (req, res) => {
+  try {
+    const { studentID, newPassword } = req.body;
+    if (!studentID || !newPassword) return res.status(400).json({ success: false, error: 'Student ID and new password required' });
+    
+    const db = req.db;
+    const col = db.collection('students');
+    const student = await col.findOne({ studentID: { $regex: new RegExp(`^${studentID.trim()}$`, 'i') } });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await col.updateOne({ _id: student._id }, { $set: { parentPassword: hashedPassword } });
+    
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // GET - Parent Status Stats (for Non-Teaching Dashboard)

@@ -97,6 +97,11 @@ function renderTable(students) {
                     `<span class="fcm-pill"><span class="material-symbols-rounded" style="font-size:12px;">vibration</span> Linked</span>` : 
                     `<span style="color:var(--text-muted); font-size:10px;">No Device</span>`}
             </td>
+            <td>
+                <button onclick="openResetModal('${s.studentID.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}')" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:11px; display:flex; align-items:center; gap:4px; transition:0.2s;">
+                    <span class="material-symbols-rounded" style="font-size:14px;">key</span> Reset
+                </button>
+            </td>
         </tr>
     `}).join('');
 }
@@ -104,6 +109,60 @@ function renderTable(students) {
 function formatTimestamp(ts) {
     const d = new Date(ts);
     return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function openResetModal(studentID, studentName) {
+    document.getElementById('resetStudentID').value = studentID;
+    document.getElementById('resetStudentName').textContent = studentName;
+    document.getElementById('newPasswordInput').value = '';
+    
+    const modal = document.getElementById('resetPasswordModal');
+    const box = document.getElementById('resetModalBox');
+    modal.style.display = 'flex';
+    void modal.offsetWidth; // Reflow
+    modal.style.opacity = '1';
+    box.style.transform = 'scale(1)';
+}
+
+function closeResetModal() {
+    const modal = document.getElementById('resetPasswordModal');
+    const box = document.getElementById('resetModalBox');
+    modal.style.opacity = '0';
+    box.style.transform = 'scale(0.95)';
+    setTimeout(() => { modal.style.display = 'none'; }, 200);
+}
+
+async function submitResetPassword() {
+    const studentID = document.getElementById('resetStudentID').value;
+    const newPassword = document.getElementById('newPasswordInput').value;
+    const btn = document.getElementById('resetSubmitBtn');
+    
+    if (!newPassword || newPassword.length < 4) {
+        alert('Password must be at least 4 characters');
+        return;
+    }
+    
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+    
+    try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API}/parent/admin-reset-password`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ studentID, newPassword })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        
+        alert('Password reset successfully!');
+        closeResetModal();
+    } catch (err) {
+        alert('Failed: ' + err.message);
+    } finally {
+        btn.textContent = 'Save Password';
+        btn.disabled = false;
+    }
 }
 
 // Search and Filter

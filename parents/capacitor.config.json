@@ -1,9 +1,17 @@
 {
   "appId": "com.mlaahl.parent",
-  "appName": "Smart Parent",
+  "appName": "MLAAHL Parents App",
   "webDir": "www",
   "server": {
     "url": "https://parents.mlaahl.online",
-    "cleartext": true
+    "androidScheme": "https",
+    "allowNavigation": [
+      "parents.mlaahl.online"
+    ]
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
   }
 }

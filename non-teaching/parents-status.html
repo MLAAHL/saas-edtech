@@ -86,9 +86,26 @@
 
     .search-input { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 13px; width: 250px; }
     .fcm-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--purple); background: var(--purple-dim); padding: 2px 6px; border-radius: 4px; }
-    body.auth-loading {
-      display: none !important;
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    body.auth-loading { display: none !important; }
   </style>
 </head>
 <body class="auth-loading">
@@ -209,6 +226,27 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div class="modal" id="resetPasswordModal">
+    <div class="modal-content" id="resetModalBox" style="max-width:400px; transform: scale(0.95); transition: 0.2s;">
+      <h2 style="margin-bottom:16px;">Reset Parent Password</h2>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">
+        Resetting password for: <strong id="resetStudentName" style="color:var(--text-primary);"></strong>
+        <input type="hidden" id="resetStudentID" />
+      </p>
+      
+      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-secondary);">New Password</label>
+        <input type="text" id="newPasswordInput" class="search-input" placeholder="Enter new minimum 4 chars password" />
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button onclick="closeResetModal()" class="modern-btn btn-text">Cancel</button>
+        <button onclick="submitResetPassword()" class="modern-btn btn-primary" id="resetSubmitBtn">Save Password</button>
       </div>
     </div>
   </div>

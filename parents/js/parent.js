@@ -13,6 +13,16 @@ function toggleDrawer() {
     drawer.classList.toggle('show');
   }
 }
+function togglePassword(inputId, iconEl) {
+  const input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    iconEl.textContent = 'visibility_off';
+  } else {
+    input.type = 'password';
+    iconEl.textContent = 'visibility';
+  }
+}
 async function logout() { 
   if (currentStudent) {
     try {
@@ -27,6 +37,7 @@ async function logout() {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
   currentStudent = null; 
   localStorage.removeItem('parentStudentID');
+  localStorage.removeItem('parentAuthToken');
   const dName = document.getElementById('drawerStudentName');
   const dMeta = document.getElementById('drawerStudentMeta');
   if (dName) dName.textContent = '';
@@ -631,6 +642,24 @@ document.addEventListener('click', (e) => {
   }
 });
 
+window.renderedAlertKeys = [];
+
+function clearAlerts() {
+  const dismissed = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
+  if (window.renderedAlertKeys) {
+    window.renderedAlertKeys.forEach(key => {
+      if (!dismissed.includes(key)) dismissed.push(key);
+    });
+  }
+  localStorage.setItem('dismissedAlerts', JSON.stringify(dismissed));
+  
+  const notifList = document.getElementById('notifList');
+  const notifDot = document.getElementById('notifDot');
+  if (notifList) notifList.innerHTML = `<p style="color: var(--text-grey); font-size: 14px; text-align: center; margin-top: 20px;">You're all caught up!</p>`;
+  if (notifDot) notifDot.style.display = 'none';
+  localStorage.setItem('notificationsSeenAt', Date.now().toString());
+}
+
 async function processNotifications(recentDays) {
   const notifList = document.getElementById('notifList');
   const notifDot = document.getElementById('notifDot');
@@ -639,11 +668,13 @@ async function processNotifications(recentDays) {
   let html = '';
   let activeAlerts = 0;
   let unreadAlerts = 0;
+  window.renderedAlertKeys = [];
   
   const now = new Date();
   const firstName = currentStudent.name ? currentStudent.name.split(' ')[0] : 'Your child';
   const lastSeenStr = localStorage.getItem('notificationsSeenAt');
   const lastSeen = lastSeenStr ? parseInt(lastSeenStr) : 0;
+  const dismissedAlerts = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
   
   for (const r of recentDays) {
     if (r.total > 0 && r.present < r.total) {
@@ -660,6 +691,10 @@ async function processNotifications(recentDays) {
             const dateStr = absenceDate.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
             
             absentClasses.forEach(absentClass => {
+              const alertKey = r.date + '_' + absentClass.subject + '_' + absentClass.time;
+              if (dismissedAlerts.includes(alertKey)) return;
+              
+              window.renderedAlertKeys.push(alertKey);
               activeAlerts++;
               // An alert is "unread" if we haven't seen notifications since this absence date
               if (absenceDate.getTime() > lastSeen || lastSeen === 0) {
