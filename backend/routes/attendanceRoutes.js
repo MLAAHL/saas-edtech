@@ -36,9 +36,9 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       studentsWithNoParentApp: []
     };
 
-    const absentAndroidTokens = [];
     const tokenToStudentId = {}; // Maps token string to MongoDB ObjectId to delete on failure
     const webPushTasks = [];
+    const dbUpdateTasks = []; // Collect DB updates to run in parallel
 
     allStudents.forEach(student => {
       const sid = (student.studentID || '').trim();
@@ -87,11 +87,14 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
               webPushTasks.push((async () => {
                 try {
                   const now = new Date();
-                  await webpush.sendNotification(sub, payload);
+                  const options = { urgency: 'high' }; // Force immediate delivery for Web Push
+                  await webpush.sendNotification(sub, payload, options);
                   console.log(`📡 [WEBPUSH] Successfully sent alert to endpoint: ${sub.endpoint}`);
-                  await col.updateOne(
+                  dbUpdateTasks.push(
+                    col.updateOne(
                       { _id: student._id },
                       { $set: { notificationStatus: 'granted', lastNotificationSent: now, lastNotificationDelivered: now } }
+                    )
                   );
                   return true;
                 } catch (err) {
@@ -100,17 +103,21 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
                   // Prune dead subscriptions (410 Gone, 404 Not Found)
                   if (err.statusCode === 410 || err.statusCode === 404) {
                     console.log(`🧹 [WEBPUSH] Pruning dead subscription for student: ${student.studentID}`);
-                    await col.updateOne(
-                      { _id: student._id },
-                      { 
-                          $pull: { webPushSubscriptions: sub },
-                          $set: { notificationStatus: 'revoked', notificationRevokedAt: now, lastNotificationSent: now, lastNotificationFailed: now }
-                      }
+                    dbUpdateTasks.push(
+                      col.updateOne(
+                        { _id: student._id },
+                        { 
+                            $pull: { webPushSubscriptions: sub },
+                            $set: { notificationStatus: 'revoked', notificationRevokedAt: now, lastNotificationSent: now, lastNotificationFailed: now }
+                        }
+                      )
                     );
                   } else {
-                      await col.updateOne(
-                          { _id: student._id },
-                          { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
+                      dbUpdateTasks.push(
+                        col.updateOne(
+                            { _id: student._id },
+                            { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
+                        )
                       );
                   }
                   return false;
@@ -185,35 +192,43 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         if (!studentId) continue;
         
         if (resp.success) {
-            await col.updateOne(
-                { _id: studentId },
-                { $set: { 
-                    notificationStatus: 'granted',
-                    lastNotificationSent: now,
-                    lastNotificationDelivered: now
-                }}
+            dbUpdateTasks.push(
+              col.updateOne(
+                  { _id: studentId },
+                  { $set: { 
+                      notificationStatus: 'granted',
+                      lastNotificationSent: now,
+                      lastNotificationDelivered: now
+                  }}
+              )
             );
         } else {
             const errorCode = resp.error?.code || '';
             if (errorCode === 'messaging/registration-token-not-registered' ||
                 errorCode === 'messaging/invalid-registration-token' ||
                 errorCode === 'messaging/invalid-argument') {
-                await col.updateOne(
-                    { _id: studentId },
-                    { 
-                        $pull: { fcmTokens: token },
-                        $set: { appStatus: 'app_removed', appRemovedAt: now, lastNotificationSent: now, lastNotificationFailed: now }
-                    }
+                dbUpdateTasks.push(
+                  col.updateOne(
+                      { _id: studentId },
+                      { 
+                          $pull: { fcmTokens: token },
+                          $set: { appStatus: 'app_removed', appRemovedAt: now, lastNotificationSent: now, lastNotificationFailed: now }
+                      }
+                  )
                 );
             } else if (errorCode === 'messaging/message-rate-exceeded') {
-                await col.updateOne(
-                    { _id: studentId },
-                    { $set: { notificationStatus: 'blocked', lastNotificationSent: now, lastNotificationFailed: now } }
+                dbUpdateTasks.push(
+                  col.updateOne(
+                      { _id: studentId },
+                      { $set: { notificationStatus: 'blocked', lastNotificationSent: now, lastNotificationFailed: now } }
+                  )
                 );
             } else {
-                await col.updateOne(
-                    { _id: studentId },
-                    { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
+                dbUpdateTasks.push(
+                  col.updateOne(
+                      { _id: studentId },
+                      { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
+                  )
                 );
             }
         }
@@ -227,6 +242,15 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       results.forEach(r => {
         if (r.status === 'fulfilled' && r.value === true) stats.notificationsSent++;
         else stats.notificationsFailed++;
+      });
+    }
+
+    // Execute all MongoDB updates in parallel rather than sequentially
+    // This prevents the mass-absent bottleneck from hanging the HTTP response
+    if (dbUpdateTasks.length > 0) {
+      console.log(`💾 [DB] Processing ${dbUpdateTasks.length} notification status updates...`);
+      Promise.allSettled(dbUpdateTasks).then(() => {
+        console.log('✅ [DB] Background status updates complete.');
       });
     }
 
