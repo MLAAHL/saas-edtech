@@ -36,6 +36,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       studentsWithNoParentApp: []
     };
 
+    const absentAndroidTokens = [];
     const tokenToStudentId = {}; // Maps token string to MongoDB ObjectId to delete on failure
     const webPushTasks = [];
     const dbUpdateTasks = []; // Collect DB updates to run in parallel
