@@ -941,7 +941,7 @@ async function moveQueueItemToCompleted(stats) {
 // SUCCESS CONFIRMATION
 // ============================================================================
 
-function showSubmittedConfirmation(subject, date, presentStudents, totalStudents) {
+function showSubmittedConfirmation(subject, date, presentStudents, totalStudents, notificationStats) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed;
@@ -1003,6 +1003,23 @@ function showSubmittedConfirmation(subject, date, presentStudents, totalStudents
           <span style="color: #10B981; font-weight: 700;">${presentStudents}/${totalStudents} Present</span>
         </div>
       </div>
+      
+      ${notificationStats && notificationStats.absentCount > 0 ? `
+      <div style="background: #F0FDF4; border: 1px solid #DCFCE7; padding: 14px; border-radius: 12px; margin-bottom: 20px; text-align: left;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+          <span class="material-symbols-rounded" style="color: #16A34A; font-size: 20px; margin-top: 2px;">notifications_active</span>
+          <div style="font-size: 13px; color: #166534; line-height: 1.5;">
+            <strong>Notifications sent to ${notificationStats.notificationsSent || 0} of ${notificationStats.absentCount} absent parents.</strong>
+            ${notificationStats.studentsWithNoParentApp && notificationStats.studentsWithNoParentApp.length > 0 ? 
+              `<div style="color: #991B1B; font-weight: 500; margin-top: 6px; display: flex; gap: 6px; align-items: flex-start; background: rgba(254, 226, 226, 0.5); padding: 8px; border-radius: 8px;">
+                <span class="material-symbols-rounded" style="font-size: 16px; margin-top: 1px;">warning</span>
+                <span>${notificationStats.studentsWithNoParentApp.join(', ')}'s parent has not set up the app.</span>
+               </div>` : ''
+            }
+          </div>
+        </div>
+      </div>
+      ` : ''}
       
       <button id="okBtn" style="
         width: 100%;
@@ -1294,19 +1311,16 @@ function setupSubmitButton() {
                 durationHours: parseInt(document.getElementById('classDuration')?.value || '1', 10)
               });
 
-              let notifMsg = `Attendance saved.`;
-              if (result.absentCount > 0) {
-                notifMsg += ` Notifications sent to ${result.notificationsSent || 0} of ${result.absentCount} absent parents.`;
-                if (result.studentsWithNoParentApp && result.studentsWithNoParentApp.length > 0) {
-                  const names = result.studentsWithNoParentApp.join(', ');
-                  notifMsg += ` ${names}'s parent has not set up the app.`;
-                }
-              }
-              showNotification(notifMsg, "success", 5000);
-
               const durationVal = parseInt(document.getElementById('classDuration')?.value || '1', 10);
               const durationText = durationVal > 1 ? ` (${durationVal} slots created)` : '';
-              showSubmittedConfirmation(subject + durationText, formattedDate, presentStudents, totalStudents);
+              
+              const notificationStats = {
+                absentCount: result.absentCount,
+                notificationsSent: result.notificationsSent,
+                studentsWithNoParentApp: result.studentsWithNoParentApp
+              };
+              
+              showSubmittedConfirmation(subject + durationText, formattedDate, presentStudents, totalStudents, notificationStats);
 
               clearLocalStorage();
               sessionStorage.removeItem('attendanceSession');
