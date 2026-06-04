@@ -1,7 +1,7 @@
 // ============================================================================
 // CACHE VERSION — BUMP THIS ON EVERY DEPLOY TO BUST ALL CACHES
 // ============================================================================
-const CACHE_VERSION = 28;
+const CACHE_VERSION = 29;
 const CACHE_NAME = `teaching-v${CACHE_VERSION}`;
 const STATIC_CACHE = `static-v${CACHE_VERSION}`;
 const API_CACHE = `api-v${CACHE_VERSION}`;
@@ -31,10 +31,16 @@ const CACHEABLE_API_PATTERNS = [
     '/api/streams',
     '/api/subjects',
     '/api/config/cloudinary',
-    '/api/teacher/profile',
     '/api/teacher/subjects',
     '/api/teacher/queue',
     '/api/teacher/completed'
+];
+
+// Endpoints that should NEVER be cached to prevent stale data
+const NEVER_CACHE = [
+    '/api/students',
+    '/api/attendance',
+    '/api/teacher/profile'
 ];
 
 // ============================================================================
@@ -90,6 +96,12 @@ self.addEventListener('fetch', (event) => {
     if (url.hostname.includes('gstatic.com') ||
         url.hostname.includes('firebase') ||
         (url.hostname.includes('googleapis.com') && !url.hostname.includes('fonts.googleapis.com'))) {
+        return;
+    }
+
+    // These must always be fresh (bypassing any SW caching completely)
+    if (NEVER_CACHE.some(path => url.pathname.includes(path))) {
+        event.respondWith(fetch(event.request));
         return;
     }
 

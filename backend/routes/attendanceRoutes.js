@@ -30,6 +30,12 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     const notifTitle = 'Attendance Alert';
     const notifBody = `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`;
 
+    const stats = {
+      notificationsSent: 0,
+      notificationsFailed: 0,
+      studentsWithNoParentApp: []
+    };
+
     const absentAndroidTokens = [];
     const tokenToStudentId = {}; // Maps token string to MongoDB ObjectId to delete on failure
     const webPushTasks = [];
@@ -46,6 +52,12 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
 
       if (!isPresent) {
         const hasFCM = student.fcmTokens && student.fcmTokens.length > 0;
+        const hasWebPush = student.webPushSubscriptions && student.webPushSubscriptions.length > 0;
+
+        if (!hasFCM && !hasWebPush) {
+          stats.studentsWithNoParentApp.push(sname || sid);
+          stats.notificationsFailed++;
+        }
 
         // 1. Android FCM tokens - Always send to native app if installed
         if (hasFCM) {
@@ -81,6 +93,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
                       { _id: student._id },
                       { $set: { notificationStatus: 'granted', lastNotificationSent: now, lastNotificationDelivered: now } }
                   );
+                  return true;
                 } catch (err) {
                   const now = new Date();
                   console.error(`❌ [WEBPUSH] Send failed for student ${student.studentID}:`, err.message);
@@ -100,6 +113,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
                           { $set: { lastNotificationSent: now, lastNotificationFailed: now } }
                       );
                   }
+                  return false;
                 }
               })());
             }
@@ -157,6 +171,8 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       };
 
       const response = await admin.messaging().sendEachForMulticast(message);
+      stats.notificationsSent += response.successCount;
+      stats.notificationsFailed += response.failureCount;
       console.log(`📡 [FCM] Sent Push to ${uniqueTokens.length} devices. Success: ${response.successCount}, Failed: ${response.failureCount}`);
       
       const now = new Date();
@@ -207,11 +223,18 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     // 2. Dispatch iOS PWA Web Push notifications in parallel
     if (webPushTasks.length > 0) {
       console.log(`📡 [WEBPUSH] Dispatching Web Push alerts to ${webPushTasks.length} subscriptions...`);
-      await Promise.allSettled(webPushTasks);
+      const results = await Promise.allSettled(webPushTasks);
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value === true) stats.notificationsSent++;
+        else stats.notificationsFailed++;
+      });
     }
+
+    return stats;
 
   } catch (err) {
     console.error('❌ Push Notification Dispatch Error:', err);
+    return { notificationsSent: 0, notificationsFailed: 0, studentsWithNoParentApp: [] };
   }
 }
 
@@ -1201,10 +1224,17 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     clearCachePattern(`attendance:${stream}`);
     clearCachePattern(`stats:${stream}`);
     
-    // Trigger Push Notifications ONCE (not per slot)
-    notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent);
+    // Trigger Push Notifications and wait for stats
+    const notifStats = await notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent);
     
-    res.json({ success: true, attendanceId: savedIds[0], totalSlots: hours, allIds: savedIds });
+    res.json({ 
+      success: true, 
+      attendanceId: savedIds[0], 
+      totalSlots: hours, 
+      allIds: savedIds,
+      absentCount: absentCount || (totalStudents - studentsPresent.length),
+      ...notifStats 
+    });
     
   } catch (error) {
     console.error('❌ Error saving attendance:', error);
@@ -1287,10 +1317,17 @@ router.post('/attendance', async (req, res) => {
     
     clearCachePattern(`attendance:${finalStream}`);
     
-    // Trigger Push Notifications ONCE (not per slot)
-    notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent);
+    // Trigger Push Notifications and wait for stats
+    const notifStats = await notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent);
     
-    res.json({ success: true, attendanceId: savedIds[0], totalSlots: hours, allIds: savedIds });
+    res.json({ 
+      success: true, 
+      attendanceId: savedIds[0], 
+      totalSlots: hours, 
+      allIds: savedIds,
+      absentCount: absentCount || (totalStudents - studentsPresent.length),
+      ...notifStats 
+    });
     
   } catch (error) {
     console.error('❌ Error saving attendance:', error);

@@ -178,38 +178,6 @@ document.getElementById('authForm')?.addEventListener('submit', async e => {
 });
 
 // ------------------------------------
-// AUTO-REDIRECT IF AUTHENTICATED (Fallback)
-// The main auth check is in the HTML module script.
-// This is just a safety net for edge cases.
-// ------------------------------------
-function checkAuthAndRedirect() {
-  // If Firebase module hasn't loaded yet, wait a bit then show form anyway
-  if (!window.firebaseAuth) {
-    setTimeout(() => {
-      if (!window.firebaseAuth) {
-        console.log('⚠️ Firebase taking too long, showing login form');
-        showLoginForm();
-      }
-    }, 2000);
-  }
-}
-
-function showLoginForm() {
-  const splash = document.getElementById('splash-screen');
-  const mainContent = document.getElementById('mainContent');
-
-  if (splash) {
-    splash.style.opacity = '0';
-    setTimeout(() => splash.remove(), 300);
-  }
-  if (mainContent) {
-    mainContent.classList.add('visible');
-  }
-}
-
-// Run on page load as fallback
-window.addEventListener('load', checkAuthAndRedirect);
-
 // Expose functions globally
 window.togglePasswordVisibility = togglePasswordVisibility;
 

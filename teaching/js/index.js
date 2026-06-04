@@ -86,7 +86,7 @@ function loadUserInfo() {
 // MODERN NOTIFICATION SYSTEM
 // ============================================================================
 
-function showNotification(message, type = 'info') {
+function showNotification(message, type = 'info', duration = 2000) {
   const config = {
     success: {
       gradient: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
@@ -195,7 +195,7 @@ function showNotification(message, type = 'info') {
   setTimeout(() => {
     notification.style.animation = 'slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
     setTimeout(() => notification.remove(), 250);
-  }, 2000);
+  }, duration);
 }
 
 // ============================================================================
@@ -1293,6 +1293,16 @@ function setupSubmitButton() {
                 totalStudents: totalStudents,
                 durationHours: parseInt(document.getElementById('classDuration')?.value || '1', 10)
               });
+
+              let notifMsg = `Attendance saved.`;
+              if (result.absentCount > 0) {
+                notifMsg += ` Notifications sent to ${result.notificationsSent || 0} of ${result.absentCount} absent parents.`;
+                if (result.studentsWithNoParentApp && result.studentsWithNoParentApp.length > 0) {
+                  const names = result.studentsWithNoParentApp.join(', ');
+                  notifMsg += ` ${names}'s parent has not set up the app.`;
+                }
+              }
+              showNotification(notifMsg, "success", 5000);
 
               const durationVal = parseInt(document.getElementById('classDuration')?.value || '1', 10);
               const durationText = durationVal > 1 ? ` (${durationVal} slots created)` : '';
