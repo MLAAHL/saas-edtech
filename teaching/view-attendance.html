@@ -565,6 +565,10 @@
 
       <div class="flex gap-2" style="margin-left: auto;">
         <button id="exportExcelBtn" onclick="exportToExcel()" class="modern-btn btn-success hidden">Excel</button>
+        <button id="graceAttendanceBtn" class="modern-btn btn-primary hidden" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border: none;">
+          <span class="material-symbols-rounded" style="font-size: 18px;">auto_fix_high</span>
+          Grace (75%+)
+        </button>
         <button id="editAttendanceBtn" class="modern-btn btn-primary hidden">Edit</button>
         <button id="saveAttendanceBtn" class="modern-btn btn-success hidden">Save</button>
         <button id="cancelEditBtn" class="modern-btn btn-text hidden">Cancel</button>
@@ -633,6 +637,59 @@
       });
     }
   </script>
+
+  <!-- Password Verification Modal -->
+  <div id="passwordModalOverlay" class="modal-overlay">
+    <div class="password-modal">
+      <div class="password-modal-header">
+        <div class="password-modal-icon">
+          <span class="material-symbols-rounded">lock</span>
+        </div>
+        <h3 style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; color: #1E293B;">Security Verification</h3>
+      </div>
+      <p id="passwordModalDescription" style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #64748B; margin-bottom: 20px; line-height: 1.5;"></p>
+      
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">PASSWORD</label>
+        <input type="password" id="confirmPasswordInput" placeholder="Enter your login password" style="width: 100%; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;">
+      </div>
+      
+      <div id="passwordErrorMsg" class="hidden" style="display: flex; align-items: center; gap: 8px; background: #FEF2F2; padding: 10px 12px; border-radius: 8px; margin-bottom: 20px;">
+        <span class="material-symbols-rounded" style="color: #EF4444; font-size: 18px;">error</span>
+        <span id="passwordErrorText" style="color: #EF4444; font-size: 13px; font-weight: 500;">Incorrect password</span>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+        <button id="cancelPasswordBtn" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; border: 1px solid #E2E8F0; background: white; color: #64748B; cursor: pointer; transition: all 0.2s;">Cancel</button>
+        <button id="confirmPasswordBtn" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; border: none; background: linear-gradient(135deg, #10B981, #059669); color: white; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); transition: all 0.2s;">Verify & Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
+      z-index: 99999; display: none; align-items: center; justify-content: center;
+      padding: 20px; opacity: 0; transition: opacity 0.2s;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .password-modal {
+      background: white; border-radius: 16px; padding: 24px;
+      max-width: 400px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .modal-overlay.active .password-modal { transform: scale(1); }
+    .password-modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .password-modal-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #3B82F6, #2563EB);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .password-modal-icon span { color: white; font-size: 20px; font-variation-settings: 'FILL' 1; }
+    #confirmPasswordInput:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  </style>
+
 </body>
 
 </html>

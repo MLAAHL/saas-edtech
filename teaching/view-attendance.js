@@ -669,6 +669,7 @@ function setupEventListeners() {
   const singleDateBtn = document.getElementById('singleDateBtn');
   const specificDateInput = document.getElementById('specificDateInput');
   const editAttendanceBtn = document.getElementById('editAttendanceBtn');
+  const graceAttendanceBtn = document.getElementById('graceAttendanceBtn');
   const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
   const deleteAttendanceBtn = document.getElementById('deleteAttendanceBtn');
@@ -725,6 +726,11 @@ function setupEventListeners() {
   });
 
   editAttendanceBtn.addEventListener('click', enableEditMode);
+  
+  if (graceAttendanceBtn) {
+    graceAttendanceBtn.addEventListener('click', applyGraceAttendance);
+  }
+  
   saveAttendanceBtn.addEventListener('click', saveAttendance);
   cancelEditBtn.addEventListener('click', cancelEdit);
 
@@ -865,6 +871,186 @@ async function loadSingleDateView() {
 }
 
 // ============================================================================
+// EXPORTS
+// ============================================================================
+
+window.switchViewMode = switchViewMode;
+window.exportToExcel = exportToExcel;
+
+// ============================================================================
+// GRACE ATTENDANCE SYSTEM
+// ============================================================================
+
+function requestPasswordVerification(description) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('passwordModalOverlay');
+    const desc = document.getElementById('passwordModalDescription');
+    const input = document.getElementById('confirmPasswordInput');
+    const errorMsg = document.getElementById('passwordErrorMsg');
+    const errorText = document.getElementById('passwordErrorText');
+    const cancelBtn = document.getElementById('cancelPasswordBtn');
+    const confirmBtn = document.getElementById('confirmPasswordBtn');
+
+    if (!overlay || !input || !confirmBtn || !cancelBtn) {
+      resolve(true);
+      return;
+    }
+
+    desc.textContent = description || 'Please enter your password to confirm this action.';
+    input.value = '';
+    errorMsg.classList.add('hidden');
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = 'Verify & Proceed';
+
+    overlay.classList.add('active');
+    setTimeout(() => input.focus(), 150);
+
+    const cleanup = () => {
+      overlay.classList.remove('active');
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+    };
+
+    const handleVerify = async () => {
+      const password = input.value;
+      if (!password) {
+        errorText.textContent = 'Password is required.';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = 'Verifying...';
+      errorMsg.classList.add('hidden');
+
+      try {
+        if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
+          throw new Error('Authentication state not loaded.');
+        }
+
+        const user = window.firebaseAuth.currentUser;
+        const credential = window.firebaseAuth.EmailAuthProvider ? window.firebaseAuth.EmailAuthProvider.credential(user.email, password) : null;
+        
+        if (!credential && window.firebaseAuth.currentUser) {
+           import("https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js").then(async (firebaseAuthModule) => {
+              try {
+                const cred = firebaseAuthModule.EmailAuthProvider.credential(user.email, password);
+                await firebaseAuthModule.reauthenticateWithCredential(user, cred);
+                cleanup();
+                resolve(true);
+              } catch(e) {
+                console.error(e);
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = 'Verify & Proceed';
+                errorText.textContent = 'Incorrect password. Please try again.';
+                errorMsg.classList.remove('hidden');
+                input.focus();
+                input.select();
+              }
+           });
+           return;
+        } else {
+           await window.reauthenticateWithCredential(user, credential);
+        }
+        
+        cleanup();
+        resolve(true);
+      } catch (err) {
+        console.error('Re-auth verification failed:', err);
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = 'Verify & Proceed';
+        
+        let friendlyMessage = 'Incorrect password. Please try again.';
+        if (err.code === 'auth/too-many-requests') {
+          friendlyMessage = 'Too many attempts. Account temporarily locked. Please try again later.';
+        } else if (err.code === 'auth/network-request-failed') {
+          friendlyMessage = 'Network error. Please check your connection.';
+        }
+        
+        errorText.textContent = friendlyMessage;
+        errorMsg.classList.remove('hidden');
+        input.focus();
+        input.select();
+      }
+    };
+
+    confirmBtn.onclick = handleVerify;
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(false);
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        handleVerify();
+      }
+    };
+  });
+}
+
+async function applyGraceAttendance() {
+  if (!registerData || currentViewMode !== 'full') {
+    showNotification('Grace feature is only available in Full Register mode.', 'warning');
+    return;
+  }
+
+  const isVerified = await requestPasswordVerification('You are about to automatically push students with < 75% attendance to a randomized 76-81% attendance rate. Please enter your password to authorize this action.');
+  if (!isVerified) return;
+
+  if (!isEditMode) {
+    enableEditMode();
+  }
+
+  let gracedStudentsCount = 0;
+  let totalAddedPresents = 0;
+  const totalSessions = registerData.sessions ? registerData.sessions.length : 0;
+
+  if (totalSessions === 0) {
+     showNotification('No sessions found to apply grace.', 'error');
+     return;
+  }
+
+  const viewTbody = document.getElementById('view-tbody');
+
+  registerData.students.forEach(student => {
+    if (student.attendancePercentage < 75) {
+      const targetPct = Math.floor(Math.random() * (81 - 76 + 1)) + 76;
+      const targetPresents = Math.ceil((targetPct / 100) * totalSessions);
+      const deficit = targetPresents - student.presentCount;
+
+      if (deficit > 0) {
+        const studentCheckboxes = Array.from(viewTbody.querySelectorAll('.edit-checkbox')).filter(cb => 
+          cb.dataset.student === student.studentID && !cb.checked
+        );
+
+        if (studentCheckboxes.length > 0) {
+          gracedStudentsCount++;
+          for (let i = studentCheckboxes.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [studentCheckboxes[i], studentCheckboxes[j]] = [studentCheckboxes[j], studentCheckboxes[i]];
+          }
+
+          const boxesToCheck = Math.min(deficit, studentCheckboxes.length);
+          for (let i = 0; i < boxesToCheck; i++) {
+            studentCheckboxes[i].checked = true;
+            
+            studentCheckboxes[i].parentElement.style.transition = 'background 0.5s';
+            studentCheckboxes[i].parentElement.style.background = 'rgba(168, 85, 247, 0.15)';
+            totalAddedPresents++;
+          }
+        }
+      }
+    }
+  });
+
+  if (gracedStudentsCount > 0) {
+    showNotification(`Grace applied to ${gracedStudentsCount} student(s) (+${totalAddedPresents} presents). Please review and click Save.`, 'success');
+  } else {
+    showNotification('No students required grace attendance.', 'info');
+  }
+}
+
+// ============================================================================
 // VIEW MODES
 // ============================================================================
 
@@ -873,6 +1059,7 @@ function switchViewMode(mode) {
   const singleDateBtn = document.getElementById('singleDateBtn');
   const dateSelector = document.getElementById('dateSelector');
   const editAttendanceBtn = document.getElementById('editAttendanceBtn');
+  const graceAttendanceBtn = document.getElementById('graceAttendanceBtn');
   const deleteAttendanceBtn = document.getElementById('deleteAttendanceBtn');
   const deleteSessionBtn = document.getElementById('deleteSessionBtn');
   const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
@@ -899,6 +1086,7 @@ function switchViewMode(mode) {
       displayFullRegister();
       if (exportExcelBtn) exportExcelBtn.classList.remove('hidden');
       if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
+      if (graceAttendanceBtn) graceAttendanceBtn.classList.remove('hidden');
     }
   } else {
     if (fullRegisterBtn) fullRegisterBtn.classList.remove('active');
@@ -906,6 +1094,7 @@ function switchViewMode(mode) {
     if (dateSelector) dateSelector.classList.remove('hidden');
     if (deleteSessionBtn) deleteSessionBtn.classList.add('hidden');
     if (exportExcelBtn) exportExcelBtn.classList.add('hidden');
+    if (graceAttendanceBtn) graceAttendanceBtn.classList.add('hidden');
 
     if (registerData) {
       loadSingleDateView();
@@ -925,6 +1114,7 @@ function displayFullRegister() {
   const exportExcelBtn = document.getElementById('exportExcelBtn');
   const editAttendanceBtn = document.getElementById('editAttendanceBtn');
   const searchContainer = document.getElementById('searchContainer');
+  const graceAttendanceBtn = document.getElementById('graceAttendanceBtn');
 
   selectedSessions.clear();
   const deleteSessionBtn = document.getElementById('deleteSessionBtn');
@@ -991,6 +1181,8 @@ function displayFullRegister() {
   viewTbody.innerHTML = bodyHTML;
   exportExcelBtn.classList.remove('hidden');
   editAttendanceBtn.classList.remove('hidden');
+  
+  if (graceAttendanceBtn) graceAttendanceBtn.classList.remove('hidden');
 
   if (searchContainer) {
     searchContainer.classList.remove('hidden');
@@ -1208,6 +1400,7 @@ function enableEditMode() {
   const deleteAttendanceBtn = document.getElementById('deleteAttendanceBtn');
   const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const graceAttendanceBtn = document.getElementById('graceAttendanceBtn');
   const viewTbody = document.getElementById('view-tbody');
 
   if (!registerData && !currentDateData) {
@@ -1253,6 +1446,8 @@ function enableEditMode() {
   });
 
   if (editAttendanceBtn) editAttendanceBtn.classList.add('hidden');
+  if (graceAttendanceBtn) graceAttendanceBtn.classList.add('hidden');
+  
   if (deleteAttendanceBtn) deleteAttendanceBtn.classList.add('hidden');
   if (saveAttendanceBtn) saveAttendanceBtn.classList.remove('hidden');
   if (cancelEditBtn) cancelEditBtn.classList.remove('hidden');
@@ -1398,6 +1593,8 @@ async function saveAttendance() {
         saveAttendanceBtn.innerHTML = originalHTML;
         cancelEditBtn.classList.add('hidden');
         editAttendanceBtn.classList.remove('hidden');
+        const graceBtn = document.getElementById('graceAttendanceBtn');
+        if (graceBtn) graceBtn.classList.remove('hidden');
 
         await loadRegister();
       } else {
@@ -1423,11 +1620,16 @@ function cancelEdit() {
   const deleteAttendanceBtn = document.getElementById('deleteAttendanceBtn');
   const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const graceAttendanceBtn = document.getElementById('graceAttendanceBtn');
 
   viewTbody.innerHTML = originalData;
   isEditMode = false;
 
   if (editAttendanceBtn) editAttendanceBtn.classList.remove('hidden');
+  
+  if (currentViewMode === 'full' && graceAttendanceBtn) {
+    graceAttendanceBtn.classList.remove('hidden');
+  }
 
   if (currentViewMode === 'single' && currentDateData) {
     if (deleteAttendanceBtn) deleteAttendanceBtn.classList.remove('hidden');
