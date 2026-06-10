@@ -994,60 +994,62 @@ async function applyGraceAttendance() {
     return;
   }
 
-  const isVerified = await requestPasswordVerification('You are about to automatically push students with < 75% attendance to a randomized 76-81% attendance rate. Please enter your password to authorize this action.');
-  if (!isVerified) return;
+  showConfirm('Are you sure you want to run the Grace Attendance feature? This will identify students below 75% attendance and randomly check enough absent boxes to bump them to 76%-81%.', async () => {
+    const isVerified = await requestPasswordVerification('Please enter your password to authorize the Grace Attendance action.');
+    if (!isVerified) return;
 
-  if (!isEditMode) {
-    enableEditMode();
-  }
+    if (!isEditMode) {
+      enableEditMode();
+    }
 
-  let gracedStudentsCount = 0;
-  let totalAddedPresents = 0;
-  const totalSessions = registerData.sessions ? registerData.sessions.length : 0;
+    let gracedStudentsCount = 0;
+    let totalAddedPresents = 0;
+    const totalSessions = registerData.sessions ? registerData.sessions.length : 0;
 
-  if (totalSessions === 0) {
-     showNotification('No sessions found to apply grace.', 'error');
-     return;
-  }
+    if (totalSessions === 0) {
+       showNotification('No sessions found to apply grace.', 'error');
+       return;
+    }
 
-  const viewTbody = document.getElementById('view-tbody');
+    const viewTbody = document.getElementById('view-tbody');
 
-  registerData.students.forEach(student => {
-    if (student.attendancePercentage < 75) {
-      const targetPct = Math.floor(Math.random() * (81 - 76 + 1)) + 76;
-      const targetPresents = Math.ceil((targetPct / 100) * totalSessions);
-      const deficit = targetPresents - student.presentCount;
+    registerData.students.forEach(student => {
+      if (student.attendancePercentage < 75) {
+        const targetPct = Math.floor(Math.random() * (81 - 76 + 1)) + 76;
+        const targetPresents = Math.ceil((targetPct / 100) * totalSessions);
+        const deficit = targetPresents - student.presentCount;
 
-      if (deficit > 0) {
-        const studentCheckboxes = Array.from(viewTbody.querySelectorAll('.edit-checkbox')).filter(cb => 
-          cb.dataset.student === student.studentID && !cb.checked
-        );
+        if (deficit > 0) {
+          const studentCheckboxes = Array.from(viewTbody.querySelectorAll('.edit-checkbox')).filter(cb => 
+            cb.dataset.student === student.studentID && !cb.checked
+          );
 
-        if (studentCheckboxes.length > 0) {
-          gracedStudentsCount++;
-          for (let i = studentCheckboxes.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [studentCheckboxes[i], studentCheckboxes[j]] = [studentCheckboxes[j], studentCheckboxes[i]];
-          }
+          if (studentCheckboxes.length > 0) {
+            gracedStudentsCount++;
+            for (let i = studentCheckboxes.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [studentCheckboxes[i], studentCheckboxes[j]] = [studentCheckboxes[j], studentCheckboxes[i]];
+            }
 
-          const boxesToCheck = Math.min(deficit, studentCheckboxes.length);
-          for (let i = 0; i < boxesToCheck; i++) {
-            studentCheckboxes[i].checked = true;
-            
-            studentCheckboxes[i].parentElement.style.transition = 'background 0.5s';
-            studentCheckboxes[i].parentElement.style.background = 'rgba(168, 85, 247, 0.15)';
-            totalAddedPresents++;
+            const boxesToCheck = Math.min(deficit, studentCheckboxes.length);
+            for (let i = 0; i < boxesToCheck; i++) {
+              studentCheckboxes[i].checked = true;
+              
+              studentCheckboxes[i].parentElement.style.transition = 'background 0.5s';
+              studentCheckboxes[i].parentElement.style.background = 'rgba(168, 85, 247, 0.15)';
+              totalAddedPresents++;
+            }
           }
         }
       }
+    });
+
+    if (gracedStudentsCount > 0) {
+      showNotification(`Grace applied to ${gracedStudentsCount} student(s) (+${totalAddedPresents} presents). Please review and click Save.`, 'success');
+    } else {
+      showNotification('No students required grace attendance.', 'info');
     }
   });
-
-  if (gracedStudentsCount > 0) {
-    showNotification(`Grace applied to ${gracedStudentsCount} student(s) (+${totalAddedPresents} presents). Please review and click Save.`, 'success');
-  } else {
-    showNotification('No students required grace attendance.', 'info');
-  }
 }
 
 // ============================================================================
