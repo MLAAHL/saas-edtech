@@ -1250,7 +1250,28 @@ function setupSubmitButton() {
               cb.dataset.studentId || cb.value
             );
 
-            const timeSlot = calculateCurrentTimeSlot();
+            const startTimeVal = document.getElementById('startTimeInput')?.value;
+            
+            let timeSlot;
+            
+            if (startTimeVal) {
+              const [startH, startM] = startTimeVal.split(':').map(Number);
+              const duration = parseInt(document.getElementById('classDuration')?.value || '1', 10);
+              let endH = startH + duration;
+              let endM = startM;
+              if (endH >= 24) endH -= 24;
+              
+              const formatTime = (hour, minute) => {
+                const period = hour >= 12 ? 'PM' : 'AM';
+                const displayHour = hour % 12 || 12;
+                const displayMinute = minute.toString().padStart(2, '0');
+                return `${displayHour}:${displayMinute} ${period}`;
+              };
+              
+              timeSlot = `${formatTime(startH, startM)} - ${formatTime(endH, endM)}`;
+            } else {
+              timeSlot = calculateCurrentTimeSlot();
+            }
 
             const selectedLanguage = languageSelect ? languageSelect.value : null;
             const selectedElective = electiveSelect ? electiveSelect.value : null;

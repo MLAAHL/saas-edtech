@@ -970,21 +970,37 @@ router.get('/completed', async (req, res) => {
     const { email, limit } = req.query;
 
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        error: 'Teacher email is required'
-      });
+      return res.status(400).json({ success: false, error: 'Teacher email is required' });
     }
 
-    const teacher = await Teacher.findOne({ email: email.toLowerCase().trim() });
-
-    if (!teacher) {
-      return res.json({ success: true, completedClasses: [] });
+    if (!req.db) {
+      return res.status(503).json({ success: false, error: 'Database unavailable' });
     }
 
-    let completed = teacher.completedClasses.sort(
-      (a, b) => new Date(b.completedAt) - new Date(a.completedAt)
-    );
+    const query = {
+      teacherEmail: email.toLowerCase().trim(),
+      isDeleted: { $ne: true }
+    };
+
+    let completedDocs = await req.db.collection('attendance')
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    let completed = completedDocs.map(doc => ({
+      id: doc._id.toString(),
+      stream: doc.stream,
+      semester: doc.semester,
+      subject: doc.subject,
+      date: doc.date,
+      completedAt: doc.createdAt || new Date(`${doc.date} ${doc.time.split('-')[0]}`).toISOString(),
+      time: doc.time,
+      teacherEmail: doc.teacherEmail,
+      presentCount: doc.presentCount || doc.studentsPresent?.length || 0,
+      absentCount: doc.absentCount || ((doc.totalStudents || 0) - (doc.presentCount || doc.studentsPresent?.length || 0)),
+      totalStudents: doc.totalStudents || 0,
+      durationHours: 1
+    }));
 
     if (limit) {
       completed = completed.slice(0, parseInt(limit));

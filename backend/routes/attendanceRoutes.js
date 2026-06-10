@@ -810,6 +810,8 @@ router.put('/attendance/session/:sessionId', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
     
+    // Sync with teacher's history is no longer needed here as the frontend now reads directly from the attendance collection.
+    
     clearCachePattern(`attendance:${result.stream}`);
     
     console.log(`✅ Session updated successfully`);
@@ -857,6 +859,8 @@ router.put('/attendance/bulk/:stream/sem:semester/:subject/:date', async (req, r
     
     const result = await req.db.collection('attendance').bulkWrite(bulkOps, { ordered: false });
     const totalModified = result.modifiedCount || 0;
+    
+    // Sync with teacher's history is no longer needed here as the frontend now reads directly from the attendance collection.
     
     clearCachePattern(`attendance:${stream}`);
     
@@ -959,6 +963,16 @@ router.delete('/attendance/:sessionId', firebaseAuth, async (req, res) => {
     
     if (!result) {
       return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    
+    // Sync with teacher's history (remove the session)
+    try {
+      await req.db.collection('teachers').updateMany(
+        { "completedClasses.id": sessionId },
+        { $pull: { completedClasses: { id: sessionId } } }
+      );
+    } catch (e) {
+      console.error('Failed to pull from teacher history:', e);
     }
     
     clearCachePattern(`attendance:${result.stream}`);

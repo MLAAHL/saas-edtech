@@ -371,12 +371,15 @@
       }
 
       .filter-bar {
-        margin: 12px;
-        padding: 12px;
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
+        margin: 0;
+        padding: 15px;
+        border-radius: 0;
+        border-left: none !important;
+        border-right: none !important;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
+        align-items: end;
       }
 
       .filter-group-compact {
@@ -386,21 +389,27 @@
         gap: 4px;
         width: 100%;
       }
+      
+      .filter-group-compact:nth-child(3) {
+        grid-column: 1 / -1;
+      }
 
       .filter-select-compact {
         width: 100%;
         min-width: 100%;
-        padding: 10px;
+        padding: 8px 10px;
       }
 
       #loadRegisterBtn {
+        grid-column: 1 / -1;
         width: 100%;
+        padding: 10px !important;
         margin: 0 !important;
       }
 
       #registerTable {
-        margin: 0 12px 12px 12px;
-        border-radius: 12px;
+        margin: 0;
+        border-radius: 0;
       }
 
       .actions-bar {
@@ -410,19 +419,25 @@
       }
 
       .actions-bar .flex {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr;
+        display: flex !important;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 8px;
         width: 100%;
       }
 
       .actions-bar .modern-btn {
-        width: 100%;
+        width: auto !important;
+        flex: 0 0 auto !important;
         margin: 0 !important;
       }
 
       #searchContainer {
         max-width: 100% !important;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px !important;
       }
 
       .modern-table th,
@@ -448,6 +463,23 @@
         width: 140px;
         min-width: 140px;
       }
+      
+      .search-input {
+        width: 100% !important;
+      }
+      
+      .actions-right {
+        margin-left: 0 !important;
+      }
+      
+      .date-selector-container {
+        margin-left: 0 !important;
+        width: 100%;
+      }
+      
+      .tabs-container {
+        flex-wrap: wrap;
+      }
     }
 
     .flex {
@@ -460,6 +492,35 @@
 
     .gap-2 {
       gap: 8px;
+    }
+    
+    .actions-right {
+      margin-left: auto;
+    }
+    
+    .date-selector-container {
+      margin-top: 10px; 
+      margin-left: auto;
+    }
+    
+    .tabs-container {
+      padding: 0 20px; 
+      border-bottom: 1px solid #f1f1f1; 
+      display: flex; 
+      gap: 10px;
+    }
+    
+    .filter-select-compact {
+      padding: 10px; 
+      border-radius: 8px; 
+      border: 1px solid #E2E8F0;
+    }
+    
+    .search-input {
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      border: 1px solid #E2E8F0; 
+      width: 250px;
     }
 
     .tab-btn {
@@ -520,20 +581,20 @@
     style="background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); margin: 15px 24px; padding: 15px; border-radius: 12px; border: 1px solid #fff; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
     <div class="filter-group-compact">
       <label style="font-size: 11px; font-weight: 600; color: #64748B;">STREAM</label>
-      <select id="streamSelect" style="padding: 10px; border-radius: 8px; border: 1px solid #E2E8F0; width: 180px;">
+      <select id="streamSelect" class="filter-select-compact" style="width: 180px;">
         <option value="">Select Stream</option>
       </select>
     </div>
     <div class="filter-group-compact">
       <label style="font-size: 11px; font-weight: 600; color: #64748B;">SEMESTER</label>
-      <select id="semesterSelect" style="padding: 10px; border-radius: 8px; border: 1px solid #E2E8F0; width: 120px;"
+      <select id="semesterSelect" class="filter-select-compact" style="width: 120px;"
         disabled>
         <option value="">Semester</option>
       </select>
     </div>
     <div class="filter-group-compact">
       <label style="font-size: 11px; font-weight: 600; color: #64748B;">SUBJECT</label>
-      <select id="subjectSelect" style="padding: 10px; border-radius: 8px; border: 1px solid #E2E8F0; width: 220px;"
+      <select id="subjectSelect" class="filter-select-compact" style="width: 220px;"
         disabled>
         <option value="">Subject</option>
       </select>
@@ -545,25 +606,24 @@
   </div>
 
   <div id="registerTable" class="hidden">
-    <div style="padding: 0 20px; border-bottom: 1px solid #f1f1f1; display: flex; gap: 10px;">
+    <div class="tabs-container">
       <button id="fullRegisterBtn" class="tab-btn active">Full Register</button>
       <button id="singleDateBtn" class="tab-btn">Single Date</button>
 
-      <div id="dateSelector" class="hidden" style="margin-top: 10px; margin-left: auto;">
+      <div id="dateSelector" class="hidden date-selector-container">
         <input type="date" id="specificDateInput"
-          style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ddd;">
+          style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ddd; width: 100%;">
       </div>
     </div>
 
     <div class="actions-bar"
       style="padding: 15px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid #f1f1f1;">
-      <div id="searchContainer" class="hidden" style="display: flex; gap: 15px; align-items: center;">
-        <input type="text" id="studentSearchInput" placeholder="Search ID or Name..."
-          style="padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; width: 250px;">
-        <div id="sessionCountDisplay" style="font-size: 13px; font-weight: 600; color: #10B981; background: #DCFCE7; padding: 6px 12px; border-radius: 8px; display: none;"></div>
+      <div id="searchContainer" class="hidden" style="display: flex; gap: 15px; align-items: center; width: 100%;">
+        <input type="text" id="studentSearchInput" class="search-input" placeholder="Search ID or Name...">
+        <div id="sessionCountDisplay" style="font-size: 13px; font-weight: 600; color: #10B981; background: #DCFCE7; padding: 6px 12px; border-radius: 8px; display: none; white-space: nowrap;"></div>
       </div>
 
-      <div class="flex gap-2" style="margin-left: auto;">
+      <div class="flex gap-2 actions-right">
         <button id="exportExcelBtn" onclick="exportToExcel()" class="modern-btn btn-success hidden">Excel</button>
         <button id="graceAttendanceBtn" class="modern-btn btn-primary hidden" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border: none;">
           <span class="material-symbols-rounded" style="font-size: 18px;">auto_fix_high</span>
@@ -590,7 +650,7 @@
     </div>
   </div>
 
-  <script src="view-attendance.js"></script>
+  <script src="view-attendance.js?v=10"></script>
   <script>
     // Synchronization for Top Scrollbar
     const topScroll = document.getElementById('topScrollContainer');

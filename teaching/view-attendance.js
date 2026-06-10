@@ -452,97 +452,65 @@ function sleep(ms) {
 // LOAD FUNCTIONS
 // ============================================================================
 
+let cachedTeacherClasses = null;
+
+async function getTeacherClasses() {
+  if (cachedTeacherClasses) return cachedTeacherClasses;
+  
+  const user = currentUserObj || (window.firebaseAuth ? window.firebaseAuth.currentUser : null);
+  const email = user ? user.email : (window.currentUserEmail || localStorage.getItem('userEmail'));
+  
+  if (!email) {
+    console.error('No user email found to fetch teacher classes.');
+    return [];
+  }
+  
+  try {
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, {
+      headers: authHeaders
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.teacher && data.teacher.createdSubjects) {
+        cachedTeacherClasses = data.teacher.createdSubjects;
+        return cachedTeacherClasses;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to get teacher classes:', error);
+  }
+  return [];
+}
+
 async function loadStreams() {
   const streamSelect = document.getElementById('streamSelect');
 
   try {
     streamSelect.innerHTML = '<option value="">Loading... </option>';
-
-    const url = `${API_BASE_URL}/streams`;
-    console.log('🔗 Fetching from URL:', url);
-
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        ...authHeaders
-      }
-    });
-
-    console.log('📡 Response status:', response.status);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('📦 Streams API response:', data);
-
-    // 🔍 DEBUG: Log exactly what we're getting
-    if (data.streams) {
-      console.log('📋 Raw streams data:', JSON.stringify(data.streams, null, 2));
-      data.streams.forEach((s, i) => {
-        console.log(`Stream ${i}:`, s, '| Type:', typeof s, '| Is null:', s === null);
-      });
-    }
+    
+    const classes = await getTeacherClasses();
+    const streams = [...new Set(classes.map(c => c.stream))];
 
     streamSelect.innerHTML = '<option value="">-- Select Stream --</option>';
 
-    if (data.success && Array.isArray(data.streams) && data.streams.length > 0) {
-      let validStreamCount = 0;
-
-      data.streams.forEach((stream, index) => {
-        // 🔍 DEBUG: Log each stream before processing
-        console.log(`Processing stream ${index}:`, stream, typeof stream);
-
-        // ✅ FIX: Handle all possible invalid cases
-        if (stream === null || stream === undefined) {
-          console.warn(`⚠️ Skipping null/undefined stream at index ${index}`);
-          return;
-        }
-
-        // ✅ FIX:  If stream is an object, try to extract the name/value
-        let streamValue = stream;
-        if (typeof stream === 'object') {
-          // Try common property names
-          streamValue = stream.name || stream.streamName || stream.value || stream.stream || stream._id || String(stream);
-          console.log(`📦 Stream is object, extracted value: ${streamValue}`);
-        }
-
-        // ✅ FIX: Convert to string safely
-        if (typeof streamValue !== 'string') {
-          streamValue = String(streamValue);
-        }
-
-        // ✅ FIX: Skip empty strings
-        if (streamValue.trim() === '' || streamValue === 'null' || streamValue === 'undefined' || streamValue === '[object Object]') {
-          console.warn(`⚠️ Skipping invalid stream value:  "${streamValue}" at index ${index}`);
-          return;
-        }
-
+    if (streams.length > 0) {
+      streams.forEach(stream => {
         const option = document.createElement('option');
-        option.value = streamValue;
-        option.textContent = streamValue.toUpperCase();
+        option.value = stream;
+        option.textContent = stream.toUpperCase();
         streamSelect.appendChild(option);
-        validStreamCount++;
       });
-
-      if (validStreamCount > 0) {
-        console.log(`✅ Loaded ${validStreamCount} valid streams from database`);
-      } else {
-        throw new Error('No valid streams found in response');
-      }
+      console.log(`✅ Loaded ${streams.length} streams from teacher profile`);
     } else {
-      throw new Error('No streams found in response');
+      throw new Error('No streams assigned to this teacher');
     }
 
   } catch (error) {
-    console.error('❌ Error loading streams from database:', error);
+    console.error('❌ Error loading streams:', error);
     streamSelect.innerHTML = '<option value="">-- No Streams Available --</option>';
-    showNotification('Could not load streams from database', 'error');
+    showNotification('Could not load assigned streams', 'error');
   }
 }
 
@@ -558,37 +526,22 @@ async function loadSemesters(stream) {
       return;
     }
 
-    console.log('📡 Fetching semesters for stream:', stream);
-
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/streams/${encodeURIComponent(stream)}/semesters`, {
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        ...authHeaders
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('📦 Semesters API response:', data);
+    const classes = await getTeacherClasses();
+    const semesters = [...new Set(classes.filter(c => c.stream === stream).map(c => Number(c.semester)))].sort((a, b) => a - b);
 
     semesterSelect.innerHTML = '<option value="">-- Select Semester --</option>';
 
-    if (data.success && Array.isArray(data.semesters) && data.semesters.length > 0) {
-      data.semesters.forEach(semester => {
+    if (semesters.length > 0) {
+      semesters.forEach(semester => {
         const option = document.createElement('option');
         option.value = semester;
         option.textContent = `Semester ${semester}`;
         semesterSelect.appendChild(option);
       });
       semesterSelect.disabled = false;
-      console.log(`✅ Loaded ${data.semesters.length} semesters`);
+      console.log(`✅ Loaded ${semesters.length} semesters`);
     } else {
-      throw new Error('No semesters found');
+      throw new Error('No semesters found for stream');
     }
 
   } catch (error) {
@@ -611,37 +564,20 @@ async function loadSubjects(stream, semester) {
       return;
     }
 
-    console.log('📡 Fetching subjects for:', { stream, semester });
-
-    // ✅ FIXED - Correct endpoint
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/subjects/${encodeURIComponent(stream)}/sem${semester}`, {
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        ...authHeaders
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('📦 Subjects API response:', data);
+    const classes = await getTeacherClasses();
+    const subjects = [...new Set(classes.filter(c => c.stream === stream && String(c.semester) === String(semester)).map(c => c.subject))];
 
     subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 
-    if (data.success && data.subjects && Array.isArray(data.subjects) && data.subjects.length > 0) {
-      data.subjects.forEach(subject => {
+    if (subjects.length > 0) {
+      subjects.forEach(subject => {
         const option = document.createElement('option');
-        option.value = subject.name || subject.subjectName;
-        option.textContent = subject.name || subject.subjectName;
+        option.value = subject;
+        option.textContent = subject;
         subjectSelect.appendChild(option);
       });
-
       subjectSelect.disabled = false;
-      console.log(`✅ Loaded ${data.subjects.length} subjects`);
+      console.log(`✅ Loaded ${subjects.length} subjects`);
     } else {
       subjectSelect.innerHTML = '<option value="">No subjects found</option>';
       console.warn('⚠️ No subjects found for:', { stream, semester });
@@ -795,7 +731,7 @@ async function loadRegister() {
         searchContainer.classList.remove('hidden');
       }
 
-      showNotification('Register loaded successfully', 'success');
+      // showNotification('Register loaded successfully', 'success');
     } else {
       showNotification('Failed to load register: ' + data.error, 'error');
     }

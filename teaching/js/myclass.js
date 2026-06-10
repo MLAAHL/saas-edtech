@@ -1314,7 +1314,7 @@ function updateCompletedDisplay() {
     });
 
     elements.completedList.innerHTML = completedClasses.map(item => {
-      const classTiming = getClassTiming(item.completedAt);
+      const classTiming = item.time || getClassTiming(item.completedAt);
       const sessionNum = sessionMap.get(item.id) || '?';
       const completedDate = new Date(item.completedAt);
       const dateStr = completedDate.toLocaleDateString('en-US', {
@@ -1338,22 +1338,18 @@ function updateCompletedDisplay() {
 
       return `
         <div class="class-card completed" style="position: relative; margin-bottom: 12px;">
-          <!-- Absolute Session Badge -->
-          <div style="position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 800; color: #4F46E5; background: #EEF2FF; padding: 4px 10px; border-radius: 8px; white-space: nowrap; border: 1px solid #E0E7FF; z-index: 1;">
-            SESSION ${sessionNum}
-          </div>
-
           <div class="card-content">
             <div class="card-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
               <span class="material-symbols-rounded" style="font-variation-settings: 'FILL' 1;">check_circle</span>
             </div>
             
             <div class="card-info" style="flex: 1; min-width: 0;">
-              <div class="card-subject" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B; margin-bottom: 8px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; padding-right: 75px;">${item.subject}</div>
+              <div class="card-subject" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B; margin-bottom: 8px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;">${item.subject}</div>
               
-              <div class="card-badge-row">
+              <div class="card-badge-row" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                  <span class="card-badge badge-stream">${item.stream}</span>
                  <span class="card-badge badge-sem">SEM ${item.semester}</span>
+                 <span style="font-size: 10px; font-weight: 800; color: #4F46E5; background: #EEF2FF; padding: 4px 8px; border-radius: 6px; white-space: nowrap; border: 1px solid #E0E7FF; line-height: 1;">SESSION ${sessionNum}</span>
               </div>
               
               <div class="card-badge-row" style="margin-top: 4px; opacity: 0.8; flex-wrap: wrap; gap: 12px;">
