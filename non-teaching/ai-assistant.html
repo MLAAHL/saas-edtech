@@ -1589,9 +1589,15 @@
       showTyping();
 
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+          const token = await window.firebaseAuth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/chatbot/chat`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({
             question: text,
             history: conversationHistory.slice(0, -1)
