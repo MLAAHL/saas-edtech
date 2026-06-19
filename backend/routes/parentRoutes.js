@@ -102,6 +102,22 @@ router.post('/check-status', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// POST - Clear unread notification count
+router.post('/notifications/clear', async (req, res) => {
+  try {
+    const { registerNumber } = req.body;
+    if (!registerNumber) return res.status(400).json({ success: false, error: 'Register number required' });
+
+    await req.db.collection('students').updateOne(
+      { registerNumber: registerNumber },
+      { $set: { unreadNotificationCount: 0 } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST - Set parent password (First time login)
 router.post('/set-password', async (req, res) => {
   try {
