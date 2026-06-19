@@ -87,6 +87,16 @@ async function safeRegisterPush(studentID) {
       await reportNotificationStatus(studentID, permStatus.receive === 'granted' ? 'granted' : 'denied');
       
       if (permStatus.receive === 'granted') {
+        // Explicitly create the channel to ensure badges and high importance popups work on Android 8.0+
+        await PushNotifications.createChannel({
+          id: 'attendance_alerts',
+          name: 'Attendance Alerts',
+          description: 'Important notifications about attendance',
+          importance: 5, // MAX importance (Heads-up + Badge)
+          visibility: 1, // Public
+          vibration: true
+        });
+
         await PushNotifications.register();
         
         PushNotifications.addListener('registration', async (token) => {
