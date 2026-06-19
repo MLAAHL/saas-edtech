@@ -62,9 +62,22 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
 
         // 1. Android FCM tokens - Always send to native app if installed
         if (hasFCM) {
+          const updatedUnreadCount = (student.unreadNotificationCount || 0) + 1;
+          // Increment the count in DB immediately so the next run has the latest
+          dbUpdateTasks.push(
+            col.updateOne(
+              { _id: student._id },
+              { $inc: { unreadNotificationCount: 1 } }
+            )
+          );
+
           student.fcmTokens.forEach(t => {
             if (t && typeof t === 'string') {
-              absentAndroidTokens.push(t);
+              absentAndroidTokens.push({
+                token: t,
+                unreadCount: updatedUnreadCount,
+                studentId: student._id
+              });
               tokenToStudentId[t] = student._id;
             }
           });
@@ -130,10 +143,18 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       }
     });
 
-    // 1. Dispatch Android FCM multicast
+    // 1. Dispatch Android FCM using individual messages for badge counts
     if (absentAndroidTokens.length > 0) {
-      const uniqueTokens = [...new Set(absentAndroidTokens)];
-      const message = {
+      // Remove duplicate tokens while preserving the unreadCount
+      const uniqueTokenMap = new Map();
+      absentAndroidTokens.forEach(item => {
+        if (!uniqueTokenMap.has(item.token)) {
+          uniqueTokenMap.set(item.token, item);
+        }
+      });
+      const uniqueTokensArray = Array.from(uniqueTokenMap.values());
+
+      const messages = uniqueTokensArray.map(item => ({
         notification: {
           title: notifTitle,
           body: notifBody
@@ -155,6 +176,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
             sound: 'default',
             channelId: 'attendance_alerts',
             priority: 'max',
+            notificationCount: item.unreadCount,
             defaultVibrateTimings: true,
             visibility: 'public'
           }
@@ -169,26 +191,42 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
             aps: { 
               alert: { title: notifTitle, body: notifBody },
               sound: 'default',
-              badge: 1,
+              badge: item.unreadCount,
               'content-available': 1,
               'mutable-content': 1
             }
           }
         },
-        tokens: uniqueTokens
-      };
+        token: item.token
+      }));
 
-      const response = await admin.messaging().sendEachForMulticast(message);
-      stats.notificationsSent += response.successCount;
-      stats.notificationsFailed += response.failureCount;
-      console.log(`📡 [FCM] Sent Push to ${uniqueTokens.length} devices. Success: ${response.successCount}, Failed: ${response.failureCount}`);
+      // Firebase sendEach limits to 500 messages per call
+      let successCount = 0;
+      let failureCount = 0;
+      let responses = [];
+      
+      const chunkedMessages = [];
+      for (let i = 0; i < messages.length; i += 500) {
+        chunkedMessages.push(messages.slice(i, i + 500));
+      }
+
+      for (const chunk of chunkedMessages) {
+        const response = await admin.messaging().sendEach(chunk);
+        successCount += response.successCount;
+        failureCount += response.failureCount;
+        responses = responses.concat(response.responses);
+      }
+
+      stats.notificationsSent += successCount;
+      stats.notificationsFailed += failureCount;
+      console.log(`📡 [FCM] Sent Push to ${messages.length} devices. Success: ${successCount}, Failed: ${failureCount}`);
       
       const now = new Date();
       
       // Process responses
-      for (let idx = 0; idx < response.responses.length; idx++) {
-        const resp = response.responses[idx];
-        const token = uniqueTokens[idx];
+      for (let idx = 0; idx < responses.length; idx++) {
+        const resp = responses[idx];
+        const token = uniqueTokensArray[idx].token;
         const studentId = tokenToStudentId[token];
         if (!studentId) continue;
         

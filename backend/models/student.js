@@ -23,6 +23,7 @@ const studentSchema = new mongoose.Schema({
   fcmTokens: [String],
   webPushSubscriptions: { type: [Object], default: [] },
   lastLogin: Date,
+  unreadNotificationCount: { type: Number, default: 0 },
   notificationStatus: { type: String, enum: ['granted', 'denied', 'pending', 'not_supported'], default: 'pending' },
   uucmsProfile: {
     university: String,

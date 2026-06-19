@@ -370,15 +370,30 @@ async function handleSignup(sid, pwd, confirmPwd) {
 
 
 
-function setupDashboard(studentData) {
-  currentStudent = studentData;
-  document.getElementById('studentName').textContent = currentStudent.name;
-  document.getElementById('studentMeta').textContent = `${currentStudent.stream} \u00B7 Semester ${currentStudent.semester}`;
+function setupDashboard(student) {
+  currentStudent = student;
+  localStorage.setItem('parentStudentID', student.studentID);
   
+  const sn = document.getElementById('studentName');
+  const sm = document.getElementById('studentMeta');
+  if (sn) sn.textContent = student.name;
+  if (sm) sm.textContent = `${student.stream} \u00B7 Semester ${student.semester}`;
+  
+  // Clear badge count natively via plugin
+  if (window.Capacitor && window.Capacitor.Plugins.Badge) {
+    window.Capacitor.Plugins.Badge.clear().catch(e => console.log('Badge clear error', e));
+  }
+  // Reset unread count on backend
+  authFetch(`${API}/parent/notifications/clear`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ registerNumber: student.registerNumber || student.studentID })
+  }).catch(e => console.log('Backend badge clear error', e));
+
   const dName = document.getElementById('drawerStudentName');
   const dMeta = document.getElementById('drawerStudentMeta');
-  if (dName) dName.textContent = currentStudent.name;
-  if (dMeta) dMeta.textContent = `${currentStudent.stream} \u00B7 Semester ${currentStudent.semester}`;
+  if (dName) dName.textContent = student.name;
+  if (dMeta) dMeta.textContent = `${student.stream} • Sem ${student.semester}`;
 
   showScreen('dashboardScreen');
   setTodayDate();
