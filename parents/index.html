@@ -25,32 +25,7 @@
     <span class="material-symbols-rounded">refresh</span>
   </div>
 
-  <!-- SIDE DRAWER -->
-  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
-  <div class="drawer" id="drawer">
-    <div class="drawer-header">
-      <button class="icon-btn" onclick="toggleDrawer()" style="position: absolute; top: 16px; right: 16px;">
-        <span class="material-symbols-rounded">close</span>
-      </button>
-      
-      <div class="drawer-avatar user-avatar-icon" style="width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.08); margin-bottom: 16px;">
-        <span class="material-symbols-rounded" style="font-size: 40px; color: var(--text-dark);">person</span>
-      </div>
-      
-      <div class="drawer-info" style="text-align: center;">
-        <div class="drawer-student-name" id="drawerStudentName" style="font-size: 20px; font-weight: 800; color: var(--text-dark); margin-bottom: 4px;">Loading...</div>
-        <div class="drawer-student-meta" id="drawerStudentMeta" style="font-size: 14px; color: var(--text-grey);">Loading...</div>
-      </div>
-    </div>
-    
-    <div class="drawer-list">
 
-      <div class="drawer-item" style="color:var(--danger)" onclick="logout(); toggleDrawer()">
-        <span class="material-symbols-rounded" style="color:var(--danger)">logout</span>
-        <span>Sign Out</span>
-      </div>
-    </div>
-  </div>
 
   <!-- LOGIN SCREEN -->
   <div id="loginScreen" class="screen active login-screen">
@@ -123,22 +98,37 @@
     
     <!-- Top Header -->
     <header class="main-header">
-      <div class="user-chip" onclick="toggleDrawer()">
-        <div class="user-avatar-icon">
-          <span class="material-symbols-rounded">person</span>
-        </div>
-        <div class="user-text">
-          <span class="greeting">Good morning</span>
+      <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
+        <button class="icon-btn soft" onclick="switchTab('profile')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M4 9h16M4 15h10"/>
+          </svg>
+        </button>
+        <div class="user-text" style="display: flex; flex-direction: column;">
+          <span class="greeting" id="greetingText">Good morning</span>
           <span class="name" id="studentName"></span>
           <span id="studentMeta" style="display:none;"></span>
         </div>
       </div>
-      <div class="header-actions">
-        <button class="icon-btn soft" onclick="toggleNotifications(event)" style="position: relative;">
-          <span class="material-symbols-rounded">notifications</span>
-          <span id="notifDot" style="display: none; position: absolute; top: 4px; right: 4px; background: var(--danger); border-radius: 50%; color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; align-items: center; justify-content: center; pointer-events: none;"></span>
+      <script>
+        (function() {
+          var h = new Date().getHours();
+          var g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
+          document.getElementById('greetingText').textContent = g;
+        })();
+      </script>
+      
+      <div class="header-actions" style="display: flex; gap: 8px;">
+        <button class="icon-btn soft" onclick="toggleNotifications(event)" style="position: relative; background: white; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a2 2 0 0 0-2 2 1 1 0 0 0 0 1 7 7 0 0 0-5 6.5v4.5a3 3 0 0 1-2 2.5h18a3 3 0 0 1-2-2.5v-4.5A7 7 0 0 0 14 5a1 1 0 0 0 0-1 2 2 0 0 0-2-2z"/>
+            <path d="M9 19a3 3 0 0 0 6 0"/>
+          </svg>
+          <span id="notifDot" style="display: none; position: absolute; top: 6px; right: 6px; background: #FF4B4B; border: 2px solid #FFFFFF; border-radius: 50%; color: white; font-size: 9px; font-weight: 800; width: 16px; height: 16px; align-items: center; justify-content: center; pointer-events: none;"></span>
         </button>
-        <button class="icon-btn soft" onclick="toggleDrawer()"><span class="material-symbols-rounded">menu</span></button>
+        <div class="user-avatar-icon" id="headerAvatarCircle" onclick="switchTab('profile')" style="cursor: pointer; background: linear-gradient(135deg, #F5C563, #E8A838); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">
+          <span id="headerAvatarInitials">--</span>
+        </div>
       </div>
     </header>
 
@@ -152,13 +142,13 @@
       <!-- DAILY TAB -->
       <div id="dailyTab" class="tab-content active">
         <div class="glass-card hero-card">
-          <div class="card-header">
-            <h3>Today's Status</h3>
-            <div class="date-picker-ui">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 24px;">
+            <h3 style="font-size: 22px; font-weight: 600; color: var(--text-dark); margin: 0; letter-spacing: -0.5px;">Today's Status</h3>
+            <div style="display: flex; align-items: center; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.06); border-radius: 100px; padding: 4px; position:relative;">
               <input type="date" id="dailyDate" onchange="updateDateLabel();loadDailyAttendance()" class="hidden-date">
-              <button class="icon-btn small" onclick="changeDate(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
-              <span id="dateLabel" onclick="document.getElementById('dailyDate').showPicker()" class="date-lbl">Today</span>
-              <button class="icon-btn small" onclick="changeDate(1)"><span class="material-symbols-rounded">chevron_right</span></button>
+              <button style="background: white; border: 1px solid rgba(0,0,0,0.05); border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.04); width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-dark);" onclick="changeDate(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
+              <span id="dateLabel" onclick="openCustomCalendar()" style="font-size: 14px; font-weight: 600; color: var(--text-dark); padding: 0 16px; min-width: 140px; text-align: center; cursor: pointer;">Today</span>
+              <button style="background: white; border: 1px solid rgba(0,0,0,0.05); border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.04); width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-dark);" onclick="changeDate(1)"><span class="material-symbols-rounded">chevron_right</span></button>
             </div>
           </div>
           <div id="dailySummaryCard">
@@ -188,27 +178,157 @@
 
       <!-- INSIGHTS TAB -->
       <div id="insightsTab" class="tab-content">
+        <h1 style="font-size: 26px; font-weight: 600; color: var(--text-dark); margin-bottom: 24px; margin-top: 10px;">Analytics</h1>
         
-        <!-- 1. Clear Message -->
-        <div style="text-align: center; padding: 10px 20px 24px;">
-          <h3 style="font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 0;" id="insightMessage">Loading...</h3>
+        <!-- 1. Attendance Analytics Card -->
+        <div style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 24px; margin-bottom: 24px; box-shadow: none;">
+           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <div style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center;">
+                 <span class="material-symbols-rounded" style="font-size: 14px; color: var(--text-dark);">library_books</span>
+              </div>
+              <span style="font-size: 14px; font-weight: 600; color: var(--text-dark);">Enrolled Subjects</span>
+           </div>
+           <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+              <div style="font-size: 48px; font-weight: 300; color: var(--text-dark); line-height: 1; letter-spacing: -1.5px;" id="insightTotalSubjects">--</div>
+           </div>
+           
+           <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+              <div style="flex: 1; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.04); border-radius: 20px; padding: 16px;">
+                 <div style="font-size: 12px; color: var(--text-grey); font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+                    <span class="material-symbols-rounded" style="font-size: 14px; color: #198754;">check_circle</span> Passing (≥75%)
+                 </div>
+                 <div style="font-size: 28px; font-weight: 400; color: #0F5132; letter-spacing: -1px; line-height: 1;" id="insightPassingSubjects">--</div>
+              </div>
+              <div style="flex: 1; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.04); border-radius: 20px; padding: 16px;">
+                 <div style="font-size: 12px; color: var(--text-grey); font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+                    <span class="material-symbols-rounded" style="font-size: 14px; color: #DC3545;">warning</span> At Risk (<75%)
+                 </div>
+                 <div style="font-size: 28px; font-weight: 400; color: #DC3545; letter-spacing: -1px; line-height: 1;" id="insightRiskSubjects">--</div>
+              </div>
+           </div>
+           
+           <div id="insightPredictionContainer" style="background: rgba(255,255,255,0.4); border-radius: 16px; padding: 16px; display: flex; gap: 12px; align-items: flex-start;">
+              <span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-dark); margin-top: 2px;">info</span>
+              <p style="font-size: 13px; color: var(--text-dark); margin: 0; font-weight: 500; line-height: 1.5;" id="insightPredictionText">Loading prediction...</p>
+           </div>
         </div>
 
-        <!-- 2. Donut Chart -->
-        <div class="glass-card">
-          <div class="card-header" style="justify-content: center; margin-bottom: 10px;">
-            <h3 style="font-size: 16px;">Overall Attendance</h3>
-          </div>
-          <div style="position: relative; height: 200px; width: 100%; display: flex; justify-content: center;">
-            <canvas id="donutChart"></canvas>
-            <div id="donutCenterText" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
-               <div style="font-size: 42px; font-weight: 800; color: var(--text-dark); line-height: 1; font-family: 'Outfit', sans-serif;" id="donutPct">--%</div>
-               <div style="font-size: 13px; color: var(--text-grey); font-weight: 500; margin-top: 4px;">Attended</div>
-            </div>
-          </div>
+        <!-- 2. Subject Attendance Bar Chart -->
+        <div id="subjectChartCard" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 24px; margin-bottom: 24px; box-shadow: none;">
+           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+              <div style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center;">
+                 <span class="material-symbols-rounded" style="font-size: 14px; color: var(--text-dark);">bar_chart</span>
+              </div>
+              <span style="font-size: 14px; font-weight: 600; color: var(--text-dark);">Subject Attendance</span>
+           </div>
+           <div style="position: relative; height: 220px; width: 100%;">
+             <canvas id="subjectBarChart"></canvas>
+           </div>
         </div>
 
+        <!-- 3. Subjects at Risk -->
+        <h4 style="font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 16px; margin-top: 32px; display: none;" id="shortageTitle">Subjects at Risk</h4>
+        <div id="insightShortageList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px;">
+           <!-- JS will populate -->
+        </div>
 
+        <!-- 4. AI Insights Section -->
+        <h4 style="font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 16px;">Smart Insights</h4>
+        <div id="insightAIList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+           <!-- JS will populate -->
+        </div>
+
+      </div>
+
+      <!-- PROFILE TAB -->
+      <div id="profileTab" class="tab-content">
+
+        <h1 style="font-size: 26px; font-weight: 600; color: var(--text-dark); margin-bottom: 24px; margin-top: 10px;">Profile</h1>
+
+          <!-- Main Hero Card -->
+          <div style="background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8); border-radius: 32px; padding: 36px 20px 32px; box-shadow: 0 12px 40px rgba(0,0,0,0.04); margin-bottom: 24px; display: flex; flex-direction: column; align-items: center; position: relative; overflow: hidden; backdrop-filter: blur(20px);">
+            <!-- Avatar -->
+            <div style="width: 96px; height: 96px; border-radius: 50%; background: rgba(25,135,84,0.1); border: 3px solid rgba(25,135,84,0.15); display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 300; color: #198754; margin-bottom: 16px; letter-spacing: -1px;" id="profileLargeInitial">P</div>
+            
+            <!-- Name -->
+            <h2 id="profileStudentName" style="font-size: 20px; font-weight: 700; color: var(--text-dark); margin: 0; letter-spacing: -0.5px;">Student Name</h2>
+            <p id="profileStudentSubMeta" style="font-size: 13px; color: var(--text-grey); margin: 6px 0 0; font-weight: 500;"></p>
+          </div>
+
+          <!-- Contact Details (View Mode) -->
+          <div id="profileViewMode" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+             <!-- Stream/Sem -->
+             <div style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 20px 24px; box-shadow: none; display: flex; align-items: center; gap: 16px;">
+                <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(25,135,84,0.1);">
+                  <span class="material-symbols-rounded" style="color: #198754; font-size: 20px;">school</span>
+                </div>
+                <div style="flex: 1;">
+                   <div style="font-size: 12px; color: var(--text-grey); font-weight: 500; margin-bottom: 4px;">Stream & Semester</div>
+                   <span id="profileStudentMeta" style="font-size: 16px; font-weight: 600; color: var(--text-dark);">BCOM • Sem 1</span>
+                </div>
+             </div>
+             
+             <!-- Mentor -->
+             <div style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 20px 24px; box-shadow: none; display: flex; align-items: center; gap: 16px;">
+                <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(25,135,84,0.1);">
+                  <span class="material-symbols-rounded" style="color: #198754; font-size: 20px;">local_library</span>
+                </div>
+                <div style="flex: 1;">
+                   <div style="font-size: 12px; color: var(--text-grey); font-weight: 500; margin-bottom: 4px;">Faculty Mentor</div>
+                   <span id="displayMentorEmail" style="font-size: 16px; font-weight: 600; color: var(--text-dark);">Not Assigned</span>
+                </div>
+             </div>
+             
+             <!-- Email -->
+             <div onclick="toggleProfileEdit()" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 20px 24px; box-shadow: none; display: flex; align-items: center; gap: 16px; cursor: pointer;">
+                <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(25,135,84,0.1); flex-shrink: 0;">
+                  <span class="material-symbols-rounded" style="color: #198754; font-size: 20px;">mail</span>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                   <div style="font-size: 12px; color: var(--text-grey); font-weight: 500; margin-bottom: 4px;">Email Address</div>
+                   <span id="displayParentEmail" style="font-size: 16px; font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Not set</span>
+                </div>
+                <div style="width: 32px; height: 32px; background: rgba(25,135,84,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                   <span class="material-symbols-rounded" style="color: #198754; font-size: 16px;">edit</span>
+                </div>
+             </div>
+
+             <!-- Phone -->
+             <div onclick="toggleProfileEdit()" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 20px 24px; box-shadow: none; display: flex; align-items: center; gap: 16px; cursor: pointer;">
+                <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(25,135,84,0.1); flex-shrink: 0;">
+                  <span class="material-symbols-rounded" style="color: #198754; font-size: 20px;">call</span>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                   <div style="font-size: 12px; color: var(--text-grey); font-weight: 500; margin-bottom: 4px;">Phone Number</div>
+                   <span id="displayParentPhone" style="font-size: 16px; font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Not set</span>
+                </div>
+                <div style="width: 32px; height: 32px; background: rgba(25,135,84,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                   <span class="material-symbols-rounded" style="color: #198754; font-size: 16px;">edit</span>
+                </div>
+             </div>
+          </div>
+
+          <!-- Contact Details (Edit Mode) -->
+          <div id="profileEditMode" class="hidden" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 24px 20px; box-shadow: none; margin-bottom: 24px; display: flex; flex-direction: column; align-items: center;">
+              <h3 style="font-size: 16px; font-weight: 600; color: var(--text-dark); margin-bottom: 20px;">Edit Contact Details</h3>
+              <input type="email" id="editParentEmail" placeholder="Email Address" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.6); padding: 14px 20px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.06); margin-bottom: 12px; font-weight: 600; font-size: 15px; outline: none; font-family: inherit;">
+              <input type="tel" id="editParentPhone" placeholder="Phone Number" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.6); padding: 14px 20px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.06); margin-bottom: 20px; font-weight: 600; font-size: 15px; outline: none; font-family: inherit;">
+              <div style="display: flex; gap: 12px; width: 100%;">
+                 <button onclick="toggleProfileEdit()" style="flex: 1; padding: 14px; border-radius: 20px; background: rgba(0,0,0,0.04); color: var(--text-dark); font-weight: 600; border: none; cursor: pointer; font-family: inherit;">Cancel</button>
+                 <button onclick="saveProfile()" id="saveProfileBtn" style="flex: 1; padding: 14px; border-radius: 20px; background: #198754; color: white; font-weight: 600; border: none; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; font-family: inherit;">
+                    <span id="saveProfileText">Save</span>
+                    <div class="spinner hidden" id="saveProfileSpinner" style="width: 16px; height: 16px; border-width: 2px;"></div>
+                 </button>
+              </div>
+          </div>
+
+          <!-- Sign Out -->
+          <div onclick="showLogoutConfirm()" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.06); border-radius: 32px; padding: 20px 24px; box-shadow: none; display: flex; align-items: center; gap: 16px; cursor: pointer;">
+             <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(220,53,69,0.1);">
+               <span class="material-symbols-rounded" style="color: #DC3545; font-size: 20px;">logout</span>
+             </div>
+             <span style="font-size: 16px; font-weight: 600; color: #DC3545;">Sign Out</span>
+          </div>
 
       </div>
 
@@ -219,14 +339,19 @@
       <div class="nav-platter">
         <button class="nav-item active" data-tab="daily" onclick="switchTab('daily')">
           <span class="material-symbols-rounded">home</span>
+          <span class="nav-label">Daily</span>
         </button>
         <button class="nav-item" data-tab="full" onclick="switchTab('full')">
           <span class="material-symbols-rounded">donut_small</span>
+          <span class="nav-label">Overall</span>
         </button>
-        
-
         <button class="nav-item" data-tab="insights" onclick="switchTab('insights')">
           <span class="material-symbols-rounded">bar_chart</span>
+          <span class="nav-label">Insights</span>
+        </button>
+        <button class="nav-item" data-tab="profile" onclick="switchTab('profile')">
+          <span class="material-symbols-rounded">person</span>
+          <span class="nav-label">Profile</span>
         </button>
       </div>
     </nav>
@@ -237,11 +362,11 @@
     </div>
 
     <div class="notif-dropdown" id="notifDrawer">
-      <div style="background: rgba(33,37,41,0.02); border-bottom: 1px solid rgba(0,0,0,0.05); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 16px; font-weight: 700; color: var(--text-dark); margin: 0;">Alerts</h2>
-        <button onclick="clearAlerts()" style="background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Mark as read</button>
+      <div style="padding: 18px 22px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.06);">
+        <h2 style="font-size: 17px; font-weight: 700; color: var(--text-dark); margin: 0;">Alerts</h2>
+        <button onclick="clearAlerts()" style="background: none; border: none; color: var(--text-grey); font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 8px; font-family: inherit;">Mark as read</button>
       </div>
-      <div style="padding: 16px 24px; flex: 1; overflow-y: auto;" id="notifList">
+      <div style="padding: 14px 18px; flex: 1; overflow-y: auto;" id="notifList">
         <p style="color: var(--text-grey); font-size: 14px; text-align: center; margin-top: 20px;">You're all caught up!</p>
       </div>
     </div>
@@ -257,6 +382,21 @@
       <h3 style="font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">Reset Password</h3>
       <p style="font-size: 14px; color: var(--text-grey); line-height: 1.5; margin-bottom: 24px;">Please contact the college administration to change your password.</p>
       <button onclick="closeCustomDialog()" style="width: 100%; padding: 14px; background: rgba(33, 37, 41, 0.9); color: white; border: none; border-radius: 100px; font-weight: 600; font-size: 15px; font-family: 'Outfit', sans-serif; cursor: pointer; transition: 0.2s;">Got it</button>
+    </div>
+  </div>
+
+  <!-- Logout Confirm Modal -->
+  <div id="logoutConfirmModal" style="position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+    <div style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); width: 85%; max-width: 320px; border-radius: 24px; padding: 24px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.5); transform: translateY(20px); transition: transform 0.3s ease;" id="logoutConfirmBox">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(220, 53, 69, 0.1); color: var(--danger); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <span class="material-symbols-rounded" style="font-size: 24px;">logout</span>
+      </div>
+      <h3 style="font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">Log Out</h3>
+      <p style="font-size: 14px; color: var(--text-grey); line-height: 1.5; margin-bottom: 24px;">Are you sure you want to log out of your account?</p>
+      <div style="display: flex; gap: 12px; width: 100%;">
+        <button onclick="closeLogoutConfirm()" style="flex: 1; padding: 14px; background: rgba(0,0,0,0.05); color: var(--text-dark); border: none; border-radius: 100px; font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer; transition: 0.2s;">Cancel</button>
+        <button onclick="executeLogout()" style="flex: 1; padding: 14px; background: var(--danger); color: white; border: none; border-radius: 100px; font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer; transition: 0.2s;">Log Out</button>
+      </div>
     </div>
   </div>
 
@@ -276,7 +416,63 @@
       box.style.transform = 'translateY(20px)';
       setTimeout(() => { dialog.style.display = 'none'; }, 300);
     }
+    function showLogoutConfirm() {
+      const dialog = document.getElementById('logoutConfirmModal');
+      const box = document.getElementById('logoutConfirmBox');
+      dialog.style.display = 'flex';
+      void dialog.offsetWidth;
+      dialog.style.opacity = '1';
+      box.style.transform = 'translateY(0)';
+    }
+    function closeLogoutConfirm() {
+      const dialog = document.getElementById('logoutConfirmModal');
+      const box = document.getElementById('logoutConfirmBox');
+      dialog.style.opacity = '0';
+      box.style.transform = 'translateY(20px)';
+      setTimeout(() => { dialog.style.display = 'none'; }, 300);
+    }
+    function executeLogout() {
+      closeLogoutConfirm();
+      logout();
+    }
   </script>
+
+  <!-- Custom Calendar Modal -->
+  <div id="customCalendarModal" style="position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+    <div style="background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); width: 90%; max-width: 360px; border-radius: 32px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.5); transform: translateY(20px); transition: transform 0.3s ease;" id="customCalendarBox">
+      
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button onclick="changeCalendarMonth(-1)" style="background: transparent; border: none; cursor: pointer; color: var(--text-dark); display: flex; align-items: center; justify-content: center;"><span class="material-symbols-rounded">chevron_left</span></button>
+          <span id="customCalendarMonthYear" style="font-size: 16px; font-weight: 600; color: var(--text-dark); min-width: 100px; text-align: center;">May, 2025</span>
+          <button onclick="changeCalendarMonth(1)" style="background: transparent; border: none; cursor: pointer; color: var(--text-dark); display: flex; align-items: center; justify-content: center;"><span class="material-symbols-rounded">chevron_right</span></button>
+        </div>
+        <button onclick="closeCustomCalendar()" style="background: transparent; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dark);">
+          <span class="material-symbols-rounded" style="font-size: 18px;">calendar_month</span>
+        </button>
+      </div>
+
+      <!-- Calendar Container -->
+      <div style="background: rgba(255,255,255,0.6); border-radius: 24px; padding: 16px; border: 1px solid rgba(0,0,0,0.04);">
+        <!-- Days Header -->
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 12px; text-align: center;">
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Sun</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Mon</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Tue</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Wed</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Thu</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Fri</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-grey);">Sat</span>
+        </div>
+        
+        <!-- Days Grid -->
+        <div id="customCalendarGrid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center;">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="js/parent.js?v=4"></script>
 </body>

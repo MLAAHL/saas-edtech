@@ -25,6 +25,14 @@ router.use((req, res, next) => {
   next();
 });
 
+function formatName(rawName) {
+  if (!rawName) return null;
+  // Insert spaces before uppercase letters (camelCase => proper words)
+  const spaced = rawName.replace(/([a-z])([A-Z])/g, '$1 $2');
+  // Title case each word
+  return spaced.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function parseTimeToMinutes(timeStr) {
   if (!timeStr) return 0;
   const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -194,10 +202,19 @@ router.post('/login', async (req, res) => {
 
     await col.updateOne({ _id: student._id }, { $set: { 'parentAuth.lastLogin': new Date(), appStatus: 'active' } });
 
+    let mentorName = student.mentorName;
+    if (!mentorName && student.mentorEmail) {
+      const teacherCol = req.db.collection('teachers');
+      const teacher = await teacherCol.findOne({ email: { $regex: new RegExp(`^${student.mentorEmail}$`, 'i') } });
+      if (teacher && teacher.name) {
+        mentorName = formatName(teacher.name);
+      }
+    }
+
     res.json({
       success: true,
       token,
-      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester }
+      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester, parentEmail: student.parentEmail, parentPhone: student.parentPhone, mentorEmail: student.mentorEmail, mentorName: mentorName }
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -210,10 +227,33 @@ router.get('/me', parentAuth, async (req, res) => {
     const student = await col.findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found.' });
     
+    let mentorName = student.mentorName;
+    if (!mentorName && student.mentorEmail) {
+      const teacherCol = req.db.collection('teachers');
+      const teacher = await teacherCol.findOne({ email: { $regex: new RegExp(`^${student.mentorEmail}$`, 'i') } });
+      if (teacher && teacher.name) {
+        mentorName = formatName(teacher.name);
+      }
+    }
+
     res.json({
       success: true,
-      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester }
+      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester, parentEmail: student.parentEmail, parentPhone: student.parentPhone, mentorEmail: student.mentorEmail, mentorName: mentorName }
     });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// POST - Update Profile
+router.post('/update-profile', parentAuth, async (req, res) => {
+  try {
+    const studentID = req.parentSession.studentID;
+    const { parentEmail, parentPhone } = req.body;
+    const col = req.db.collection('students');
+    await col.updateOne(
+      { studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true },
+      { $set: { parentEmail, parentPhone } }
+    );
+    res.json({ success: true });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -440,6 +480,7 @@ router.get('/status-report', firebaseAuth, async (req, res) => {
           semester: s.semester,
           lastLogin: s.lastLogin,
           hasTokens,
+          tokenCount: Array.isArray(s.fcmTokens) ? s.fcmTokens.length : 0,
           appStatus: computedAppStatus,
           appRemovedAt: s.appRemovedAt,
           lastLogout: s.lastLogout,
@@ -534,6 +575,84 @@ router.get('/full/:studentID', parentAuth, async (req, res) => {
       student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester },
       overall: { totalClasses, present: totalPresent, absent: totalClasses - totalPresent, percentage: totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0 },
       subjectWise
+    });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// GET - Attendance Analytics
+router.get('/analytics', parentAuth, async (req, res) => {
+  try {
+    const studentID = req.parentSession.studentID;
+    const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    const records = await req.db.collection('attendance').find({
+      stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, isDeleted: { $ne: true }
+    }).toArray();
+
+    const filtered = records.filter(r => isRecordRelevant(r, student));
+
+    const subjectMap = {};
+    let totalPresent = 0, totalClasses = 0;
+
+    filtered.forEach(record => {
+      const subject = record.subject || 'UNKNOWN';
+      const present = isStudentPresent(record.studentsPresent, student);
+      if (!subjectMap[subject]) subjectMap[subject] = { total: 0, present: 0, absent: 0 };
+      subjectMap[subject].total++;
+      if (present) { subjectMap[subject].present++; totalPresent++; }
+      else subjectMap[subject].absent++;
+      totalClasses++;
+    });
+
+    const currentAttendance = totalClasses > 0 ? Number(((totalPresent / totalClasses) * 100).toFixed(1)) : 0;
+    const targetAttendance = 75;
+    let classesNeeded = 0;
+
+    if (currentAttendance < targetAttendance) {
+      classesNeeded = Math.ceil((0.75 * totalClasses - totalPresent) / 0.25);
+      if (classesNeeded < 0) classesNeeded = 0;
+    }
+
+    const subjectAnalytics = Object.entries(subjectMap).map(([subject, d]) => ({
+      subject, 
+      totalClasses: d.total, 
+      attendedClasses: d.present, 
+      missedClasses: d.absent,
+      percentage: d.total > 0 ? Math.round((d.present / d.total) * 100) : 0
+    })).sort((a, b) => a.subject.localeCompare(b.subject));
+
+    // AI Insights Generation
+    const insights = [];
+    if (currentAttendance < targetAttendance) {
+      insights.push(`You are ${Math.abs(targetAttendance - currentAttendance).toFixed(1)}% below the required attendance.`);
+      insights.push(`Attending the next ${classesNeeded} classes without absence will make you eligible.`);
+    } else {
+      insights.push(`Great job! You are maintaining an attendance of ${currentAttendance}% which is above the 75% requirement.`);
+    }
+
+    if (subjectAnalytics.length > 0) {
+      const sortedByLowest = [...subjectAnalytics].sort((a, b) => a.percentage - b.percentage);
+      const lowest = sortedByLowest[0];
+      const highest = sortedByLowest[sortedByLowest.length - 1];
+      
+      if (lowest.percentage < targetAttendance) {
+        insights.push(`${lowest.subject} has the lowest attendance (${lowest.percentage}%) and requires attention.`);
+      }
+      if (highest.percentage >= 80) {
+        insights.push(`Your ${highest.subject} attendance is excellent (${highest.percentage}%).`);
+      }
+    }
+
+    res.json({
+      success: true,
+      currentAttendance,
+      targetAttendance,
+      classesNeeded,
+      attendedClasses: totalPresent,
+      totalClasses,
+      subjectAnalytics,
+      insights
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -747,6 +866,52 @@ router.get('/dashboard/:studentID', parentAuth, async (req, res) => {
     console.error('[PARENTS] Dashboard sync error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// GET - Monthly Calendar Absences
+router.get('/calendar/:studentID', parentAuth, async (req, res) => {
+  try {
+    const { studentID } = req.params;
+    const { month } = req.query; // Expected format YYYY-MM
+    
+    if (!month || !month.match(/^\d{4}-\d{2}$/)) {
+      return res.status(400).json({ success: false, error: 'Invalid month format. Use YYYY-MM' });
+    }
+
+    const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    // Build UTC date range for the entire month
+    const [year, monthStr] = month.split('-');
+    const startDate = new Date(Date.UTC(parseInt(year), parseInt(monthStr) - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(parseInt(year), parseInt(monthStr), 0, 23, 59, 59, 999));
+
+    const records = await req.db.collection('attendance').find({
+      stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, 
+      semester: student.semester, 
+      isDeleted: { $ne: true },
+      date: { $gte: startDate, $lte: endDate }
+    }).toArray();
+
+    const filtered = records.filter(r => isRecordRelevant(r, student));
+    
+    // Group by date string (YYYY-MM-DD)
+    const dailyMap = {};
+    filtered.forEach(record => {
+       const dateStr = new Date(record.date).toISOString().split('T')[0];
+       const present = isStudentPresent(record.studentsPresent, student);
+       if (!dailyMap[dateStr]) dailyMap[dateStr] = { present: 0, absent: 0 };
+       if (present) dailyMap[dateStr].present++;
+       else dailyMap[dateStr].absent++;
+    });
+
+    const absentDates = [];
+    for (const [dateStr, counts] of Object.entries(dailyMap)) {
+      if (counts.absent > 0) absentDates.push(dateStr);
+    }
+
+    res.json({ success: true, absentDates });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 module.exports = router;

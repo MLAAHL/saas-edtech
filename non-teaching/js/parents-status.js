@@ -75,10 +75,16 @@ function renderTable(students) {
 
     tbody.innerHTML = students.map(s => {
         let appHtml = '';
-        if (s.appStatus === 'active') appHtml = `<div><span class="status-dot online"></span>🟢 Active</div>`;
-        else if (s.appStatus === 'logged_out') appHtml = `<div><span class="status-dot online" style="background:var(--amber); box-shadow:0 0 8px var(--amber)"></span>🟡 Logged Out</div>`;
-        else if (s.appStatus === 'app_removed') appHtml = `<div><span class="status-dot online" style="background:var(--red); box-shadow:0 0 8px var(--red)"></span>🔴 App Removed</div>`;
-        else appHtml = `<div><span class="status-dot offline"></span>⚪ Never Registered</div>`;
+        if (s.appStatus === 'active') {
+            const deviceCountText = s.tokenCount > 1 ? ` <span style="font-size:10px; color:var(--text-muted); opacity:0.8;">(${s.tokenCount} devices)</span>` : '';
+            appHtml = `<div><span class="status-dot online"></span>🟢 Active${deviceCountText}</div>`;
+        } else if (s.appStatus === 'logged_out') {
+            appHtml = `<div><span class="status-dot online" style="background:var(--amber); box-shadow:0 0 8px var(--amber)"></span>🟡 Logged Out</div>`;
+        } else if (s.appStatus === 'app_removed') {
+            appHtml = `<div><span class="status-dot online" style="background:var(--red); box-shadow:0 0 8px var(--red)"></span>🔴 App Removed</div>`;
+        } else {
+            appHtml = `<div><span class="status-dot offline"></span>⚪ Never Registered</div>`;
+        }
 
         let notifBadgeClass = 'pending';
         let notifText = '⚪ Not Asked';

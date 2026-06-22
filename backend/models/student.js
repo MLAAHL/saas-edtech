@@ -7,6 +7,7 @@ const studentSchema = new mongoose.Schema({
   stream: String,
   semester: Number,
   parentPhone: String,
+  parentEmail: String,
   mentorEmail: { type: String, default: null },
   uucmsCredentials: {
     username: { type: String },
