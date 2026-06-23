@@ -259,9 +259,10 @@ router.post('/update-profile', parentAuth, async (req, res) => {
 });
 
 // POST - Register FCM Token
-router.post('/register-fcm', async (req, res) => {
+router.post('/register-fcm', parentAuth, async (req, res) => {
   try {
-    const { studentID, fcmToken } = req.body;
+    const studentID = req.parentSession.studentID;
+    const { fcmToken } = req.body;
     if (!studentID || !fcmToken) return res.status(400).json({ success: false, error: 'Missing parameters' });
     
     const tid = studentID.trim();
@@ -286,7 +287,7 @@ router.post('/register-fcm', async (req, res) => {
 // POST - Update Activity (Login)
 router.post('/update-activity', parentAuth, async (req, res) => {
   try {
-    const { studentID } = req.body;
+    const studentID = req.parentSession.studentID;
     if (!studentID) return res.status(400).json({ success: false, error: 'Student ID is required' });
     
     const tid = studentID.trim();
@@ -306,7 +307,8 @@ router.post('/update-activity', parentAuth, async (req, res) => {
 // POST - Update Notification Status
 router.post('/update-notification-status', parentAuth, async (req, res) => {
   try {
-    const { studentID, status } = req.body; // status: 'granted', 'denied', 'not_supported'
+    const studentID = req.parentSession.studentID;
+    const { status } = req.body; // status: 'granted', 'denied', 'not_supported'
     if (!studentID || !status) return res.status(400).json({ success: false, error: 'Missing parameters' });
     
     const tid = studentID.trim();
