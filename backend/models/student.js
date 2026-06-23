@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const studentSchema = new mongoose.Schema({
-  studentID: String,
+  studentID: { type: String, index: true },
   registerNumber: { type: String, unique: true, sparse: true },
   name: String,
   stream: String,
