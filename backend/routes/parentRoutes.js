@@ -188,16 +188,17 @@ router.post('/login', async (req, res) => {
 
     const jwtVersion = student.jwtVersion || 1;
 
-    // Issue tokens: 15-minute access token, 30-day refresh token
-    const token = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_SECRET, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
+    // Issue tokens: 1-year access token, 1-year refresh token (session persists until explicit logout)
+    const token = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_SECRET, { expiresIn: '365d' });
+    const refreshToken = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_REFRESH_SECRET, { expiresIn: '365d' });
 
-    // Set refresh token cookie (httpOnly, secure, sameSite: none)
+    // Set refresh token cookie (httpOnly, secure in production, sameSite: none)
+    const isSecure = process.env.NODE_ENV === 'production';
     res.cookie('parentRefreshToken', refreshToken, {
       httpOnly: true,
-      secure: true, // required for sameSite: 'none'
-      sameSite: 'none',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      secure: isSecure,
+      sameSite: isSecure ? 'none' : 'lax',
+      maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year
     });
 
     await col.updateOne({ _id: student._id }, { $set: { 'parentAuth.lastLogin': new Date(), appStatus: 'active' } });
@@ -350,10 +351,11 @@ router.post('/logout', parentAuth, async (req, res) => {
     );
     
     // Clear the refresh token cookie
+    const isSecure = process.env.NODE_ENV === 'production';
     res.clearCookie('parentRefreshToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none'
+      secure: isSecure,
+      sameSite: isSecure ? 'none' : 'lax'
     });
     
     res.json({ success: true, message: 'Logged out and token cleared' });
@@ -881,16 +883,28 @@ router.get('/calendar/:studentID', parentAuth, async (req, res) => {
     const student = await req.db.collection('students').findOne({ studentID: { $regex: new RegExp(`^${studentID}$`, 'i') }, isActive: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
-    // Build UTC date range for the entire month
+    // Build date range for the entire month - handle both string and Date formats
     const [year, monthStr] = month.split('-');
-    const startDate = new Date(Date.UTC(parseInt(year), parseInt(monthStr) - 1, 1, 0, 0, 0));
-    const endDate = new Date(Date.UTC(parseInt(year), parseInt(monthStr), 0, 23, 59, 59, 999));
+    const yearInt = parseInt(year);
+    const monthInt = parseInt(monthStr);
+    const startDate = new Date(Date.UTC(yearInt, monthInt - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(yearInt, monthInt, 0, 23, 59, 59, 999));
+
+    // Build array of all date strings in this month for string-format matching
+    const daysInMonth = new Date(yearInt, monthInt, 0).getDate();
+    const dateStrings = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      dateStrings.push(`${year}-${monthStr}-${String(d).padStart(2, '0')}`);
+    }
 
     const records = await req.db.collection('attendance').find({
       stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, 
       semester: student.semester, 
       isDeleted: { $ne: true },
-      date: { $gte: startDate, $lte: endDate }
+      $or: [
+        { date: { $in: dateStrings } },
+        { date: { $gte: startDate, $lte: endDate } }
+      ]
     }).toArray();
 
     const filtered = records.filter(r => isRecordRelevant(r, student));
@@ -898,7 +912,9 @@ router.get('/calendar/:studentID', parentAuth, async (req, res) => {
     // Group by date string (YYYY-MM-DD)
     const dailyMap = {};
     filtered.forEach(record => {
-       const dateStr = new Date(record.date).toISOString().split('T')[0];
+       const dateStr = typeof record.date === 'string' 
+         ? record.date 
+         : new Date(record.date).toISOString().split('T')[0];
        const present = isStudentPresent(record.studentsPresent, student);
        if (!dailyMap[dateStr]) dailyMap[dateStr] = { present: 0, absent: 0 };
        if (present) dailyMap[dateStr].present++;

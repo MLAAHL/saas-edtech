@@ -1,5 +1,5 @@
 :root {
-  --bg-gradient: linear-gradient(135deg, #E6ECE3 0%, #F2EFE7 40%, #D8E2CF 100%);
+  --bg-gradient: linear-gradient(135deg, #E8E8E8 0%, #F0EFED 40%, #E0DEDA 100%);
   --dark-green: #212529;
   --text-dark: #212529;
   --text-grey: #6C757D;
@@ -475,14 +475,29 @@ body.auto-login-in-progress #loginScreen {
 }
 /* Explicit red circle for absent days */
 .calendar-day.absent {
-  background: rgba(220, 53, 69, 0.1);
-  border: 1.5px solid #DC3545;
+  background: rgba(220, 53, 69, 0.12);
+  border: 2px solid #DC3545;
   color: #DC3545;
+  font-weight: 700;
+}
+.calendar-day.absent::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #DC3545;
 }
 .calendar-day.active.absent {
   background: #DC3545; /* Solid red if it's both absent AND the selected day */
   color: white;
   border: none;
   box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+.calendar-day.active.absent::after {
+  background: white;
 }
 

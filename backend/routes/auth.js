@@ -133,9 +133,10 @@ router.post('/refresh', async (req, res) => {
             });
         }
 
-        // Issue a new short-lived access token
+        // Issue a new long-lived access token (include jwtVersion for session validation)
         const JWT_SECRET = process.env.JWT_SECRET || 'fallback_parent_secret_key_123';
-        const token = jwt.sign({ studentID: student.studentID }, JWT_SECRET, { expiresIn: '15m' });
+        const jwtVersion = student.jwtVersion || 1;
+        const token = jwt.sign({ studentID: student.studentID, jwtVersion }, JWT_SECRET, { expiresIn: '365d' });
 
         console.log(`🔄 [AUTH] Refreshed access token successfully for: ${student.studentID}`);
 
