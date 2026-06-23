@@ -626,11 +626,22 @@ router.get('/analytics', parentAuth, async (req, res) => {
 
     // AI Insights Generation
     const insights = [];
-    if (currentAttendance < targetAttendance) {
-      insights.push(`You are ${Math.abs(targetAttendance - currentAttendance).toFixed(1)}% below the required attendance.`);
-      insights.push(`Attending the next ${classesNeeded} classes without absence will make you eligible.`);
+    const failingSubjects = subjectAnalytics.filter(sub => sub.percentage < targetAttendance);
+
+    if (failingSubjects.length > 0) {
+      if (failingSubjects.length === 1) {
+        insights.push(`Warning: You are below the ${targetAttendance}% requirement in 1 subject (${failingSubjects[0].subject}).`);
+      } else {
+        insights.push(`Warning: You are below the ${targetAttendance}% requirement in ${failingSubjects.length} subjects.`);
+      }
+      
+      let totalShortage = 0;
+      failingSubjects.forEach(sub => {
+         totalShortage += Math.ceil((0.75 * sub.totalClasses - sub.attendedClasses) / 0.25);
+      });
+      insights.push(`You need to attend a total of ${totalShortage} classes across these subjects to reach the minimum requirement.`);
     } else {
-      insights.push(`Great job! You are maintaining an attendance of ${currentAttendance}% which is above the 75% requirement.`);
+      insights.push(`Great job! You have met the ${targetAttendance}% attendance requirement in every single subject.`);
     }
 
     if (subjectAnalytics.length > 0) {
@@ -638,9 +649,12 @@ router.get('/analytics', parentAuth, async (req, res) => {
       const lowest = sortedByLowest[0];
       const highest = sortedByLowest[sortedByLowest.length - 1];
       
-      if (lowest.percentage < targetAttendance) {
-        insights.push(`${lowest.subject} has the lowest attendance (${lowest.percentage}%) and requires attention.`);
+      if (lowest.percentage >= targetAttendance && lowest.percentage < 80) {
+        insights.push(`Your lowest subject is ${lowest.subject} at ${lowest.percentage}%. Keep an eye on it.`);
+      } else if (lowest.percentage < targetAttendance) {
+        insights.push(`${lowest.subject} has the lowest attendance (${lowest.percentage}%) and requires immediate attention.`);
       }
+      
       if (highest.percentage >= 80) {
         insights.push(`Your ${highest.subject} attendance is excellent (${highest.percentage}%).`);
       }

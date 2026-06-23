@@ -1025,50 +1025,62 @@ async function loadInsights() {
        });
     }
 
-    // 3. Subjects at Risk
+    // 3. Predictive Analytics (Shortage)
     const shortageList = document.getElementById('insightShortageList');
     const shortageTitle = document.getElementById('shortageTitle');
     const dailyRiskBanner = document.getElementById('dailyRiskBanner');
     
-    if (shortageList && shortageTitle && data.subjectAnalytics) {
+    if (data.subjectAnalytics) {
+       // Subjects at Risk (Shortage)
        const atRisk = data.subjectAnalytics.filter(sub => sub.percentage < data.targetAttendance);
-       if (atRisk.length > 0) {
-          shortageTitle.style.display = 'block';
-          shortageList.innerHTML = atRisk.map(sub => {
-             const classesNeeded = Math.ceil((0.75 * sub.totalClasses - sub.attendedClasses) / 0.25);
-             return `
-             <div style="background: #FFF3CD; border: 1px solid #FFE69C; border-radius: 16px; padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                   <h5 style="font-size: 15px; font-weight: 700; color: #856404; margin: 0;">${sub.subject}</h5>
-                   <div style="font-size: 14px; font-weight: 800; color: #DC3545;">${sub.percentage}%</div>
-                </div>
-                <div style="font-size: 13px; color: #856404; margin-bottom: 0;">
-                   <strong>Shortage:</strong> You need to attend <strong>${classesNeeded}</strong> more classes to reach 75%.
-                </div>
-             </div>`;
-          }).join('');
-          
-          if (dailyRiskBanner) {
-             dailyRiskBanner.style.display = 'block';
-             dailyRiskBanner.innerHTML = `
-                <div onclick="switchTab('insights')" style="background: rgba(220, 53, 69, 0.1); border: 1.5px solid #DC3545; border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-                   <div style="display: flex; align-items: center; gap: 12px;">
-                      <div style="width: 36px; height: 36px; border-radius: 50%; background: #DC3545; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                         <span class="material-symbols-rounded" style="font-size: 20px;">warning</span>
-                      </div>
-                      <div>
-                         <div style="font-size: 14px; font-weight: 700; color: #DC3545; margin-bottom: 2px;">Action Required</div>
-                         <div style="font-size: 13px; color: #DC3545; opacity: 0.9;">${atRisk.length} subject${atRisk.length > 1 ? 's are' : ' is'} below 75% attendance.</div>
-                      </div>
-                   </div>
-                   <span class="material-symbols-rounded" style="color: #DC3545;">chevron_right</span>
-                </div>
-             `;
-          }
-       } else {
-          shortageTitle.style.display = 'none';
-          shortageList.innerHTML = '';
-          if (dailyRiskBanner) dailyRiskBanner.style.display = 'none';
+       if (shortageList && shortageTitle) {
+           if (atRisk.length > 0) {
+              shortageTitle.style.display = 'block';
+              shortageList.innerHTML = atRisk.map(sub => {
+                 const classesNeeded = Math.ceil((0.75 * sub.totalClasses - sub.attendedClasses) / 0.25);
+                 const progressWidth = Math.min(100, (sub.percentage / 75) * 100);
+                 const parts = sub.subject.split(/[\s-]+/).filter(p => p.length > 0);
+                 const initials = parts.length === 1 ? parts[0].substring(0, 2).toUpperCase() : parts.map(p => p[0]).join('').substring(0, 2).toUpperCase();
+                 const plural = classesNeeded === 1 ? '' : 'es';
+                 
+                 return `
+                 <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.04); border-radius: 24px; padding: 20px; display: flex; flex-direction: column; align-items: stretch; margin-bottom: 12px; box-shadow: none;">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                       <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(220, 53, 69, 0.1); color: #DC3545; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; flex-shrink: 0;">${initials}</div>
+                       <div class="class-info" style="flex: 1; min-width: 0;">
+                          <div style="font-weight: 600; font-size: 14px; color: var(--text-dark); margin-bottom: 4px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase;">${sub.subject}</div>
+                          <div style="font-size: 12px; color: #DC3545; font-weight: 600;">Shortage: Need ${classesNeeded} class${plural} to reach 75%</div>
+                       </div>
+                       <div style="font-size: 28px; font-weight: 300; color: var(--text-dark); letter-spacing: -1px; flex-shrink: 0;">${sub.percentage}%</div>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.04); border-radius: 10px; overflow: hidden; margin-top: 16px; display: flex;">
+                       <div style="height: 100%; border-radius: 10px; background: #DC3545; width: ${progressWidth}%"></div>
+                    </div>
+                 </div>`;
+              }).join('');
+              
+              if (dailyRiskBanner) {
+                 dailyRiskBanner.style.display = 'block';
+                 dailyRiskBanner.innerHTML = `
+                    <div onclick="switchTab('insights')" style="background: rgba(220, 53, 69, 0.1); border: 1.5px solid #DC3545; border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                       <div style="display: flex; align-items: center; gap: 12px;">
+                          <div style="width: 36px; height: 36px; border-radius: 50%; background: #DC3545; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                             <span class="material-symbols-rounded" style="font-size: 20px;">warning</span>
+                          </div>
+                          <div>
+                             <div style="font-size: 14px; font-weight: 700; color: #DC3545; margin-bottom: 2px;">Action Required</div>
+                             <div style="font-size: 13px; color: #DC3545; opacity: 0.9;">${atRisk.length} subject${atRisk.length > 1 ? 's are' : ' is'} below 75% attendance.</div>
+                          </div>
+                       </div>
+                       <span class="material-symbols-rounded" style="color: #DC3545;">chevron_right</span>
+                    </div>
+                 `;
+              }
+           } else {
+              shortageTitle.style.display = 'none';
+              shortageList.innerHTML = '';
+              if (dailyRiskBanner) dailyRiskBanner.style.display = 'none';
+           }
        }
     }
 
@@ -1077,7 +1089,7 @@ async function loadInsights() {
     if (aiList) {
        if (data.insights && data.insights.length > 0) {
           aiList.innerHTML = data.insights.map((insight, idx) => {
-             const isWarning = idx === 0 && data.currentAttendance < data.targetAttendance;
+             const isWarning = insight.toLowerCase().includes('warning') || insight.toLowerCase().includes('below') || insight.toLowerCase().includes('attention') || insight.toLowerCase().includes('lowest');
              return `
              <div style="display: flex; gap: 12px; background: ${isWarning ? '#FFF3CD' : '#F8FBF9'}; border: 1px solid ${isWarning ? '#FFE69C' : '#E8F5E9'}; border-radius: 16px; padding: 16px;">
                 <span class="material-symbols-rounded" style="color: ${isWarning ? '#856404' : '#198754'}; font-size: 20px; flex-shrink: 0;">${isWarning ? 'warning' : 'lightbulb'}</span>
