@@ -600,6 +600,10 @@ function switchTab(tab) {
     }
   }
   
+  // Reset scroll position
+  const scrollContainer = document.querySelector('.scroll-content');
+  if (scrollContainer) scrollContainer.scrollTop = 0;
+  
   if (tab === 'daily') loadDailyAttendance();
   else if (tab === 'full') loadFullAttendance();
   else if (tab === 'insights') loadInsights();
