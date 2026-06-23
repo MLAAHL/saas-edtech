@@ -432,7 +432,13 @@ function setupDashboard(student) {
   if (displayPhone) displayPhone.textContent = phoneDisplay;
   if (displayMentor) displayMentor.textContent = student.mentorName || 'Not Assigned';
   if (editEmail) editEmail.value = student.parentEmail || '';
-  if (editPhone) editPhone.value = phoneDisplay === 'Not set' ? '+91 ' : phoneDisplay;
+  
+  if (editPhone) {
+      let raw10Digit = '';
+      if (phoneStr.match(/^91\d{10}$/)) raw10Digit = phoneStr.substring(2);
+      else if (phoneStr.match(/^\d{10}$/)) raw10Digit = phoneStr;
+      editPhone.value = raw10Digit;
+  }
 
   showScreen('dashboardScreen');
   setTodayDate();
@@ -462,10 +468,18 @@ function toggleProfileEdit() {
 
 async function saveProfile() {
   const email = document.getElementById('editParentEmail').value.trim();
-  const phone = document.getElementById('editParentPhone').value.trim();
+  let phone = document.getElementById('editParentPhone').value.trim();
   const btn = document.getElementById('saveProfileBtn');
   const text = document.getElementById('saveProfileText');
   const spin = document.getElementById('saveProfileSpinner');
+  
+  if (phone) {
+      phone = phone.replace(/\D/g, ''); // strip non-digits
+      if (phone.length !== 10) {
+          alert('Phone number must be exactly 10 digits.');
+          return;
+      }
+  }
   
   btn.disabled = true;
   text.classList.add('hidden');
