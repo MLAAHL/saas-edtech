@@ -1028,7 +1028,6 @@ async function loadInsights() {
     // 3. Predictive Analytics (Shortage)
     const shortageList = document.getElementById('insightShortageList');
     const shortageTitle = document.getElementById('shortageTitle');
-    const dailyRiskBanner = document.getElementById('dailyRiskBanner');
     
     if (data.subjectAnalytics) {
        // Subjects at Risk (Shortage)
@@ -1058,28 +1057,9 @@ async function loadInsights() {
                     </div>
                  </div>`;
               }).join('');
-              
-              if (dailyRiskBanner) {
-                 dailyRiskBanner.style.display = 'block';
-                 dailyRiskBanner.innerHTML = `
-                    <div onclick="switchTab('insights')" style="background: rgba(220, 53, 69, 0.1); border: 1.5px solid #DC3545; border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-                       <div style="display: flex; align-items: center; gap: 12px;">
-                          <div style="width: 36px; height: 36px; border-radius: 50%; background: #DC3545; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                             <span class="material-symbols-rounded" style="font-size: 20px;">warning</span>
-                          </div>
-                          <div>
-                             <div style="font-size: 14px; font-weight: 700; color: #DC3545; margin-bottom: 2px;">Action Required</div>
-                             <div style="font-size: 13px; color: #DC3545; opacity: 0.9;">${atRisk.length} subject${atRisk.length > 1 ? 's are' : ' is'} below 75% attendance.</div>
-                          </div>
-                       </div>
-                       <span class="material-symbols-rounded" style="color: #DC3545;">chevron_right</span>
-                    </div>
-                 `;
-              }
            } else {
               shortageTitle.style.display = 'none';
               shortageList.innerHTML = '';
-              if (dailyRiskBanner) dailyRiskBanner.style.display = 'none';
            }
        }
     }
