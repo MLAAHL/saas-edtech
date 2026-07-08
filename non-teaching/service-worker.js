@@ -1,4 +1,4 @@
-const CACHE_NAME = "non-teaching-v2";
+const CACHE_NAME = "non-teaching-v3";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
