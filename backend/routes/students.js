@@ -678,6 +678,19 @@ router.post('/bulk', firebaseAuth, async (req, res) => {
 
     console.log(`📊 Bulk upload: ${students.length} students received`);
 
+    // Normalize language abbreviations to canonical full names (see Attendance model enum)
+    const LANGUAGE_MAP = {
+      'KAN': 'KANNADA',
+      'HIN': 'HINDI',
+      'SAN': 'SANSKRIT',
+      'SKT': 'SANSKRIT',
+      'TAM': 'TAMIL'
+    };
+    const normalizeLanguage = (val) => {
+      const lang = (val || '').toString().trim().toUpperCase();
+      return LANGUAGE_MAP[lang] || lang;
+    };
+
     // Step 1: Prepare students
     const preparedStudents = students.map(student => ({
       studentID: student.studentID?.toString().trim() || '',
@@ -685,7 +698,7 @@ router.post('/bulk', firebaseAuth, async (req, res) => {
       stream: student.stream?.toString().trim() || '',
       semester: parseInt(student.semester) || 1,
       parentPhone: student.parentPhone?.toString().trim() || '',
-      languageSubject: student.languageSubject?.toString().trim() || '',
+      languageSubject: normalizeLanguage(student.languageSubject),
       electiveSubject: student.electiveSubject?.toString().trim() || '',
       academicYear: student.academicYear || new Date().getFullYear(),
       isActive: student.isActive !== false,
