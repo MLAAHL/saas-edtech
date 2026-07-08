@@ -1212,7 +1212,7 @@ async function processBulkUpload() {
 
             const response = await fetch(`${API_BASE_URL}/students/bulk`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await getAuthHeaders(),
                 body: JSON.stringify({ students })
             });
 

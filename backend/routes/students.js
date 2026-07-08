@@ -665,7 +665,7 @@ router.get('/all', async (req, res) => {
 // BULK OPERATIONS
 // ============================================================================
 // ✅ BULK UPLOAD - ALLOW DUPLICATES, JUST SKIP THEM SILENTLY
-router.post('/bulk', async (req, res) => {
+router.post('/bulk', firebaseAuth, async (req, res) => {
   try {
     const students = req.body.students;
 
