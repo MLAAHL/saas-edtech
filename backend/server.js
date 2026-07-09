@@ -28,7 +28,8 @@ app.use(helmet({
 // Rate Limiting - Prevent DoS attacks
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 500 : 1000, // 500 requests per 15 min in production
+  // Generous per-IP cap: mobile carriers (CGNAT) put many parents behind one IP
+  max: isProduction ? 2000 : 1000,
   message: {
     success: false,
     error: 'Too many requests. Please try again later.',
@@ -47,6 +48,20 @@ const strictLimiter = rateLimit({
     error: 'Rate limit exceeded for this operation.',
     retryAfter: '1 hour'
   }
+});
+
+// Login limiter: strict enough to slow brute-force, loose enough that many
+// parents behind one carrier IP (CGNAT) can all log in on the same day
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 50 : 200,
+  message: {
+    success: false,
+    error: 'Too many login attempts. Please try again in a few minutes.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // AI/Chatbot specific limiter (Gemini API costs money)
@@ -270,9 +285,9 @@ app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-assistant", aiAssistantRouter);
 app.use("/api/chatbot", chatbotRoutes);
 // Protect authentication endpoints from brute-force attacks
-app.use("/api/auth/login", strictLimiter);
-app.use("/api/parent/login", strictLimiter);
-app.use("/api/parent/set-password", strictLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/parent/login", authLimiter);
+app.use("/api/parent/set-password", authLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/enrollments", enrollmentsRoutes);
