@@ -54,7 +54,9 @@ const strictLimiter = rateLimit({
 // parents behind one carrier IP (CGNAT) can all log in on the same day
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 50 : 200,
+  // Signup uses 2 auth calls per parent; one CGNAT IP must cover a
+  // launch-day rush of ~75 parents per window
+  max: isProduction ? 150 : 200,
   message: {
     success: false,
     error: 'Too many login attempts. Please try again in a few minutes.',
