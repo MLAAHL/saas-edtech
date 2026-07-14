@@ -652,7 +652,62 @@
 
     <div class="form-group">
       <label class="form-label">Custom Start Time (Optional)</label>
-      <input type="time" id="startTimeInput" class="form-input" />
+      <div style="display: flex; gap: 8px;">
+        <select id="startHourSelect" class="form-select" style="flex: 1;">
+          <option value="">Hour</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+        </select>
+        <select id="startMinuteSelect" class="form-select" style="flex: 1;">
+          <option value="">Min</option>
+          <option value="00">00</option>
+          <option value="05">05</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+          <option value="30">30</option>
+          <option value="35">35</option>
+          <option value="40">40</option>
+          <option value="45">45</option>
+          <option value="50">50</option>
+          <option value="55">55</option>
+        </select>
+        <select id="startPeriodSelect" class="form-select" style="flex: 1;">
+          <option value="">AM/PM</option>
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+      <input type="hidden" id="startTimeInput" />
+      <script>
+        (function () {
+          const h = document.getElementById('startHourSelect');
+          const m = document.getElementById('startMinuteSelect');
+          const p = document.getElementById('startPeriodSelect');
+          const hidden = document.getElementById('startTimeInput');
+          function sync() {
+            if (h.value && p.value) {
+              let hour = parseInt(h.value, 10) % 12;
+              if (p.value === 'PM') hour += 12;
+              hidden.value = String(hour).padStart(2, '0') + ':' + (m.value || '00');
+            } else {
+              hidden.value = '';
+            }
+          }
+          [h, m, p].forEach(s => s.addEventListener('change', sync));
+        })();
+      </script>
       <div style="font-size: 11px; color: #64748B; margin-top: 6px; margin-left: 4px;">Leave empty to use current time. End time calculates automatically.</div>
     </div>
   </div>
@@ -709,7 +764,7 @@
     </button>
   </div>
 
-  <script src="js/index.js?v=11"></script>
+  <script src="js/index.js?v=12"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

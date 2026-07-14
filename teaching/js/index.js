@@ -1013,7 +1013,9 @@ function showSubmittedConfirmation(subject, date, presentStudents, totalStudents
             ${notificationStats.studentsWithNoParentApp && notificationStats.studentsWithNoParentApp.length > 0 ? 
               `<div style="color: #991B1B; font-weight: 500; margin-top: 6px; display: flex; gap: 6px; align-items: flex-start; background: rgba(254, 226, 226, 0.5); padding: 8px; border-radius: 8px;">
                 <span class="material-symbols-rounded" style="font-size: 16px; margin-top: 1px;">warning</span>
-                <span>${notificationStats.studentsWithNoParentApp.join(', ')}'s parent has not set up the app.</span>
+                <span>${notificationStats.studentsWithNoParentApp.length <= 3
+                  ? `${notificationStats.studentsWithNoParentApp.join(', ')}'s parent has not set up the app.`
+                  : `${notificationStats.studentsWithNoParentApp.length} of ${notificationStats.absentCount} absent students' parents haven't set up the app yet.`}</span>
                </div>` : ''
             }
           </div>
