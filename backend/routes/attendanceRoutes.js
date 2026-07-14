@@ -18,14 +18,24 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 // helper function to send push notifications to absent students' parents
-async function notifyAbsentParents(req, db, stream, semester, subject, date, time, studentsPresentArray) {
+// classFilter narrows language/elective classes so students of other
+// languages aren't treated as absent
+async function notifyAbsentParents(req, db, stream, semester, subject, date, time, studentsPresentArray, classFilter = {}) {
   try {
     const col = db.collection('students');
-    const allStudents = await col.find({
+    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const studentQuery = {
       stream: { $regex: new RegExp(`^${stream}$`, 'i') },
       semester: parseInt(semester, 10),
       isActive: true
-    }).toArray();
+    };
+    if (classFilter.languageSubject) {
+      studentQuery.languageSubject = { $regex: new RegExp(`^${escapeRe(classFilter.languageSubject)}$`, 'i') };
+    }
+    if (classFilter.electiveSubject) {
+      studentQuery.electiveSubject = { $regex: new RegExp(`^${escapeRe(classFilter.electiveSubject)}$`, 'i') };
+    }
+    const allStudents = await col.find(studentQuery).toArray();
 
     const notifTitle = 'Attendance Alert';
     const notifBody = `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`;
@@ -1302,7 +1312,16 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     clearCachePattern(`stats:${stream}`);
     
     // Trigger Push Notifications and wait for stats
-    const notifStats = await notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent);
+    const classFilter = {};
+    if (languageSubject && languageSubject !== 'ALL') {
+      classFilter.languageSubject = languageSubject;
+    } else if (subjectDetails && subjectDetails.isLanguageSubject && subjectDetails.languageType) {
+      classFilter.languageSubject = subjectDetails.languageType;
+    }
+    if (electiveSubject && electiveSubject !== 'ALL') {
+      classFilter.electiveSubject = electiveSubject;
+    }
+    const notifStats = await notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent, classFilter);
     
     res.json({ 
       success: true, 
@@ -1395,7 +1414,16 @@ router.post('/attendance', async (req, res) => {
     clearCachePattern(`attendance:${finalStream}`);
     
     // Trigger Push Notifications and wait for stats
-    const notifStats = await notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent);
+    const classFilter = {};
+    if (languageSubject && languageSubject !== 'ALL') {
+      classFilter.languageSubject = languageSubject;
+    } else if (subjectDetails && subjectDetails.isLanguageSubject && subjectDetails.languageType) {
+      classFilter.languageSubject = subjectDetails.languageType;
+    }
+    if (electiveSubject && electiveSubject !== 'ALL') {
+      classFilter.electiveSubject = electiveSubject;
+    }
+    const notifStats = await notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent, classFilter);
     
     res.json({ 
       success: true, 
