@@ -691,20 +691,31 @@ router.post('/bulk', firebaseAuth, async (req, res) => {
       return LANGUAGE_MAP[lang] || lang;
     };
 
+    // Excel cells often hold several numbers ("98765... / 91234...") — keep
+    // the first as the notification number, preserve the rest separately
+    const splitPhones = (val) => {
+      const parts = (val || '').toString().split(/[\/,]/).map(p => p.trim()).filter(Boolean);
+      return { primary: parts[0] || '', alternate: parts.slice(1).join(', ') };
+    };
+
     // Step 1: Prepare students
-    const preparedStudents = students.map(student => ({
+    const preparedStudents = students.map(student => {
+      const phones = splitPhones(student.parentPhone);
+      return {
       studentID: student.studentID?.toString().trim() || '',
       name: student.name?.toString().trim() || '',
       stream: student.stream?.toString().trim() || '',
       semester: parseInt(student.semester) || 1,
-      parentPhone: student.parentPhone?.toString().trim() || '',
+      parentPhone: phones.primary,
+      alternatePhone: phones.alternate,
       languageSubject: normalizeLanguage(student.languageSubject),
       electiveSubject: student.electiveSubject?.toString().trim() || '',
       academicYear: student.academicYear || new Date().getFullYear(),
       isActive: student.isActive !== false,
       createdAt: new Date(),
       updatedAt: new Date()
-    }));
+      };
+    });
 
     // Step 2: Filter valid students (must have ID and name)
     const validStudents = preparedStudents.filter(s => s.studentID && s.name);
