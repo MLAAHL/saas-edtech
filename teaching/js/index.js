@@ -82,6 +82,20 @@ function loadUserInfo() {
   });
 }
 
+// Firebase ID tokens expire after 1 hour — always fetch at request time so
+// the SDK can transparently refresh; never reuse the page-load token
+async function getFreshIdToken() {
+  try {
+    const auth = getFirebaseAuth();
+    if (auth && auth.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+  } catch (err) {
+    console.error('❌ Error refreshing ID token:', err);
+  }
+  return userData.idToken;
+}
+
 // ============================================================================
 // MODERN NOTIFICATION SYSTEM
 // ============================================================================
@@ -882,11 +896,12 @@ async function moveQueueItemToCompleted(stats) {
   }
 
   try {
-    const headers = { 
-      'Content-Type': 'application/json' 
+    const freshToken = await getFreshIdToken();
+    const headers = {
+      'Content-Type': 'application/json'
     };
-    if (userData.idToken) {
-      headers['Authorization'] = `Bearer ${userData.idToken}`;
+    if (freshToken) {
+      headers['Authorization'] = `Bearer ${freshToken}`;
     }
 
     const deleteResponse = await fetch(`${API_BASE_URL}/teacher/queue/${queueItemId}`, {
@@ -912,11 +927,11 @@ async function moveQueueItemToCompleted(stats) {
       durationHours: stats.durationHours || 1
     };
 
-    const completedHeaders = { 
-      'Content-Type': 'application/json' 
+    const completedHeaders = {
+      'Content-Type': 'application/json'
     };
-    if (userData.idToken) {
-      completedHeaders['Authorization'] = `Bearer ${userData.idToken}`;
+    if (freshToken) {
+      completedHeaders['Authorization'] = `Bearer ${freshToken}`;
     }
 
     const completedResponse = await fetch(`${API_BASE_URL}/teacher/completed`, {
@@ -1309,8 +1324,9 @@ function setupSubmitButton() {
               "Content-Type": "application/json",
               "Accept": "application/json"
             };
-            if (userData.idToken) {
-              headers['Authorization'] = `Bearer ${userData.idToken}`;
+            const submitToken = await getFreshIdToken();
+            if (submitToken) {
+              headers['Authorization'] = `Bearer ${submitToken}`;
             }
 
             const res = await fetch(apiUrl, {

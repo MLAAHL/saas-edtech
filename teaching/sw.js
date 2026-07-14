@@ -1,7 +1,7 @@
 // ============================================================================
 // CACHE VERSION — BUMP THIS ON EVERY DEPLOY TO BUST ALL CACHES
 // ============================================================================
-const CACHE_VERSION = 30;
+const CACHE_VERSION = 31;
 const CACHE_NAME = `teaching-v${CACHE_VERSION}`;
 const STATIC_CACHE = `static-v${CACHE_VERSION}`;
 const API_CACHE = `api-v${CACHE_VERSION}`;
