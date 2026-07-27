@@ -516,3 +516,35 @@ body {
 .app-footer a:hover {
   color: var(--primary-blue);
 }
+
+/* ============================
+   PICTURE WRAPPERS
+   The <picture> elements added for WebP delivery become the flex children,
+   so they must carry the sizing the <img> used to have.
+   ============================ */
+.step-image-container picture {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 300px;
+}
+
+.step-image-container.double picture {
+  max-width: 220px;
+}
+
+.nav-logo picture {
+  display: flex;
+  align-items: center;
+}
+
+/* Hero image is absolutely positioned; the wrapper should not create a box */
+.hero-section > picture {
+  display: contents;
+}
+
+@media (max-width: 768px) {
+  .step-image-container.double picture {
+    max-width: 240px;
+  }
+}
