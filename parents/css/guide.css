@@ -1,0 +1,518 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --bg-app: #FAFAF8;
+  --text-main: #111827;
+  --text-muted: #4B5563;
+  --primary-blue: #3B82F6;
+
+  /* Glass tokens */
+  --glass-bg: rgba(255, 255, 255, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-shadow: 
+    0 0 0 4px rgba(255, 255, 255, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 60px rgba(255, 255, 255, 0.6);
+}
+
+*, :after, :before, ::backdrop {
+  box-sizing: border-box;
+  border: 0 solid;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #0000000d transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter Tight', Arial, Helvetica, sans-serif;
+  font-style: normal;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Container */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.radius-pill {
+  border-radius: 9999px;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
+  border-left: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  border-radius: 32px;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* ============================
+   NAVIGATION BAR
+   ============================ */
+.navbar {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 48px);
+  max-width: 1100px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 16px 24px;
+  z-index: 100;
+  
+  background: rgba(255, 255, 255, 0.98); /* Almost solid white */
+  border: 1px solid #f3f3f3;
+  border-radius: 20px;
+  box-shadow: 0 6px 10px -6px #00000016;
+  backdrop-filter: blur(10px); /* Just a tiny blur for the 2% transparency */
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 20px;
+  color: #111827;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.nav-logo img {
+  height: 32px;
+  width: auto;
+  border-radius: 6px;
+}
+
+/* ============================
+   HERO SECTION
+   ============================ */
+.hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Background image as a real element for better mobile support */
+.hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* Gradient fade at bottom of hero */
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(250, 250, 248, 0.4) 40%,
+    rgba(250, 250, 248, 0.8) 70%,
+    var(--bg-app) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero-glass-container {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+  width: 90%;
+  padding: 56px 40px;
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 60px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+  margin-bottom: 20px;
+  color: #0A0A0A;
+  text-shadow: 0 4px 24px rgba(255, 255, 255, 0.4);
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  color: #374151;
+  max-width: 540px;
+  margin: 0 auto;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #4B5563;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  z-index: 2;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  animation: bounce 2s infinite;
+}
+
+.scroll-indicator:hover {
+  opacity: 1;
+  color: var(--text-main);
+}
+
+.scroll-indicator svg {
+  width: 24px;
+  height: 24px;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0) translateX(-50%);
+  }
+  40% {
+    transform: translateY(-10px) translateX(-50%);
+  }
+  60% {
+    transform: translateY(-5px) translateX(-50%);
+  }
+}
+
+/* ============================
+   STEPS SECTION
+   ============================ */
+.guide-steps-container {
+  padding: 60px 0 80px;
+  position: relative;
+  z-index: 2;
+  background: var(--bg-app);
+}
+
+/* Card (exact reference tokens) */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  background: #fbfbfb;
+  outline: 1px solid #f3f3f3;
+  position: relative;
+  box-shadow: 0 6px 10px -6px #00000016;
+  border-radius: 13px;
+  cursor: pointer;
+  transition: filter 0.3s ease-out, opacity 0.2s ease-out;
+}
+
+.card:hover {
+  filter: brightness(0.98);
+}
+
+/* Each step */
+.guide-step {
+  margin-bottom: 60px;
+  align-items: center;
+  /* Scroll animation: starts hidden */
+  opacity: 0;
+  transform: translateY(60px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.3s ease-out;
+}
+
+.guide-step.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Image — big and prominent */
+.step-image-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.step-image-container img {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border-radius: 13px;
+  outline: 1px solid #f3f3f3;
+  box-shadow: 0 6px 10px -6px #00000016;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.guide-step:hover .step-image-container img {
+  transform: scale(1.03);
+}
+
+/* Double images (login step) */
+.step-image-container.double {
+  gap: 16px;
+}
+
+.step-image-container.double img {
+  max-width: 220px;
+}
+
+/* Text below the image */
+.step-text {
+  text-align: center;
+  max-width: 580px;
+}
+
+.step-badge {
+  display: inline-block;
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 18px;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 13px;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+.step-text p {
+  font-size: 16px;
+  color: var(--text-muted);
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+/* Download Section */
+.download-section {
+  padding: 64px 32px;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #fbfbfb 0%, #EFF6FF 100%);
+  border: 1px solid #E5E7EB;
+}
+
+.store-badges {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.store-badge {
+  height: 52px;
+  width: auto;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+  border-radius: 8px;
+}
+
+.store-badge:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 20px -10px rgba(0,0,0,0.3);
+}
+
+.custom-store-badge {
+  display: flex;
+  align-items: center;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  height: 52px;
+  border-radius: 8px;
+  padding: 0 16px 0 12px;
+  gap: 12px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+  border: 1px solid #000;
+}
+
+.custom-store-badge:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 20px -10px rgba(0,0,0,0.3);
+}
+
+.custom-store-badge img {
+  height: 32px;
+  width: auto;
+  border-radius: 6px;
+}
+
+.custom-store-badge .badge-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.custom-store-badge .badge-text .small {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a3a3a3;
+  margin-bottom: 0px;
+}
+
+.custom-store-badge .badge-text .large {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+}
+
+.feature-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  display: inline-block;
+}
+
+.feature-list li {
+  font-size: 16px;
+  color: var(--text-muted);
+  font-weight: 400;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  padding-left: 24px;
+  position: relative;
+}
+
+.feature-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: -1px;
+  color: var(--primary-blue);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.feature-list li strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* ============================
+   MOBILE RESPONSIVE
+   ============================ */
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: 80vh;
+  }
+
+  .hero-title {
+    font-size: 36px;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+  }
+
+  .hero-glass-container {
+    padding: 36px 24px;
+    width: 92%;
+  }
+
+  .guide-step {
+    padding: 20px 16px;
+    margin-bottom: 40px;
+    gap: 24px;
+  }
+
+  .section-title {
+    font-size: 24px;
+  }
+
+  .step-image-container.double {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .step-image-container.double img {
+    max-width: 240px;
+  }
+}
+
+/* ============================
+   FOOTER
+   ============================ */
+.app-footer {
+  text-align: center;
+  padding: 40px 20px 60px;
+  background-color: var(--bg-app);
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.app-footer p {
+  margin: 0;
+}
+
+.app-footer a {
+  color: #111827;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.app-footer a:hover {
+  color: var(--primary-blue);
+}
