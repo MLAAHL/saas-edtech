@@ -24,21 +24,22 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
   try {
     const col = db.collection('students');
     const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const studentQuery = {
-      stream: { $regex: new RegExp(`^${stream}$`, 'i') },
-      semester: parseInt(semester, 10),
-      isActive: true
-    };
+    const studentQuery = { isActive: true };
+
+    // Mentoring sessions are filed under a synthetic stream, and the mentees
+    // belong to many real classes — so they are matched by ID alone. Every
+    // other subject is still scoped to its own class.
+    if (classFilter.menteeIds) {
+      studentQuery.studentID = { $in: Array.from(classFilter.menteeIds) };
+    } else {
+      studentQuery.stream = { $regex: new RegExp(`^${stream}$`, 'i') };
+      studentQuery.semester = parseInt(semester, 10);
+    }
     if (classFilter.languageSubject) {
       studentQuery.languageSubject = { $regex: new RegExp(`^${escapeRe(classFilter.languageSubject)}$`, 'i') };
     }
     if (classFilter.electiveSubject) {
       studentQuery.electiveSubject = { $regex: new RegExp(`^${escapeRe(classFilter.electiveSubject)}$`, 'i') };
-    }
-    // A mentoring session covers only the mentor's own mentees, so only their
-    // parents may be notified — never the rest of the class.
-    if (classFilter.menteeIds) {
-      studentQuery.studentID = { $in: Array.from(classFilter.menteeIds) };
     }
     const allStudents = await col.find(studentQuery).toArray();
 
@@ -445,6 +446,15 @@ async function getSubjectDetails(db, stream, semester, subjectName) {
   }
 }
 
+// Mentoring is recorded against a single synthetic class rather than against
+// each student's own class. A mentor's mentees can span up to ten classes, so
+// filing per class would mean ten separate sessions, several of them holding
+// one or two students.
+const MENTORING_STREAM = 'MENTORING';
+const MENTORING_SEMESTER = 1;
+
+const isMentoringStream = (s) => String(s || '').trim().toUpperCase() === MENTORING_STREAM;
+
 // A mentoring session belongs to one mentor, not to the whole class: several
 // mentors usually share a class. Restrict the roster to that mentor's mentees
 // so the other mentors' students are not silently marked absent (and their
@@ -537,11 +547,17 @@ router.get('/streams', async (req, res) => {
     }
     
     console.log(`✅ Found ${streams.length} streams:`, streams);
-    
+
+    // Surfaced alongside the real streams so a mentor can pick it in My Classes;
+    // no student record carries this stream, the roster is the mentor's mentees.
+    const withMentoring = streams.includes(MENTORING_STREAM)
+      ? streams.slice()
+      : streams.concat(MENTORING_STREAM);
+
     res.json({
       success: true,
-      streams: streams.sort(),
-      count: streams.length
+      streams: withMentoring.sort(),
+      count: withMentoring.length
     });
     
   } catch (error) {
@@ -564,6 +580,10 @@ router.get('/streams/:stream/semesters', async (req, res) => {
       return res.status(503).json({ success: false, error: 'Database unavailable' });
     }
     
+    if (isMentoringStream(stream)) {
+      return res.json({ success: true, semesters: [MENTORING_SEMESTER], count: 1 });
+    }
+
     const cacheKey = `semesters:${stream}`;
     let semesters = getCache(cacheKey);
     
@@ -1091,7 +1111,32 @@ router.get('/students/:stream/sem:semester', async (req, res) => {
     }
     
     const collection = req.db.collection('students');
-    
+
+    // Mentoring session: the roster is the mentor's mentees across every class,
+    // so it is fetched by studentID instead of by stream/semester.
+    if (isMentoringStream(stream)) {
+      const menteeIds = await getMenteeIdsFor(req.db, teacherEmail);
+      const mentees = menteeIds && menteeIds.size
+        ? await collection.find({ studentID: { $in: Array.from(menteeIds) }, isActive: true })
+            .project({ _id: 1, studentID: 1, name: 1, email: 1, phone: 1, parentPhone: 1,
+                       languageSubject: 1, electiveSubject: 1, stream: 1, semester: 1 })
+            .sort({ stream: 1, semester: 1, name: 1 })
+            .toArray()
+        : [];
+      console.log(`🧑‍🏫 Mentoring roster: ${mentees.length} mentees for ${teacherEmail}`);
+      return res.json({
+        success: true,
+        mentorSession: true,
+        students: mentees.map(s => ({
+          studentID: s.studentID, name: s.name || 'Unknown', email: s.email, phone: s.phone,
+          parentPhone: s.parentPhone, languageSubject: s.languageSubject,
+          electiveSubject: s.electiveSubject, stream: s.stream, semester: s.semester
+        })),
+        count: mentees.length,
+        totalCount: mentees.length
+      });
+    }
+
     let students = await collection
       .find({
         stream: { $regex: new RegExp(`^${stream}$`, 'i') },
