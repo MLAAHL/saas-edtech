@@ -35,6 +35,11 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     if (classFilter.electiveSubject) {
       studentQuery.electiveSubject = { $regex: new RegExp(`^${escapeRe(classFilter.electiveSubject)}$`, 'i') };
     }
+    // A mentoring session covers only the mentor's own mentees, so only their
+    // parents may be notified — never the rest of the class.
+    if (classFilter.menteeIds) {
+      studentQuery.studentID = { $in: Array.from(classFilter.menteeIds) };
+    }
     const allStudents = await col.find(studentQuery).toArray();
 
     const notifTitle = 'Attendance Alert';
@@ -438,6 +443,21 @@ async function getSubjectDetails(db, stream, semester, subjectName) {
     console.error('❌ Error fetching subject details:', error);
     return null;
   }
+}
+
+// A mentoring session belongs to one mentor, not to the whole class: several
+// mentors usually share a class. Restrict the roster to that mentor's mentees
+// so the other mentors' students are not silently marked absent (and their
+// parents notified) by someone else's session.
+async function getMenteeIdsFor(db, teacherEmail) {
+  if (!teacherEmail) return null;
+  const safe = String(teacherEmail).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const teacher = await db.collection('teachers').findOne(
+    { email: { $regex: new RegExp('^' + safe + '$', 'i') } },
+    { projection: { mentees: 1 } }
+  );
+  if (!teacher) return null;
+  return new Set((teacher.mentees || []).map(m => m.studentID).filter(Boolean));
 }
 
 function filterStudentsBySubject(students, subjectDetails, manualLanguage = null, manualElective = null) {
@@ -1061,7 +1081,7 @@ router.delete('/attendance/:sessionId', firebaseAuth, async (req, res) => {
 router.get('/students/:stream/sem:semester', async (req, res) => {
   try {
     const { stream, semester } = req.params;
-    const { language, languageSubject, elective, electiveSubject, subject } = req.query;
+    const { language, languageSubject, elective, electiveSubject, subject, teacherEmail } = req.query;
     const semesterNumber = parseInt(semester);
     
     console.log(`📥 Fetching students for "${stream}" Sem ${semesterNumber}`);
@@ -1101,12 +1121,24 @@ router.get('/students/:stream/sem:semester', async (req, res) => {
     const langFilter = language || languageSubject;
     const electFilter = elective || electiveSubject;
     
-    const filteredStudents = filterStudentsBySubject(students, subjectDetails, langFilter, electFilter);
-    
+    let filteredStudents = filterStudentsBySubject(students, subjectDetails, langFilter, electFilter);
+
+    // Mentoring session: narrow to the mentor's own mentees in this class.
+    let mentorSession = false;
+    if (subjectDetails && subjectDetails.isMentorSession) {
+      mentorSession = true;
+      const menteeIds = await getMenteeIdsFor(req.db, teacherEmail);
+      filteredStudents = menteeIds
+        ? filteredStudents.filter(s => menteeIds.has(s.studentID))
+        : [];
+      console.log(`🧑‍🏫 Mentor session: ${filteredStudents.length} mentees for ${teacherEmail}`);
+    }
+
     console.log(`✅ Students: ${filteredStudents.length} of ${students.length}`);
-    
+
     res.json({
       success: true,
+      mentorSession,
       students: filteredStudents.map(student => ({
         studentID: student.studentID || student._id,
         name: student.name || 'Unknown',
@@ -1321,6 +1353,9 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     if (electiveSubject && electiveSubject !== 'ALL') {
       classFilter.electiveSubject = electiveSubject;
     }
+    if (subjectDetails && subjectDetails.isMentorSession) {
+      classFilter.menteeIds = (await getMenteeIdsFor(req.db, teacherEmail)) || new Set();
+    }
     const notifStats = await notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent, classFilter);
     
     res.json({ 
@@ -1422,6 +1457,9 @@ router.post('/attendance', async (req, res) => {
     }
     if (electiveSubject && electiveSubject !== 'ALL') {
       classFilter.electiveSubject = electiveSubject;
+    }
+    if (subjectDetails && subjectDetails.isMentorSession) {
+      classFilter.menteeIds = (await getMenteeIdsFor(req.db, teacherEmail)) || new Set();
     }
     const notifStats = await notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent, classFilter);
     

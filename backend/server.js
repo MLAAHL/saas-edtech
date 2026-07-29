@@ -206,7 +206,6 @@ const enrollmentsRoutes = require("./routes/enrollments");
 const notificationsRoutes = require("./routes/notifications");
 const firebaseUsersRoutes = require("./routes/firebaseUsers");
 const mentorshipRoutes = require("./routes/mentorship");
-const mentorshipAttendanceRoutes = require("./routes/mentorshipAttendance");
 const parentRoutes = require("./routes/parentRoutes");
 const pushRoutes = require("./routes/pushRoutes");
 
@@ -297,7 +296,6 @@ app.use("/api/enrollments", enrollmentsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/firebase-users", strictLimiter, firebaseUsersRoutes);
 app.use("/api/mentorship", mentorshipRoutes);
-app.use("/api/mentorship-attendance", mentorshipAttendanceRoutes);
 app.use("/api/parent", parentRoutes);
 app.use("/api/push", pushRoutes);
 

@@ -598,8 +598,10 @@ async function loadStudentsFromDatabase(classInfo) {
     showLoadingState();
     console.log('📥 Loading students for:', classInfo);
 
-    // 1. Try to load from cache first for instant display
-    const cacheKey = `students_${classInfo.stream}_sem${classInfo.semester}`;
+    // 1. Try to load from cache first for instant display.
+    // The subject is part of the key: a mentoring session returns only that
+    // mentor's mentees, so its roster must not be served for a normal class.
+    const cacheKey = `students_${classInfo.stream}_sem${classInfo.semester}_${classInfo.subject || 'ALL'}`;
     const cachedData = localStorage.getItem(cacheKey);
     let isCacheUsed = false;
 
@@ -626,7 +628,12 @@ async function loadStudentsFromDatabase(classInfo) {
     }
 
     // 2. Fetch fresh data from network (always update cache)
-    const url = `${API_BASE_URL}/students/${encodeURIComponent(classInfo.stream)}/sem${classInfo.semester}`;
+    // Send the subject and the signed-in teacher so the server can recognise a
+    // mentoring session and return only that mentor's mentees rather than the
+    // whole class.
+    const studentQs = new URLSearchParams({ subject: classInfo.subject || '' });
+    if (userData.userEmail) studentQs.set('teacherEmail', userData.userEmail);
+    const url = `${API_BASE_URL}/students/${encodeURIComponent(classInfo.stream)}/sem${classInfo.semester}?${studentQs}`;
     console.log('🔗 Fetching fresh data:', url);
 
     const headers = {
