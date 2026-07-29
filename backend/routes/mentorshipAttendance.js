@@ -119,7 +119,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'studentsPresent must be an array.' });
     }
 
-    const roster = [...new Set((mentor.mentees || []).map(m => m.studentID).filter(Boolean))];
+    const listed = [...new Set((mentor.mentees || []).map(m => m.studentID).filter(Boolean))];
+
+    // Count only mentees who still exist as students. Stale entries pointing at
+    // deleted students must not be recorded as absent — the mentor never saw
+    // them on screen, and counting them would inflate every absence tally.
+    const stillEnrolled = await req.db.collection('students')
+      .distinct('studentID', { studentID: { $in: listed } });
+    const roster = listed.filter(id => stillEnrolled.includes(id));
+
     if (roster.length === 0) {
       return res.status(400).json({ success: false, error: 'You have no mentees to mark.' });
     }
