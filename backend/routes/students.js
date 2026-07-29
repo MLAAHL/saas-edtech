@@ -630,16 +630,11 @@ router.get('/all', async (req, res) => {
 
     console.log('📡 Fetching all students from database...');
 
+    // No de-duplication by studentID: a student can legitimately be enrolled in
+    // more than one stream/semester (combined classes), and each record is a
+    // separate enrolment. Collapsing them hid students from the stream filters.
     const students = await req.db.collection('students').aggregate([
       { $match: { studentID: { $exists: true, $ne: "", $ne: null } } },
-      { $sort: { createdAt: -1 } },
-      {
-        $group: {
-          _id: { $toLower: { $trim: { input: "$studentID" } } },
-          doc: { $first: "$$ROOT" }
-        }
-      },
-      { $replaceRoot: { newRoot: "$doc" } },
       { $sort: { stream: 1, semester: 1, name: 1 } }
     ]).toArray();
 
