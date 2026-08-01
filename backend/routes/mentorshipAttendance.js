@@ -1,10 +1,12 @@
 // Mentorship attendance.
 //
-// Deliberately kept in its own collection rather than reusing `attendance`:
-//   - the attendance schema requires stream/semester/subject, and a mentor's
-//     group can span many classes (or none of them cleanly),
-//   - mentorship sessions must NOT count towards the 75% subject eligibility
-//     rule, so they must never be mixed into subject attendance queries.
+// Sessions live in their own collection, keyed by mentor rather than by class,
+// because a mentor's group can span many classes (or none of them cleanly).
+//
+// A mirror row is also written to `attendance` under the synthetic MENTORING
+// stream, which is what puts a session in History and the Attendance Register.
+// The synthetic stream keeps it out of every real subject's figures, so it
+// still cannot affect the 75% subject eligibility rule.
 //
 // Parents are not notified of a mentorship absence. That is intentional: an
 // "absent" push for a mentoring session reads to a parent like a missed class.
@@ -16,6 +18,66 @@ const firebaseAuth = require('../middleware/firebaseAuth');
 router.use(firebaseAuth);
 
 const COLLECTION = 'mentorshipAttendance';
+
+// Must match the synthetic class the subject flow uses, or the two ways of
+// taking a mentoring session would file into different registers.
+const MENTORING_STREAM = 'MENTORING';
+const MENTORING_SEMESTER = 1;
+const MENTORING_SUBJECT = 'MENTORING SESSION';
+
+// The screen asks for a date but not a time, and a register column needs one.
+function currentHourSlot() {
+  const fmt = (h) => {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 === 0 ? 12 : h % 12;
+    return `${hour}:00 ${ampm}`;
+  };
+  const h = new Date().getHours();
+  return `${fmt(h)} - ${fmt((h + 1) % 24)}`;
+}
+
+/**
+ * Mirror a session into `attendance` so it shows up in History (which reads
+ * that collection by teacherEmail) and in the Attendance Register.
+ *
+ * Absentees are stored explicitly. Everywhere else only presence is recorded
+ * and the roll is recovered from the class, but a mentoring group has no class
+ * to recover it from — mentee lists get reassigned, so the roll has to be
+ * pinned to the session at the time it was taken.
+ */
+async function mirrorToAttendance(db, { mentorEmail, date, present, absent }) {
+  const key = {
+    stream: MENTORING_STREAM,
+    semester: MENTORING_SEMESTER,
+    subject: MENTORING_SUBJECT,
+    date,
+    teacherEmail: mentorEmail
+  };
+
+  const existing = await db.collection('attendance').findOne(key);
+  const now = new Date();
+
+  await db.collection('attendance').updateOne(
+    key,
+    {
+      $set: {
+        ...key,
+        subjectType: 'CORE',
+        // Keep the original slot on a correction so the register column stays put.
+        time: existing?.time || currentHourSlot(),
+        studentsPresent: present,
+        studentsAbsent: absent,
+        totalStudents: present.length + absent.length,
+        presentCount: present.length,
+        absentCount: absent.length,
+        isDeleted: false,
+        updatedAt: now
+      },
+      $setOnInsert: { createdAt: now }
+    },
+    { upsert: true }
+  );
+}
 
 // Resolve the signed-in teacher, tolerating case differences in stored emails.
 async function findMentor(db, email) {
@@ -157,6 +219,8 @@ router.post('/', async (req, res) => {
     // One session per mentor per day: re-submitting corrects the earlier entry
     // instead of silently stacking duplicates.
     const existing = await req.db.collection(COLLECTION).findOne({ mentorEmail, date });
+
+    await mirrorToAttendance(req.db, { mentorEmail, date, present, absent });
 
     if (existing) {
       await req.db.collection(COLLECTION).updateOne(

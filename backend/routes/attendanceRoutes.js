@@ -567,21 +567,41 @@ async function getHistoricalRoll(db, stream, semesterNumber) {
 async function getRegisterStudents(db, stream, semester, subject, sessions) {
   const semesterNumber = parseInt(semester, 10);
   const studentsCollection = db.collection('students');
-  const subjectDetails = await getSubjectDetails(db, stream, semester, subject);
 
-  const current = await studentsCollection.find({
-    stream: { $regex: new RegExp(`^${stream}$`, 'i') },
-    semester: semesterNumber,
-    isActive: true
-  }).sort({ studentID: 1 }).toArray();
+  let roll = [];
 
-  let roll = filterStudentsBySubject(current, subjectDetails);
+  if (isMentoringStream(stream)) {
+    // MENTORING is synthetic — nobody is enrolled in it. The roll is the mentee
+    // list of whichever mentors took these sessions.
+    const emails = [...new Set(sessions.map(s => s.teacherEmail).filter(Boolean))];
+    const menteeIds = new Set();
+    for (const email of emails) {
+      const ids = await getMenteeIdsFor(db, email);
+      if (ids) ids.forEach(id => menteeIds.add(id));
+    }
+    if (menteeIds.size > 0) {
+      roll = await studentsCollection
+        .find({ studentID: { $in: [...menteeIds] } })
+        .project({ studentID: 1, name: 1, stream: 1, semester: 1 })
+        .toArray();
+    }
+  } else {
+    const subjectDetails = await getSubjectDetails(db, stream, semester, subject);
 
-  if (roll.length === 0) {
-    const historical = await getHistoricalRoll(db, stream, semesterNumber);
-    roll = filterStudentsBySubject(historical, subjectDetails);
-    if (roll.length > 0) {
-      console.log(`🕓 ${stream} sem${semesterNumber} has been promoted; using the ${roll.length}-student snapshot roll`);
+    const current = await studentsCollection.find({
+      stream: { $regex: new RegExp(`^${stream}$`, 'i') },
+      semester: semesterNumber,
+      isActive: true
+    }).sort({ studentID: 1 }).toArray();
+
+    roll = filterStudentsBySubject(current, subjectDetails);
+
+    if (roll.length === 0) {
+      const historical = await getHistoricalRoll(db, stream, semesterNumber);
+      roll = filterStudentsBySubject(historical, subjectDetails);
+      if (roll.length > 0) {
+        console.log(`🕓 ${stream} sem${semesterNumber} has been promoted; using the ${roll.length}-student snapshot roll`);
+      }
     }
   }
 
@@ -589,10 +609,14 @@ async function getRegisterStudents(db, stream, semester, subject, sessions) {
   const byId = new Map();
   roll.forEach(s => { if (!byId.has(s.studentID)) byId.set(s.studentID, s); });
 
-  // Anyone marked present but missing above (joined after the snapshot, or a
-  // class removed by hand) still belongs on the register.
-  const missing = [...new Set(sessions.flatMap(s => s.studentsPresent || []))]
-    .filter(id => !byId.has(id));
+  // Anyone the sessions name but the roll misses still belongs on the register:
+  // a student who joined after the snapshot, a class removed by hand, or a
+  // mentee since moved to another mentor. Mentoring sessions record absentees
+  // explicitly, so those count as named too.
+  const missing = [...new Set(sessions.flatMap(s => [
+    ...(s.studentsPresent || []),
+    ...(s.studentsAbsent || [])
+  ]))].filter(id => !byId.has(id));
 
   if (missing.length > 0) {
     const found = await studentsCollection
