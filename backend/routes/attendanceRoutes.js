@@ -522,6 +522,49 @@ function filterStudentsBySubject(students, subjectDetails, manualLanguage = null
   return filtered;
 }
 
+/**
+ * Roll for a register. Normally the students currently in stream + semester,
+ * but once a class is promoted nobody sits in the old semester any more and the
+ * register would come back empty. In that case rebuild the roll from the
+ * sessions themselves — every ID that was marked present at least once — and
+ * look those students up by ID so their names still resolve.
+ *
+ * Caveat: a student absent from every single session leaves no trace in the
+ * attendance documents (only presence is stored), so they cannot be recovered.
+ */
+async function getRegisterStudents(db, stream, semester, subject, sessions) {
+  const semesterNumber = parseInt(semester, 10);
+  const studentsCollection = db.collection('students');
+
+  const current = await studentsCollection.find({
+    stream: { $regex: new RegExp(`^${stream}$`, 'i') },
+    semester: semesterNumber,
+    isActive: true
+  }).sort({ studentID: 1 }).toArray();
+
+  const subjectDetails = await getSubjectDetails(db, stream, semester, subject);
+  const filtered = filterStudentsBySubject(current, subjectDetails);
+  if (filtered.length > 0) return filtered;
+
+  const ids = [...new Set(sessions.flatMap(s => s.studentsPresent || []))];
+  if (ids.length === 0) return [];
+
+  console.log(`🕓 No current students in ${stream} sem${semesterNumber}; rebuilding roll from ${ids.length} attended IDs`);
+
+  const records = await studentsCollection
+    .find({ studentID: { $in: ids } })
+    .project({ studentID: 1, name: 1 })
+    .toArray();
+
+  // A student can hold several enrolment records (combined classes); keep one.
+  const byId = new Map();
+  records.forEach(r => { if (!byId.has(r.studentID)) byId.set(r.studentID, r); });
+
+  return ids
+    .map(id => byId.get(id) || { studentID: id, name: id })
+    .sort((a, b) => String(a.studentID).localeCompare(String(b.studentID)));
+}
+
 // ============================================================================
 // STREAMS ROUTE (Required by view-attendance.js & myclass.js)
 // ============================================================================
@@ -765,16 +808,8 @@ router.get('/attendance/register/:stream/sem:semester/:subject', async (req, res
       });
     }
     
-    const studentsCollection = req.db.collection('students');
-    let students = await studentsCollection.find({
-      stream: { $regex: new RegExp(`^${stream}$`, 'i') },
-      semester: semesterNumber,
-      isActive: true
-    }).sort({ studentID: 1 }).toArray();
-    
-    const subjectDetails = await getSubjectDetails(req.db, stream, semester, subject);
-    students = filterStudentsBySubject(students, subjectDetails);
-    
+    const students = await getRegisterStudents(req.db, stream, semester, subject, sessions);
+
     const studentsWithAttendance = students.map(student => {
       let presentCount = 0;
       let absentCount = 0;
@@ -858,16 +893,8 @@ router.get('/attendance/date/:stream/sem:semester/:subject/:date', async (req, r
       return res.json({ success: true, sessions: [], students: [] });
     }
     
-    const studentsCollection = req.db.collection('students');
-    let students = await studentsCollection.find({
-      stream: { $regex: new RegExp(`^${stream}$`, 'i') },
-      semester: semesterNumber,
-      isActive: true
-    }).sort({ studentID: 1 }).toArray();
-    
-    const subjectDetails = await getSubjectDetails(req.db, stream, semester, subject);
-    students = filterStudentsBySubject(students, subjectDetails);
-    
+    const students = await getRegisterStudents(req.db, stream, semester, subject, sessions);
+
     const studentsWithSessions = students.map(student => ({
       studentID: student.studentID,
       name: student.name,
