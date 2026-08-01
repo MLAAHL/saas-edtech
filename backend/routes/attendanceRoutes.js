@@ -523,18 +523,51 @@ function filterStudentsBySubject(students, subjectDetails, manualLanguage = null
 }
 
 /**
- * Roll for a register. Normally the students currently in stream + semester,
- * but once a class is promoted nobody sits in the old semester any more and the
- * register would come back empty. In that case rebuild the roll from the
- * sessions themselves — every ID that was marked present at least once — and
- * look those students up by ID so their names still resolve.
+ * The class roll as it stood in a given semester.
  *
- * Caveat: a student absent from every single session leaves no trace in the
- * attendance documents (only presence is stored), so they cannot be recovered.
+ * Promotion rewrites students.semester in place (and deletes semester 6
+ * outright), so for any past semester nobody matches stream + semester any
+ * more. It does, however, snapshot every student into promotion_history first
+ * — that snapshot is the real historical roll, names and language choices
+ * included, and it covers students who have since graduated.
+ */
+async function getHistoricalRoll(db, stream, semesterNumber) {
+  const key = getCacheKey('roll', { stream, semesterNumber });
+  const cached = getCache(key);
+  if (cached) return cached;
+
+  // Snapshots of promotions that were undone describe a state that no longer
+  // happened, so skip them. Newest first: the most recent run wins.
+  const snapshots = await db.collection('promotion_history')
+    .find({ stream: { $regex: new RegExp(`^${stream}$`, 'i') }, restored: { $ne: true } })
+    .sort({ timestamp: -1 })
+    .toArray();
+
+  for (const snap of snapshots) {
+    const roll = (snap.students || []).filter(s => Number(s.semester) === semesterNumber);
+    if (roll.length > 0) {
+      setCache(key, roll);
+      return roll;
+    }
+  }
+
+  setCache(key, []);
+  return [];
+}
+
+/**
+ * Roll for a register: whoever is in stream + semester now, else the promotion
+ * snapshot for that semester, topped up with anyone the sessions recorded as
+ * present who neither source knows about.
+ *
+ * Only presence is stored on an attendance document, so where no snapshot
+ * exists (a class deleted by hand rather than promoted) a student absent from
+ * every single session leaves no trace and cannot be recovered.
  */
 async function getRegisterStudents(db, stream, semester, subject, sessions) {
   const semesterNumber = parseInt(semester, 10);
   const studentsCollection = db.collection('students');
+  const subjectDetails = await getSubjectDetails(db, stream, semester, subject);
 
   const current = await studentsCollection.find({
     stream: { $regex: new RegExp(`^${stream}$`, 'i') },
@@ -542,26 +575,36 @@ async function getRegisterStudents(db, stream, semester, subject, sessions) {
     isActive: true
   }).sort({ studentID: 1 }).toArray();
 
-  const subjectDetails = await getSubjectDetails(db, stream, semester, subject);
-  const filtered = filterStudentsBySubject(current, subjectDetails);
-  if (filtered.length > 0) return filtered;
+  let roll = filterStudentsBySubject(current, subjectDetails);
 
-  const ids = [...new Set(sessions.flatMap(s => s.studentsPresent || []))];
-  if (ids.length === 0) return [];
+  if (roll.length === 0) {
+    const historical = await getHistoricalRoll(db, stream, semesterNumber);
+    roll = filterStudentsBySubject(historical, subjectDetails);
+    if (roll.length > 0) {
+      console.log(`🕓 ${stream} sem${semesterNumber} has been promoted; using the ${roll.length}-student snapshot roll`);
+    }
+  }
 
-  console.log(`🕓 No current students in ${stream} sem${semesterNumber}; rebuilding roll from ${ids.length} attended IDs`);
-
-  const records = await studentsCollection
-    .find({ studentID: { $in: ids } })
-    .project({ studentID: 1, name: 1 })
-    .toArray();
-
-  // A student can hold several enrolment records (combined classes); keep one.
+  // One entry per student — a student can hold several enrolment records.
   const byId = new Map();
-  records.forEach(r => { if (!byId.has(r.studentID)) byId.set(r.studentID, r); });
+  roll.forEach(s => { if (!byId.has(s.studentID)) byId.set(s.studentID, s); });
 
-  return ids
-    .map(id => byId.get(id) || { studentID: id, name: id })
+  // Anyone marked present but missing above (joined after the snapshot, or a
+  // class removed by hand) still belongs on the register.
+  const missing = [...new Set(sessions.flatMap(s => s.studentsPresent || []))]
+    .filter(id => !byId.has(id));
+
+  if (missing.length > 0) {
+    const found = await studentsCollection
+      .find({ studentID: { $in: missing } })
+      .project({ studentID: 1, name: 1 })
+      .toArray();
+    found.forEach(r => { if (!byId.has(r.studentID)) byId.set(r.studentID, r); });
+    // Nothing anywhere knows this ID — show it rather than dropping the row.
+    missing.forEach(id => { if (!byId.has(id)) byId.set(id, { studentID: id, name: id }); });
+  }
+
+  return [...byId.values()]
     .sort((a, b) => String(a.studentID).localeCompare(String(b.studentID)));
 }
 
