@@ -19,6 +19,9 @@ async function getAuthHeaders() {
   return headers;
 }
 
+// Mentoring is a synthetic stream: every session is stored under semester 1.
+const isMentoringStream = (s) => String(s || '').trim().toUpperCase() === 'MENTORING';
+
 // ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
@@ -517,57 +520,27 @@ async function loadStreams() {
 async function loadSemesters(stream) {
   const semesterSelect = document.getElementById('semesterSelect');
 
-  try {
-    semesterSelect.innerHTML = '<option value="">Loading...</option>';
+  if (!stream) {
+    semesterSelect.innerHTML = '<option value="">Select stream first</option>';
     semesterSelect.disabled = true;
-
-    if (!stream) {
-      semesterSelect.innerHTML = '<option value="">Select stream first</option>';
-      return;
-    }
-
-    // List the semesters that actually exist in this stream, not just the ones
-    // the teacher happens to have created a subject for: that hid semesters
-    // with real attendance and offered ones with no students in them.
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch(
-      `${API_BASE_URL}/streams/${encodeURIComponent(stream)}/semesters`,
-      { headers: { ...authHeaders, 'Cache-Control': 'no-cache' } }
-    );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-
-    let semesters = (data.success && Array.isArray(data.semesters)) ? data.semesters : [];
-
-    // Fall back to the teacher's own classes if the stream lookup returns nothing.
-    if (semesters.length === 0) {
-      const classes = await getTeacherClasses();
-      semesters = classes.filter(c => c.stream === stream).map(c => Number(c.semester));
-    }
-
-    semesters = [...new Set(semesters.map(Number))].filter(n => !isNaN(n)).sort((a, b) => a - b);
-
-    semesterSelect.innerHTML = '<option value="">-- Select Semester --</option>';
-
-    if (semesters.length > 0) {
-      semesters.forEach(semester => {
-        const option = document.createElement('option');
-        option.value = semester;
-        option.textContent = `Semester ${semester}`;
-        semesterSelect.appendChild(option);
-      });
-      semesterSelect.disabled = false;
-      console.log(`✅ Loaded ${semesters.length} semesters`);
-    } else {
-      throw new Error('No semesters found for stream');
-    }
-
-  } catch (error) {
-    console.error('❌ Error loading semesters:', error);
-    semesterSelect.innerHTML = '<option value="">No semesters found</option>';
-    semesterSelect.disabled = true;
-    showNotification('Failed to load semesters', 'error');
+    return;
   }
+
+  // Always offer every semester. Deriving the list (from the teacher's own
+  // subjects, or from the semesters students currently sit in) hid semesters
+  // that still hold past attendance records worth looking up.
+  // MENTORING is the exception: its sessions are only ever stored at sem 1.
+  const semesters = isMentoringStream(stream) ? [1] : [1, 2, 3, 4, 5, 6];
+
+  semesterSelect.innerHTML = '<option value="">-- Select Semester --</option>';
+  semesters.forEach(semester => {
+    const option = document.createElement('option');
+    option.value = semester;
+    option.textContent = `Semester ${semester}`;
+    semesterSelect.appendChild(option);
+  });
+  semesterSelect.disabled = false;
+  console.log(`✅ Loaded ${semesters.length} semesters for ${stream}`);
 }
 
 async function loadSubjects(stream, semester) {
