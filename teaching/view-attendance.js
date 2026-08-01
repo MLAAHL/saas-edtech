@@ -555,8 +555,38 @@ async function loadSubjects(stream, semester) {
       return;
     }
 
+    // Subjects that already have attendance recorded, so a teacher can open any
+    // register for the class — not only the subjects they created themselves.
+    let recorded = [];
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch(
+        `${API_BASE_URL}/attendance/subjects/${encodeURIComponent(stream)}/sem${encodeURIComponent(semester)}`,
+        { headers: { ...authHeaders, 'Cache-Control': 'no-cache' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.subjects)) recorded = data.subjects;
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not load recorded subjects:', error);
+    }
+
+    // Include the teacher's own subjects too, so a freshly created one with no
+    // sessions yet still shows up.
     const classes = await getTeacherClasses();
-    const subjects = [...new Set(classes.filter(c => c.stream === stream && String(c.semester) === String(semester)).map(c => c.subject))];
+    const own = classes
+      .filter(c => c.stream === stream && String(c.semester) === String(semester))
+      .map(c => c.subject);
+
+    // Case-insensitive union, keeping the first spelling seen.
+    const seen = new Map();
+    [...recorded, ...own].forEach(s => {
+      if (!s) return;
+      const key = String(s).trim().toLowerCase();
+      if (!seen.has(key)) seen.set(key, s);
+    });
+    const subjects = [...seen.values()].sort((a, b) => a.localeCompare(b));
 
     subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 

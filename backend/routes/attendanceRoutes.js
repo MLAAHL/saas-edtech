@@ -699,6 +699,32 @@ router.get('/subjects/:stream/sem:semester', async (req, res) => {
   }
 });
 
+// Subjects that actually have attendance recorded for this class. The register
+// is keyed on stream + semester + subject, so these are the ones worth offering
+// in View Attendance — a teacher's own subject list misses classes taken by
+// colleagues, and the subjects collection lists ones never taught.
+router.get('/attendance/subjects/:stream/sem:semester', async (req, res) => {
+  try {
+    const { stream, semester } = req.params;
+    const safeStream = String(stream).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // distinct() is not matched by the /^find/ soft-delete hook, so filter here.
+    const subjects = await Attendance.distinct('subject', {
+      stream: { $regex: new RegExp(`^${safeStream}$`, 'i') },
+      semester: parseInt(semester, 10),
+      isDeleted: { $ne: true }
+    });
+
+    res.json({
+      success: true,
+      subjects: subjects.filter(Boolean).sort((a, b) => a.localeCompare(b))
+    });
+  } catch (error) {
+    console.error('❌ Error fetching attendance subjects:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================================================
 // ATTENDANCE REGISTER ROUTE (Required by view-attendance.js)
 // ============================================================================
