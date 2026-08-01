@@ -526,8 +526,26 @@ async function loadSemesters(stream) {
       return;
     }
 
-    const classes = await getTeacherClasses();
-    const semesters = [...new Set(classes.filter(c => c.stream === stream).map(c => Number(c.semester)))].sort((a, b) => a - b);
+    // List the semesters that actually exist in this stream, not just the ones
+    // the teacher happens to have created a subject for: that hid semesters
+    // with real attendance and offered ones with no students in them.
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch(
+      `${API_BASE_URL}/streams/${encodeURIComponent(stream)}/semesters`,
+      { headers: { ...authHeaders, 'Cache-Control': 'no-cache' } }
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+
+    let semesters = (data.success && Array.isArray(data.semesters)) ? data.semesters : [];
+
+    // Fall back to the teacher's own classes if the stream lookup returns nothing.
+    if (semesters.length === 0) {
+      const classes = await getTeacherClasses();
+      semesters = classes.filter(c => c.stream === stream).map(c => Number(c.semester));
+    }
+
+    semesters = [...new Set(semesters.map(Number))].filter(n => !isNaN(n)).sort((a, b) => a - b);
 
     semesterSelect.innerHTML = '<option value="">-- Select Semester --</option>';
 
