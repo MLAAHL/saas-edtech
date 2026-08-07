@@ -44,7 +44,10 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     const allStudents = await col.find(studentQuery).toArray();
 
     const notifTitle = 'Attendance Alert';
-    const notifBody = `Your child was marked ABSENT for ${subject} on ${date} at ${time}.`;
+    // Named rather than "your child": a parent with two students at the college
+    // cannot tell which one an unnamed alert is about.
+    const bodyFor = (name) =>
+      `${name || 'Your child'} was marked ABSENT for ${subject} on ${date} at ${time}.`;
 
     const stats = {
       notificationsSent: 0,
@@ -68,6 +71,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       });
 
       if (!isPresent) {
+        const notifBody = bodyFor(sname);
         const hasFCM = student.fcmTokens && student.fcmTokens.length > 0;
         const hasWebPush = student.webPushSubscriptions && student.webPushSubscriptions.length > 0;
 
@@ -92,7 +96,8 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
               absentAndroidTokens.push({
                 token: t,
                 unreadCount: updatedUnreadCount,
-                studentId: student._id
+                studentId: student._id,
+                body: notifBody
               });
               tokenToStudentId[t] = student._id;
             }
@@ -173,12 +178,12 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       const messages = uniqueTokensArray.map(item => ({
         notification: {
           title: notifTitle,
-          body: notifBody
+          body: item.body
         },
         data: {
           type: 'attendance_alert',
           title: notifTitle,
-          body: notifBody,
+          body: item.body,
           subject: subject,
           date: date,
           timestamp: Date.now().toString()
@@ -186,9 +191,9 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         android: {
           priority: 'high',
           ttl: 0,
-          notification: { 
+          notification: {
             title: notifTitle,
-            body: notifBody,
+            body: item.body,
             sound: 'default',
             channelId: 'attendance_alerts',
             priority: 'max',
@@ -205,7 +210,7 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
           },
           payload: {
             aps: { 
-              alert: { title: notifTitle, body: notifBody },
+              alert: { title: notifTitle, body: item.body },
               sound: 'default',
               badge: item.unreadCount,
               'content-available': 1,
