@@ -902,6 +902,29 @@ async function loadFullAttendance() {
   } finally { hideLoading(); }
 }
 
+// Chart.js is 70 KB — more than half the app's first load — and only the
+// Insights tab draws a chart. Fetch it the first time one is needed instead of
+// on every launch.
+let chartLibraryPromise = null;
+
+function loadChartLibrary() {
+  if (window.Chart) return Promise.resolve();
+  if (chartLibraryPromise) return chartLibraryPromise;
+
+  chartLibraryPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    s.onload = resolve;
+    s.onerror = () => {
+      // Let a later visit try again rather than failing for the whole session.
+      chartLibraryPromise = null;
+      reject(new Error('Could not load the chart library'));
+    };
+    document.head.appendChild(s);
+  });
+  return chartLibraryPromise;
+}
+
 // ===== INSIGHTS =====
 async function loadInsights() {
   if (!currentStudent) return; 
@@ -951,6 +974,7 @@ async function loadInsights() {
     const subjectChartCard = document.getElementById('subjectChartCard');
     const ctx = document.getElementById('subjectBarChart');
     if (ctx && subjectChartCard && data.subjectAnalytics) {
+       await loadChartLibrary();
        if (window.subjectChartInstance) window.subjectChartInstance.destroy();
        const labels = data.subjectAnalytics.map(sub => {
           const parts = sub.subject.split(/[\s-]+/).filter(p => p.length > 0);
