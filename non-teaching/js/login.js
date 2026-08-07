@@ -124,7 +124,7 @@ document.getElementById('authForm')?.addEventListener('submit', async e => {
     showNotification('Login successful!', 'success');
     
     setTimeout(() => {
-      window.location.href = 'dashboardNone';
+      window.location.href = 'dashboard';
     }, 1000);
     
   } catch (err) {
@@ -158,7 +158,7 @@ function checkAuthAndRedirect() {
     
     if (user && isOnLoginPage) {
       console.log('✅ Already authenticated, redirecting to dashboard.html');
-      window.location.replace('dashboardNone');
+      window.location.replace('dashboard');
     }
   });
 }

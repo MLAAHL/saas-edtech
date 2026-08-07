@@ -1642,12 +1642,12 @@
       <span class="nav-label">History</span>
     </button>
 
-    <button class="nav-item" onclick="window.location.href='mentorshipNone'">
+    <button class="nav-item" onclick="window.location.href='mentorship'">
       <span class="material-symbols-rounded">diversity_3</span>
       <span class="nav-label">Mentees</span>
     </button>
 
-    <button class="nav-item" onclick="window.location.href='ai-assistantNone'">
+    <button class="nav-item" onclick="window.location.href='ai-assistant'">
       <span class="material-symbols-rounded">auto_awesome</span>
       <span class="nav-label">AI</span>
     </button>
@@ -1655,7 +1655,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
   <script src="js/config.js?v=2"></script>
-  <script src="js/myclass.js?v=8"></script>
+  <script src="js/myclass.js?v=9"></script>
 
   <script>
     let croppieInstance = null;
@@ -1783,7 +1783,7 @@
     });
 
     function viewAttendance() {
-      window.location.href = 'view-attendanceNone';
+      window.location.href = 'view-attendance';
     }
 
     function toggleNotificationDropdown(e) {
@@ -1855,8 +1855,8 @@
     function logout() {
       if (window.firebaseAuth && window.firebaseSignOut) {
         window.firebaseSignOut(window.firebaseAuth)
-          .then(() => window.location.href = './None')
-          .catch(() => window.location.href = './None');
+          .then(() => window.location.href = './')
+          .catch(() => window.location.href = './');
       }
     }
 

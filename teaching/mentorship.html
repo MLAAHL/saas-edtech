@@ -193,14 +193,14 @@
 
   <div class="topbar">
     <div class="wrap">
-      <a class="back-btn" href="myclassNone" aria-label="Back to my classes">
+      <a class="back-btn" href="myclass" aria-label="Back to my classes">
         <span class="material-symbols-rounded">arrow_back</span>
       </a>
       <div style="flex:1; min-width:0;">
         <h1>Mentorship Attendance</h1>
         <div class="sub" id="mentorSub">Loading…</div>
       </div>
-      <a class="back-btn" href="mentorship-registerNone" aria-label="View mentoring register" title="Register">
+      <a class="back-btn" href="mentorship-register" aria-label="View mentoring register" title="Register">
         <span class="material-symbols-rounded">table_chart</span>
       </a>
     </div>
@@ -275,7 +275,7 @@
     window.firebaseOnAuthStateChanged = onAuthStateChanged;
 
     onAuthStateChanged(auth, (user) => {
-      if (!user) { window.location.href = './None'; return; }
+      if (!user) { window.location.href = './'; return; }
       window.dispatchEvent(new CustomEvent('mentorship:ready'));
     });
   </script>

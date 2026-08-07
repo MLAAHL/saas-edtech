@@ -75,7 +75,7 @@
     onAuthStateChanged(auth, (user) => {
       if (user) {
         // User is logged in - redirect without ever showing login form
-        window.location.replace('myclassNone');
+        window.location.replace('myclass');
       } else {
         // User is not logged in - hide loader and reveal login form smoothly
         var loader = document.getElementById('auth-guard-loader');
@@ -389,7 +389,7 @@
     </div>
   </div> <!-- End main-content -->
 
-  <script src="js/login.js"></script>
+  <script src="js/login.js?v=1"></script>
 
   <script>
     try { localStorage.setItem('userType', 'teaching'); } catch(e) {}

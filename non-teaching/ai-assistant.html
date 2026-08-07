@@ -1044,19 +1044,19 @@
   <aside class="sidebar">
     <div class="sb-logo"><img src="logo.png" alt="Logo"></div>
     <div class="sb-group">
-      <a href="dashboardNone" class="sb-link">
+      <a href="dashboard" class="sb-link">
         <span class="material-symbols-rounded">dashboard</span> Dashboard
       </a>
-      <a href="studentsNone" class="sb-link">
+      <a href="students" class="sb-link">
         <span class="material-symbols-rounded">group</span> Students
       </a>
-      <a href="reportNone" class="sb-link">
+      <a href="report" class="sb-link">
         <span class="material-symbols-rounded">description</span> Reports
       </a>
-      <a href="view-attendanceNone" class="sb-link">
+      <a href="view-attendance" class="sb-link">
         <span class="material-symbols-rounded">assignment</span> View Attendance
       </a>
-      <a href="promotionNone" class="sb-link">
+      <a href="promotion" class="sb-link">
         <span class="material-symbols-rounded">trending_up</span> Promote
       </a>
     </div>
@@ -1064,13 +1064,13 @@
     <div class="sb-divider"></div>
 
     <div class="sb-group">
-      <a href="ai-assistantNone" class="sb-link active">
+      <a href="ai-assistant" class="sb-link active">
         <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
       </a>
-      <a href="teachersNone" class="sb-link">
+      <a href="teachers" class="sb-link">
         <span class="material-symbols-rounded">badge</span> Teachers
       </a>
-      <a href="parents-statusNone" class="sb-link">
+      <a href="parents-status" class="sb-link">
         <span class="material-symbols-rounded">notifications</span> Parent Status
       </a>
     </div>
@@ -1078,7 +1078,7 @@
     <div class="sb-divider"></div>
 
     <div class="sb-group">
-      <a href="mentorshipNone" class="sb-link">
+      <a href="mentorship" class="sb-link">
         <span class="material-symbols-rounded">school</span> Mentors
       </a>
     </div>
@@ -1174,7 +1174,7 @@
       signOut(auth).then(() => {
         localStorage.clear();
         sessionStorage.clear();
-        window.location.replace("./None");
+        window.location.replace("./");
       });
     };
 
@@ -1237,7 +1237,7 @@
           initProfileUpload(user.email);
         }
       } else {
-        window.location.href = './None';
+        window.location.href = './';
       }
     });
   </script>

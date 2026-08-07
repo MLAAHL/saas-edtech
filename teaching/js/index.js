@@ -69,7 +69,7 @@ function loadUserInfo() {
             resolve(user);
           } else {
             console.log('⚠️ No user authenticated');
-            window.location.href = './None';
+            window.location.href = './';
             resolve(null);
           }
         });
@@ -1100,7 +1100,7 @@ function showSubmittedConfirmation(subject, date, presentStudents, totalStudents
 
     setTimeout(() => {
       overlay.remove();
-      window.location.href = 'myclassNone';
+      window.location.href = 'myclass';
     }, 300);
   };
 }

@@ -548,25 +548,25 @@
         <nav class="flex-1 px-4 py-6">
           <ul class="space-y-2">
             <li>
-              <a href="myclassNone" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl highlight text-oat font-medium">
+              <a href="myclass" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl highlight text-oat font-medium">
                 <i class="fas fa-home text-sm w-5"></i>
                 <span>Dashboard</span>
               </a>
             </li>
             <li>
-              <a href="promotionNone" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-noir/5 hover:text-noir text-noir/70 transition-colors">
+              <a href="promotion" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-noir/5 hover:text-noir text-noir/70 transition-colors">
                 <i class="fas fa-user-graduate text-sm w-5"></i>
                 <span>Promote Students</span>
               </a>
             </li>
             <li>
-              <a href="msgNone" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 hover:text-green-600 text-noir/70 transition-colors">
+              <a href="msg" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 hover:text-green-600 text-noir/70 transition-colors">
                 <i class="fas fa-comments text-sm w-5"></i>
                 <span>WhatsApp</span>
               </a>
             </li>
             <li>
-              <a href="reportNone" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-noir/5 hover:text-noir text-noir/70 transition-colors">
+              <a href="report" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-noir/5 hover:text-noir text-noir/70 transition-colors">
                 <i class="fas fa-chart-bar text-sm w-5"></i>
                 <span>Reports</span>
               </a>
@@ -1098,7 +1098,7 @@ function takeAttendance(itemId) {
     
     // ✅ FIXED: Navigate to mark.html instead of index.html
     setTimeout(() => {
-      window.location.href = './None';
+      window.location.href = './';
     }, 1200);
 
   } catch (error) {
@@ -1683,7 +1683,7 @@ function renderCompleted() {
         if (confirm('Are you sure you want to logout?')) {
           localStorage.clear();
           sessionStorage.clear();
-          window.location.href = 'loginNone';
+          window.location.href = 'login';
         }
       }
       
@@ -1792,7 +1792,7 @@ function renderCompleted() {
         if (!email || !isAuthorizedUser(email)) {
           console.warn('❌ Unauthorized user detected');
           signOut(auth).then(() => {
-            window.location.href = "loginNone";
+            window.location.href = "login";
           });
           return;
         }
@@ -1804,7 +1804,7 @@ function renderCompleted() {
       } else {
         console.log('❌ No user authenticated, redirecting...');
         setTimeout(() => {
-          window.location.href = "loginNone";
+          window.location.href = "login";
         }, 100);
       }
     });
@@ -1944,7 +1944,7 @@ function renderCompleted() {
         
         // Redirect after short delay
         setTimeout(() => {
-          window.location.href = "/loginNone";
+          window.location.href = "/login";
         }, 500);
         
       } catch (error) {
@@ -1953,7 +1953,7 @@ function renderCompleted() {
         // Force logout even on error
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = "/loginNone";
+        window.location.href = "/login";
       }
     };
     
@@ -1983,7 +1983,7 @@ function renderCompleted() {
     setTimeout(() => {
       if (!authStateChecked) {
         console.warn('⚠️ Auth check timeout, redirecting to login...');
-        window.location.href = "loginNone";
+        window.location.href = "login";
       }
     }, 10000);
     

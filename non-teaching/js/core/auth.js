@@ -52,7 +52,7 @@
     }
     localStorage.clear();
     sessionStorage.clear();
-    window.location.replace('./None');
+    window.location.replace('./');
   }
 
   function getInitials(name, fallback) {
@@ -116,7 +116,7 @@
 
     auth.onAuthStateChanged(async function (user) {
       if (!user) {
-        window.location.replace('./None');
+        window.location.replace('./');
         return;
       }
 
