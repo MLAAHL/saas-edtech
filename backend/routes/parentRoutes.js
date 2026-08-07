@@ -63,6 +63,23 @@ function buildDateQuery(dateStr) {
   return { $or: [{ date: dateStr }, { date: { $gte: startUTC, $lte: endUTC } }] };
 }
 
+// Mentoring is filed under a synthetic class rather than the student's own, so
+// it never matches a stream/semester query and has to be fetched by name.
+const MENTORING_STREAM = 'MENTORING';
+
+async function findMentoringRecords(db, student, dateQuery) {
+  return db.collection('attendance').find({
+    stream: MENTORING_STREAM,
+    isDeleted: { $ne: true },
+    // Only sessions this student was actually on the roll for. Absentees are
+    // stored explicitly on a mentoring row, which is what makes this possible.
+    $and: [
+      { $or: [{ studentsPresent: student.studentID }, { studentsAbsent: student.studentID }] },
+      dateQuery
+    ]
+  }).toArray();
+}
+
 // Filter: only show records relevant to this student's language/elective
 function isRecordRelevant(record, student) {
   const LANGUAGES = ['HINDI', 'KANNADA', 'SANSKRIT'];
@@ -510,18 +527,33 @@ router.get('/daily/:studentID', parentAuth, async (req, res) => {
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const targetDateStr = date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-    const query = { stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, isDeleted: { $ne: true }, ...buildDateQuery(targetDateStr) };
+    const dateQuery = buildDateQuery(targetDateStr);
+    const query = { stream: { $regex: new RegExp(`^${student.stream}$`, 'i') }, semester: student.semester, isDeleted: { $ne: true }, ...dateQuery };
     const records = await req.db.collection('attendance').find(query).toArray();
-    
+
     records.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 
     // Filter to only relevant subjects for this student
     const filtered = records.filter(r => isRecordRelevant(r, student));
 
+    // A mentoring session is part of the child's day, so it belongs here even
+    // though it is not one of their class's subjects. It carries no time, so it
+    // sorts to the end rather than into a period it never occupied.
+    const mentoring = await findMentoringRecords(req.db, student, dateQuery);
+
     const dailyAttendance = filtered.map(record => {
       const present = isStudentPresent(record.studentsPresent, student);
       return { subject: record.subject, time: record.time || 'N/A', status: present ? 'Present' : 'Absent', isPresent: present };
-    });
+    }).concat(mentoring.map(record => {
+      const present = isStudentPresent(record.studentsPresent, student);
+      return {
+        subject: 'Mentoring Session',
+        time: record.time || '',
+        status: present ? 'Present' : 'Absent',
+        isPresent: present,
+        isMentoring: true
+      };
+    }));
 
     const presentCount = dailyAttendance.filter(a => a.isPresent).length;
     const totalClasses = dailyAttendance.length;

@@ -828,7 +828,7 @@ async function loadDailyAttendance() {
           <div style="width: 48px; height: 48px; border-radius: 50%; background: ${iconBg}; color: ${iconColor}; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; flex-shrink: 0;">${initials}</div>
           <div class="class-info" style="flex: 1;">
             <div style="font-weight: 600; font-size: 14px; color: var(--text-dark); margin-bottom: 4px; line-height: 1.3;">${a.subject}</div>
-            <div style="font-size: 12px; color: var(--text-grey); font-weight: 500;">${a.time || 'Scheduled'}</div>
+            <div style="font-size: 12px; color: var(--text-grey); font-weight: 500;">${a.isMentoring ? 'With their mentor' : (a.time || 'Scheduled')}</div>
           </div>
           <span style="padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: ${iconBg}; color: ${iconColor};">${a.isPresent ? 'Present' : 'Absent'}</span>
         </div>`;
@@ -1209,7 +1209,7 @@ async function processNotifications(recentDays) {
                     <span class="material-symbols-rounded" style="color: #DE3B40; font-size: 18px;">warning</span>
                     <span style="font-weight: 700; color: #DE3B40; font-size: 14px;">Absence Alert</span>
                   </div>
-                  <p style="color: var(--text-dark); font-size: 13px; margin: 0; line-height: 1.5; font-weight: 500;"><b>${firstName}</b> was marked absent for <br><b>${absentClass.subject}</b> on ${dateStr} (${absentClass.time || 'Scheduled'}).</p>
+                  <p style="color: var(--text-dark); font-size: 13px; margin: 0; line-height: 1.5; font-weight: 500;"><b>${firstName}</b> was marked absent for <br><b>${absentClass.subject}</b> on ${dateStr}${absentClass.isMentoring ? '' : ` (${absentClass.time || 'Scheduled'})`}.</p>
                 </div>
               `;
             });
