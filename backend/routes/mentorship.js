@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Teacher = require('../models/Teacher');
 const Student = require('../models/student');
+const firebaseAuth = require('../middleware/firebaseAuth');
+
+// These routes read every teacher's name and email and can reassign or wipe
+// any mentee list, so none of them may be reachable without a signed-in user.
+router.use(firebaseAuth);
 
 // Get all mentors and their mentee counts
 router.get('/stats', async (req, res) => {

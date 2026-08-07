@@ -1106,13 +1106,19 @@
     let selectedStudent = null;
     let activeAssignTab = 'single';
 
+    // Every mentorship call carries the signed-in user's token. Fetched per
+    // request rather than kept, because an ID token expires after an hour.
+    async function authHeaders(extra) {
+      const headers = Object.assign({}, extra || {});
+      if (auth.currentUser) {
+        headers['Authorization'] = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
+      return headers;
+    }
+
     async function fetchTeacherProfile(email) {
       try {
-        const headers = {};
-        if (auth.currentUser) {
-          const token = await auth.currentUser.getIdToken();
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+        const headers = await authHeaders();
         const response = await fetch(`${API_BASE_URL}/teacher/profile/email/${encodeURIComponent(email)}`, { headers });
         const data = await response.json();
         return data.success && data.teacher ? data.teacher : null;
@@ -1156,7 +1162,7 @@
 
     async function loadMentors() {
       try {
-        const res = await fetch(`${API_BASE_URL}/mentorship/stats`);
+        const res = await fetch(`${API_BASE_URL}/mentorship/stats`, { headers: await authHeaders() });
         const data = await res.json();
         if (data.success) { allTeachers = data.stats; renderMentorList(); updateStats(); }
       } catch (error) { console.error('Error loading mentors:', error); }
@@ -1296,7 +1302,7 @@
 
         const res = await fetch(`${API_BASE_URL}/mentorship/remove-bulk`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ mentorEmail: activeMentor.email, studentIDs: ids })
         });
         const data = await res.json();
@@ -1349,7 +1355,7 @@
       if (query.length < 2) { searchResults.style.display = 'none'; return; }
       searchTimeout = setTimeout(async () => {
         try {
-          const res = await fetch(`${API_BASE_URL}/mentorship/search-students?q=${encodeURIComponent(query)}`);
+          const res = await fetch(`${API_BASE_URL}/mentorship/search-students?q=${encodeURIComponent(query)}`, { headers: await authHeaders() });
           const data = await res.json();
           if (data.success && data.students.length > 0) {
             searchResults.innerHTML = data.students.map(s => `<div class="search-result-item" onclick="selectStudentForAssign('${s.studentID}', '${s.name}')"><div style="font-weight:600;">${s.name}</div><div style="font-size:11px;color:var(--text-secondary);">${s.studentID} • ${s.stream} • Sem ${s.semester}</div></div>`).join('');
@@ -1438,7 +1444,7 @@
         btn.disabled = true; btn.textContent = 'Removing...';
         const res = await fetch(`${API_BASE_URL}/mentorship/remove-bulk`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ mentorEmail: email, studentIDs })
         });
         const data = await res.json();
@@ -1472,7 +1478,7 @@
       }
       try {
         btn.disabled = true; btn.textContent = 'Assigning...';
-        const res = await fetch(`${API_BASE_URL}/mentorship/assign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mentorEmail: email, studentIDs }) });
+        const res = await fetch(`${API_BASE_URL}/mentorship/assign`, { method: 'POST', headers: await authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ mentorEmail: email, studentIDs }) });
         const data = await res.json();
         if (data.success) { showToast(data.message, 'success'); window.closeModal(); await loadMentors(); window.selectMentor(email); }
         else { showToast(data.error || 'Assignment failed', 'error'); }
@@ -1483,7 +1489,7 @@
     window.removeMentee = async function (studentID) {
       if (!confirm(`Are you sure you want to remove ${studentID} from this mentor?`)) return;
       try {
-        const res = await fetch(`${API_BASE_URL}/mentorship/remove`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mentorEmail: activeMentor.email, studentID }) });
+        const res = await fetch(`${API_BASE_URL}/mentorship/remove`, { method: 'POST', headers: await authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ mentorEmail: activeMentor.email, studentID }) });
         const data = await res.json();
         if (data.success) { showToast('Mentee removed', 'success'); await loadMentors(); window.selectMentor(activeMentor.email); }
       } catch (error) { showToast('Error removing mentee', 'error'); }
