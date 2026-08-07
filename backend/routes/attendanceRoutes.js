@@ -17,6 +17,12 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   console.warn('⚠️ Web Push VAPID keys not configured in environment variables');
 }
 
+// How long a push service should keep trying to reach a phone that is off or
+// out of signal. An absence alert is still worth reading later in the day; a
+// day later it is stale, and the parent can see the same thing in the app.
+const ALERT_TTL_SECONDS = 24 * 60 * 60;
+const ALERT_TTL_MS = ALERT_TTL_SECONDS * 1000;
+
 // helper function to send push notifications to absent students' parents
 // classFilter narrows language/elective classes so students of other
 // languages aren't treated as absent
@@ -126,7 +132,10 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
               webPushTasks.push((async () => {
                 try {
                   const now = new Date();
-                  const options = { urgency: 'high', TTL: 86400, topic: 'attendance' }; // Force immediate delivery for Web Push
+                  // No topic: a topic makes each new alert replace the previous
+                  // undelivered one, so a parent coming back online after
+                  // missing three classes would only ever see the last.
+                  const options = { urgency: 'high', TTL: ALERT_TTL_SECONDS };
                   await webpush.sendNotification(sub, payload, options);
                   console.log(`📡 [WEBPUSH] Successfully sent alert to endpoint: ${sub.endpoint}`);
                   dbUpdateTasks.push(
@@ -194,7 +203,10 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
         },
         android: {
           priority: 'high',
-          ttl: 0,
+          // Hold the alert for a day if the phone is off or out of signal.
+          // ttl 0 meant "deliver this instant or throw it away", so a parent
+          // whose phone was offline when attendance was marked never saw it.
+          ttl: ALERT_TTL_MS,
           notification: {
             title: notifTitle,
             body: item.body,
@@ -210,7 +222,9 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
           headers: {
             'apns-priority': '10',
             'apns-push-type': 'alert',
-            'apns-expiration': '0'
+            // Epoch seconds at which Apple stops trying. 0 means a single
+            // attempt and then discard, which loses an offline device.
+            'apns-expiration': String(Math.floor(Date.now() / 1000) + ALERT_TTL_SECONDS)
           },
           payload: {
             aps: { 
