@@ -1160,9 +1160,26 @@ async function showAnnouncement() {
       img.hidden = true;
     }
 
+    // The button either sends them into the app or out to a link. An in-app
+    // action must not behave like a link: no new tab, no navigation away.
     const cta = document.getElementById('announceCta');
-    if (a.linkUrl) {
+    const tabNames = { daily: 'Daily', full: 'Overall', insights: 'Insights', profile: 'Profile' };
+
+    if (a.actionTab && tabNames[a.actionTab]) {
+      cta.textContent = a.ctaLabel || `Go to ${tabNames[a.actionTab]}`;
+      cta.hidden = false;
+      cta.removeAttribute('href');
+      cta.removeAttribute('target');
+      cta.style.cursor = 'pointer';
+      cta.onclick = (e) => {
+        e.preventDefault();
+        closeAnnouncement(a.id, 'opened');
+        switchTab(a.actionTab);
+      };
+    } else if (a.linkUrl) {
       cta.href = a.linkUrl;
+      cta.target = '_blank';
+      cta.rel = 'noopener noreferrer';
       cta.textContent = a.ctaLabel || 'Learn more';
       cta.hidden = false;
       cta.onclick = () => closeAnnouncement(a.id, 'opened');

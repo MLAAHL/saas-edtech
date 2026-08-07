@@ -26,6 +26,12 @@ function safeUrl(value) {
   return /^https?:\/\//i.test(url) ? url.slice(0, 500) : '';
 }
 
+// A button can send the reader to a tab inside the app instead of out to a
+// link. Whitelisted, because the value is handed straight to the app's own
+// navigation — 'full' is the tab labelled Overall.
+const TABS = ['daily', 'full', 'insights', 'profile'];
+const safeTab = (value) => TABS.includes(String(value || '').trim()) ? String(value).trim() : '';
+
 // Who an announcement is for. Stored on the document so the same card can be
 // a college-wide notice or a message to one class.
 function readAudience(body) {
@@ -79,6 +85,7 @@ function shape(doc) {
     body: doc.body,
     imageUrl: doc.imageUrl || '',
     linkUrl: doc.linkUrl || '',
+    actionTab: doc.actionTab || '',
     ctaLabel: doc.ctaLabel || '',
     isActive: !!doc.isActive,
     startsAt: doc.startsAt || null,
@@ -133,6 +140,7 @@ router.get('/active', async (req, res) => {
         body: doc.body,
         imageUrl: doc.imageUrl || '',
         linkUrl: doc.linkUrl || '',
+        actionTab: doc.actionTab || '',
         ctaLabel: doc.ctaLabel || ''
       }
     });
@@ -201,6 +209,7 @@ router.post('/', async (req, res) => {
       body,
       imageUrl: safeUrl(req.body.imageUrl),
       linkUrl: safeUrl(req.body.linkUrl),
+      actionTab: safeTab(req.body.actionTab),
       ctaLabel: clean(req.body.ctaLabel, MAX_CTA),
       audience: readAudience(req.body),
       isActive: req.body.isActive !== false,
@@ -237,6 +246,7 @@ router.patch('/:id', async (req, res) => {
     if (req.body.body !== undefined) set.body = clean(req.body.body, MAX_BODY);
     if (req.body.imageUrl !== undefined) set.imageUrl = safeUrl(req.body.imageUrl);
     if (req.body.linkUrl !== undefined) set.linkUrl = safeUrl(req.body.linkUrl);
+    if (req.body.actionTab !== undefined) set.actionTab = safeTab(req.body.actionTab);
     if (req.body.ctaLabel !== undefined) set.ctaLabel = clean(req.body.ctaLabel, MAX_CTA);
     if (req.body.isActive !== undefined) set.isActive = !!req.body.isActive;
     if (req.body.audienceType !== undefined) set.audience = readAudience(req.body);
