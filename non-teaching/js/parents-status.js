@@ -314,5 +314,186 @@ function customConfirm(title, message, isAlert = false) {
 }
 
 
+// ============================================================================
+// CUSTOM NOTIFICATION TO PARENTS
+// ============================================================================
+
+let audience = 'selected';
+
+function notifyEl(id) { return document.getElementById(id); }
+
+function selectedStudentIDs() {
+    return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+}
+
+// What the server needs to work out who receives this.
+function audiencePayload() {
+    if (audience === 'selected') return { studentIDs: selectedStudentIDs() };
+    if (audience === 'class') {
+        return { stream: notifyEl('notifyStream').value, semester: notifyEl('notifySemester').value };
+    }
+    return { stream: 'ALL', semester: 'ALL' };
+}
+
+function setAudience(kind) {
+    audience = kind;
+    document.querySelectorAll('.aud-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.aud === kind));
+    notifyEl('audSelected').style.display = kind === 'selected' ? 'block' : 'none';
+    notifyEl('audClass').style.display = kind === 'class' ? 'block' : 'none';
+    notifyEl('audAll').style.display = kind === 'all' ? 'block' : 'none';
+    notifyEl('notifyPreview').style.display = 'none';
+
+    if (kind === 'selected') {
+        const n = selectedStudentIDs().length;
+        notifyEl('selectedNote').textContent = n
+            ? `${n} student${n === 1 ? '' : 's'} ticked in the table.`
+            : 'No students ticked yet — close this and tick some rows first.';
+    }
+}
+
+// Streams come from the loaded students, so the list can only offer classes
+// that actually exist.
+function fillStreamOptions() {
+    const streams = [...new Set(allStudents.map(s => s.stream).filter(Boolean))].sort();
+    notifyEl('notifyStream').innerHTML =
+        '<option value="ALL">All streams</option>' +
+        streams.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function openNotifyModal() {
+    fillStreamOptions();
+    setAudience(selectedStudentIDs().length ? 'selected' : 'class');
+    notifyEl('notifyPreview').style.display = 'none';
+    const modal = notifyEl('notifyModal');
+    modal.style.display = 'flex';
+    void modal.offsetWidth;
+    modal.style.opacity = '1';
+}
+
+function closeNotifyModal() {
+    const modal = notifyEl('notifyModal');
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 200);
+}
+
+async function previewNotification() {
+    const box = notifyEl('notifyPreview');
+    box.style.display = 'block';
+    box.innerHTML = 'Checking…';
+
+    try {
+        const res = await fetch(`${API}/broadcast/preview`, {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+                title: notifyEl('notifyTitle').value,
+                body: notifyEl('notifyBody').value,
+                personalised: notifyEl('notifyPersonalise').checked,
+                ...audiencePayload()
+            })
+        });
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+
+        const classes = Object.entries(d.byClass)
+            .map(([k, v]) => `${k}: ${v}`).join(' &middot; ') || 'none';
+
+        box.innerHTML = `
+          <div style="font-weight:700; margin-bottom:8px;">
+            ${d.reachable} of ${d.total} parents will receive this
+          </div>
+          ${d.unreachable ? `<div style="color:var(--amber); margin-bottom:8px;">
+            ${d.unreachable} have no app installed or notifications off — they get nothing.
+          </div>` : ''}
+          <div style="color:var(--text-muted); margin-bottom:10px;">${classes}</div>
+          ${d.sample.map(s => `
+            <div style="background:var(--bg-card); border-radius:8px; padding:10px; margin-top:8px;">
+              <div style="font-size:10px; color:var(--text-muted); margin-bottom:4px;">${s.name}</div>
+              <div style="font-weight:700;">${s.title}</div>
+              <div style="color:var(--text-secondary);">${s.body}</div>
+            </div>`).join('')}`;
+    } catch (err) {
+        box.innerHTML = `<span style="color:var(--red)">Could not preview: ${err.message}</span>`;
+    }
+}
+
+async function sendNotification() {
+    const title = notifyEl('notifyTitle').value.trim();
+    const body = notifyEl('notifyBody').value.trim();
+
+    if (!title || !body) {
+        await customConfirm('Missing details', 'Enter both a title and a message.', true);
+        return;
+    }
+    if (audience === 'selected' && selectedStudentIDs().length === 0) {
+        await customConfirm('Nobody selected', 'Tick the students you want to notify, or choose a class.', true);
+        return;
+    }
+
+    const who = audience === 'selected'
+        ? `${selectedStudentIDs().length} selected student(s)`
+        : audience === 'all'
+            ? 'EVERY parent with the app'
+            : `${notifyEl('notifyStream').value}` +
+              (notifyEl('notifySemester').value === 'ALL' ? '' : ` semester ${notifyEl('notifySemester').value}`);
+
+    const ok = await customConfirm('Send notification',
+        `This will send "${title}" to ${who}. It cannot be undone. Continue?`);
+    if (!ok) return;
+
+    const btn = notifyEl('notifySendBtn');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+        const res = await fetch(`${API}/broadcast/send`, {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+                title, body,
+                personalised: notifyEl('notifyPersonalise').checked,
+                ...audiencePayload()
+            })
+        });
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+
+        closeNotifyModal();
+        await customConfirm('Sent', d.message, true);
+        notifyEl('notifyTitle').value = '';
+        notifyEl('notifyBody').value = '';
+        fetchStatus();
+    } catch (err) {
+        await customConfirm('Error', 'Could not send: ' + err.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = notifyEl('notifyBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', openNotifyModal);
+    notifyEl('notifyCancelBtn').addEventListener('click', closeNotifyModal);
+    notifyEl('notifyPreviewBtn').addEventListener('click', previewNotification);
+    notifyEl('notifySendBtn').addEventListener('click', sendNotification);
+
+    document.querySelectorAll('.aud-btn').forEach(b =>
+        b.addEventListener('click', () => setAudience(b.dataset.aud)));
+
+    const bodyField = notifyEl('notifyBody');
+    bodyField.addEventListener('input', () => {
+        notifyEl('notifyCount').textContent = `${bodyField.value.length} / 500`;
+    });
+
+    notifyEl('notifyModal').addEventListener('click', (e) => {
+        if (e.target.id === 'notifyModal') closeNotifyModal();
+    });
+});
+
 // Expose globally for firebase script to trigger once authenticated
 window.fetchStatus = fetchStatus;
