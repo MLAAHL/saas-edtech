@@ -81,6 +81,47 @@
 
     #notifyModal textarea:focus,
     #notifyModal input[type="text"]:focus { outline: none; border-color: var(--purple); }
+
+    .pick-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+
+    .pick-row:last-child { border-bottom: none; }
+    .pick-row:hover { background: var(--bg-card-hover); }
+    .pick-row.picked { background: var(--purple-dim); }
+    .pick-row .pick-name { flex: 1; font-weight: 600; }
+    .pick-row .pick-meta { font-size: 10.5px; color: var(--text-muted); }
+
+    /* A parent with no device cannot receive anything, so say so up front. */
+    .pick-row .pick-warn { font-size: 10px; color: var(--amber); }
+
+    .pick-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--purple-dim);
+      color: var(--purple);
+      border-radius: 20px;
+      padding: 3px 8px 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .pick-chip button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 0;
+    }
     .btn-primary { background: var(--purple); color: #fff; }
     .btn-primary:hover { background: #8B5CF6; }
     .btn-text { background: transparent; color: var(--text-muted); }
@@ -233,9 +274,15 @@
       </div>
 
       <div id="audSelected" class="aud-panel">
-        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
-          <span id="selectedNote">Tick the students in the table first.</span>
-        </p>
+        <input type="text" id="pickSearch" class="search-input" style="width:100%; margin-bottom:8px;"
+               placeholder="Search name or student ID…" autocomplete="off">
+        <div id="pickChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+        <div id="pickList" style="max-height:190px; overflow-y:auto; border:1px solid var(--border);
+             border-radius:10px; background:var(--bg-elevated); margin-bottom:6px;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span id="pickCount" style="font-size:11px; color:var(--text-muted);">0 selected</span>
+          <button type="button" id="pickClear" class="aud-btn" style="padding:4px 10px; font-size:11px;">Clear</button>
+        </div>
       </div>
 
       <div id="audClass" class="aud-panel" style="display:none;">

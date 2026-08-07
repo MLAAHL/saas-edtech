@@ -320,10 +320,77 @@ function customConfirm(title, message, isAlert = false) {
 
 let audience = 'selected';
 
+// Students chosen inside the dialog. Seeded from any rows ticked in the table,
+// but searchable in place so picking a few people out of 790 does not mean
+// scrolling the table first.
+let picked = new Set();
+
 function notifyEl(id) { return document.getElementById(id); }
 
-function selectedStudentIDs() {
+function tickedInTable() {
     return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+}
+
+function selectedStudentIDs() {
+    return Array.from(picked);
+}
+
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// status-report exposes hasTokens rather than the tokens themselves.
+function isReachable(s) {
+    return !!s.hasTokens;
+}
+
+function renderPickList() {
+    const q = (notifyEl('pickSearch').value || '').trim().toLowerCase();
+    const list = notifyEl('pickList');
+
+    // Chosen students stay visible at the top even when they don't match the
+    // search, so nothing is silently dropped from the selection.
+    const chosen = allStudents.filter(s => picked.has(s.studentID));
+    const matches = q
+        ? allStudents.filter(s => !picked.has(s.studentID) &&
+            ((s.name || '').toLowerCase().includes(q) || (s.studentID || '').toLowerCase().includes(q)))
+        : [];
+
+    const rows = [...chosen, ...matches.slice(0, 40)];
+
+    if (rows.length === 0) {
+        list.innerHTML = `<div style="padding:14px; font-size:12px; color:var(--text-muted);">
+            ${q ? 'No student matches that.' : 'Type a name or student ID to find people.'}
+        </div>`;
+    } else {
+        list.innerHTML = rows.map(s => `
+            <div class="pick-row ${picked.has(s.studentID) ? 'picked' : ''}" data-id="${esc(s.studentID)}">
+                <input type="checkbox" ${picked.has(s.studentID) ? 'checked' : ''} tabindex="-1">
+                <span class="pick-name">${esc(s.name || s.studentID)}</span>
+                <span class="pick-meta">${esc(s.stream || '')} ${s.semester ? 'Sem ' + s.semester : ''}</span>
+                ${isReachable(s) ? '' : '<span class="pick-warn">no app</span>'}
+            </div>`).join('');
+    }
+
+    notifyEl('pickCount').textContent =
+        `${picked.size} selected` + (matches.length > 40 ? `  ·  showing first 40 matches` : '');
+    renderChips();
+}
+
+function renderChips() {
+    const host = notifyEl('pickChips');
+    const chosen = allStudents.filter(s => picked.has(s.studentID));
+    host.innerHTML = chosen.slice(0, 12).map(s => `
+        <span class="pick-chip">${esc((s.name || s.studentID).split(' ')[0])}
+            <button type="button" data-remove="${esc(s.studentID)}" aria-label="Remove">&times;</button>
+        </span>`).join('') +
+        (chosen.length > 12 ? `<span class="pick-chip">+${chosen.length - 12} more</span>` : '');
+}
+
+function togglePicked(id) {
+    if (picked.has(id)) picked.delete(id); else picked.add(id);
+    renderPickList();
 }
 
 // What the server needs to work out who receives this.
@@ -344,12 +411,7 @@ function setAudience(kind) {
     notifyEl('audAll').style.display = kind === 'all' ? 'block' : 'none';
     notifyEl('notifyPreview').style.display = 'none';
 
-    if (kind === 'selected') {
-        const n = selectedStudentIDs().length;
-        notifyEl('selectedNote').textContent = n
-            ? `${n} student${n === 1 ? '' : 's'} ticked in the table.`
-            : 'No students ticked yet — close this and tick some rows first.';
-    }
+    if (kind === 'selected') renderPickList();
 }
 
 // Streams come from the loaded students, so the list can only offer classes
@@ -363,7 +425,10 @@ function fillStreamOptions() {
 
 function openNotifyModal() {
     fillStreamOptions();
-    setAudience(selectedStudentIDs().length ? 'selected' : 'class');
+    // Rows ticked in the table are a head start, not the only way in.
+    picked = new Set(tickedInTable());
+    notifyEl('pickSearch').value = '';
+    setAudience('selected');
     notifyEl('notifyPreview').style.display = 'none';
     const modal = notifyEl('notifyModal');
     modal.style.display = 'flex';
@@ -482,8 +547,26 @@ document.addEventListener('DOMContentLoaded', () => {
     notifyEl('notifyPreviewBtn').addEventListener('click', previewNotification);
     notifyEl('notifySendBtn').addEventListener('click', sendNotification);
 
-    document.querySelectorAll('.aud-btn').forEach(b =>
-        b.addEventListener('click', () => setAudience(b.dataset.aud)));
+    document.querySelectorAll('.aud-btn').forEach(b => {
+        if (b.dataset.aud) b.addEventListener('click', () => setAudience(b.dataset.aud));
+    });
+
+    notifyEl('pickSearch').addEventListener('input', renderPickList);
+
+    notifyEl('pickList').addEventListener('click', (e) => {
+        const row = e.target.closest('.pick-row');
+        if (row) togglePicked(row.dataset.id);
+    });
+
+    notifyEl('pickChips').addEventListener('click', (e) => {
+        const id = e.target.dataset?.remove;
+        if (id) togglePicked(id);
+    });
+
+    notifyEl('pickClear').addEventListener('click', () => {
+        picked.clear();
+        renderPickList();
+    });
 
     const bodyField = notifyEl('notifyBody');
     bodyField.addEventListener('input', () => {
