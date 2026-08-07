@@ -448,6 +448,10 @@ function setupDashboard(student) {
   startHeartbeat(currentStudent.studentID);
   safeRegisterPush(currentStudent.studentID);
   checkNotifications();
+
+  // After the dashboard has painted, so the card lands on a finished screen
+  // rather than a half-drawn one.
+  setTimeout(showAnnouncement, 600);
 }
 
 function toggleProfileEdit() {
@@ -902,6 +906,262 @@ async function loadFullAttendance() {
   } finally { hideLoading(); }
 }
 
+// ===== SHARE ATTENDANCE =====
+//
+// A link the parent can send anywhere. It carries a random token rather than
+// the student ID, so it cannot be guessed, and it stops working the moment the
+// parent turns it off.
+
+function shareUrlFor(token) {
+  return `${location.origin}/shared?t=${encodeURIComponent(token)}`;
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Older WebViews have no clipboard API; fall back to a hidden field.
+    try {
+      const box = document.createElement('textarea');
+      box.value = text;
+      box.style.position = 'fixed';
+      box.style.opacity = '0';
+      document.body.appendChild(box);
+      box.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(box);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+let shareState = { url: '', name: '' };
+
+// Put the link on screen. Copy is always available; the native sheet and the
+// WhatsApp shortcut sit alongside it rather than replacing it, because a
+// desktop share sheet has no copy option of its own.
+function showShareLink(url, name) {
+  shareState = { url, name };
+
+  document.getElementById('shareUrl').value = url;
+  document.getElementById('shareReady').classList.remove('hidden');
+  // With a link on screen there is nothing left to create.
+  document.getElementById('shareBtn').classList.add('hidden');
+
+  const sheet = document.getElementById('shareSheetBtn');
+  sheet.classList.toggle('hidden', !navigator.share);
+
+  const text = `${name ? name + "'s" : 'My'} attendance — MLAAHL\n${url}`;
+  document.getElementById('shareWhatsapp').href =
+    'https://wa.me/?text=' + encodeURIComponent(text);
+}
+
+function openShareModal() {
+  const overlay = document.getElementById('shareOverlay');
+  if (!overlay) return;
+  document.getElementById('shareNote').textContent = '';
+  overlay.hidden = false;
+  // Ask the server in case a link was made on an earlier visit.
+  refreshShareState();
+}
+
+function closeShareModal() {
+  const overlay = document.getElementById('shareOverlay');
+  if (overlay) overlay.hidden = true;
+}
+
+async function shareAttendance() {
+  const btn = document.getElementById('shareBtn');
+  const note = document.getElementById('shareNote');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparing…';
+
+  try {
+    const res = await authFetch(`${API}/share/link`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Could not create the link');
+
+    showShareLink(shareUrlFor(data.token), data.name);
+    note.textContent = 'Anyone with this link can open it. Turn it off to stop that.';
+  } catch (err) {
+    note.textContent = 'Could not create the link: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = document.getElementById('shareReady').classList.contains('hidden')
+      ? original : 'Create a new link';
+  }
+}
+
+async function copyShareLink() {
+  const btn = document.getElementById('shareCopyBtn');
+  const field = document.getElementById('shareUrl');
+
+  // Selecting first means the link is ready to copy by hand if the API is
+  // blocked, which some in-app browsers do.
+  field.select();
+  field.setSelectionRange(0, 99999);
+
+  const ok = await copyToClipboard(shareState.url || field.value);
+  const original = btn.textContent;
+  btn.textContent = ok ? 'Copied' : 'Select & copy';
+  setTimeout(() => { btn.textContent = original; }, 1800);
+}
+
+async function openShareSheet() {
+  if (!navigator.share || !shareState.url) return;
+  try {
+    await navigator.share({
+      title: `${shareState.name || 'Attendance'} — MLAAHL`,
+      text: `${shareState.name ? shareState.name + "'s" : 'My'} attendance`,
+      url: shareState.url
+    });
+  } catch (err) {
+    // Cancelling the sheet is not an error worth reporting.
+    if (err && err.name !== 'AbortError') {
+      document.getElementById('shareNote').textContent = 'Could not open the share sheet.';
+    }
+  }
+}
+
+// A link created on an earlier visit is still live, so show it again rather
+// than making the parent create a second one to find out.
+async function refreshShareState() {
+  const ready = document.getElementById('shareReady');
+  if (!ready || !localStorage.getItem('parentAuthToken')) return;
+  try {
+    const res = await authFetch(`${API}/share/status`);
+    const data = await res.json();
+    if (data.success && data.active && data.token) {
+      showShareLink(shareUrlFor(data.token), currentStudent?.name || '');
+    } else {
+      ready.classList.add('hidden');
+      document.getElementById('shareBtn').classList.remove('hidden');
+    }
+  } catch { /* leave the panel as it is */ }
+}
+
+async function revokeShare() {
+  if (!confirm('Turn off the link? Anyone you already sent it to will no longer be able to open it.')) return;
+
+  const note = document.getElementById('shareNote');
+  try {
+    const res = await authFetch(`${API}/share/revoke`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    shareState = { url: '', name: '' };
+    document.getElementById('shareReady').classList.add('hidden');
+    document.getElementById('shareBtn').classList.remove('hidden');
+    note.textContent = 'Link turned off. Creating a new one gives a different address.';
+  } catch (err) {
+    note.textContent = 'Could not turn it off: ' + err.message;
+  }
+}
+
+// ===== COLLEGE ANNOUNCEMENT =====
+//
+// One card over the dashboard when the app opens. Dismissal is remembered by
+// announcement id rather than a single flag, so publishing a new notice still
+// reaches a parent who closed the last one.
+
+const DISMISSED_KEY = 'dismissedAnnouncements';
+
+function dismissedAnnouncements() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberDismissal(id) {
+  // Keep the list short: old announcements are deleted server-side and will
+  // never be offered again anyway.
+  const list = dismissedAnnouncements().filter(x => x !== id);
+  list.push(id);
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(list.slice(-30)));
+}
+
+// Best effort only — the college wants to know a notice was seen, but a parent
+// must never be blocked by it.
+function reportAnnouncement(id, action) {
+  try {
+    fetch(`${API}/announcements/${id}/seen`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentID: currentStudent?.studentID || '', action })
+    }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
+function closeAnnouncement(id, action) {
+  rememberDismissal(id);
+  reportAnnouncement(id, action);
+  const overlay = document.getElementById('announceOverlay');
+  if (overlay) overlay.hidden = true;
+}
+
+async function showAnnouncement() {
+  const overlay = document.getElementById('announceOverlay');
+  if (!overlay) return;
+
+  try {
+    // The student decides which announcements apply — a class notice must not
+    // reach a parent in another class.
+    const sid = currentStudent?.studentID || '';
+    const res = await fetch(`${API}/announcements/active?studentID=${encodeURIComponent(sid)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const a = data.announcement;
+
+    if (!a) {
+      console.log('📢 No announcement for', sid || '(no student id)');
+      return;
+    }
+    if (dismissedAnnouncements().includes(a.id)) {
+      console.log('📢 Announcement already dismissed on this device:', a.title);
+      return;
+    }
+    console.log('📢 Showing announcement:', a.title);
+
+    document.getElementById('announceTitle').textContent = a.title || '';
+    document.getElementById('announceText').textContent = a.body || '';
+
+    const img = document.getElementById('announceImage');
+    if (a.imageUrl) {
+      img.src = a.imageUrl;
+      img.hidden = false;
+      // A poster that fails to load should leave a tidy card, not a broken icon.
+      img.onerror = () => { img.hidden = true; };
+    } else {
+      img.hidden = true;
+    }
+
+    const cta = document.getElementById('announceCta');
+    if (a.linkUrl) {
+      cta.href = a.linkUrl;
+      cta.textContent = a.ctaLabel || 'Learn more';
+      cta.hidden = false;
+      cta.onclick = () => closeAnnouncement(a.id, 'opened');
+    } else {
+      cta.hidden = true;
+    }
+
+    document.getElementById('announceSkip').onclick = () => closeAnnouncement(a.id, 'skipped');
+    document.getElementById('announceClose').onclick = () => closeAnnouncement(a.id, 'closed');
+    overlay.onclick = (e) => { if (e.target === overlay) closeAnnouncement(a.id, 'closed'); };
+
+    overlay.hidden = false;
+  } catch (err) {
+    console.warn('Announcement unavailable:', err);
+  }
+}
+
 // Chart.js is 70 KB — more than half the app's first load — and only the
 // Insights tab draws a chart. Fetch it the first time one is needed instead of
 // on every launch.
@@ -1333,3 +1593,34 @@ async function processNotifications(recentDays) {
     ptrStartY = 0;
     ptrCurrentY = 0;
   }, { passive: true });
+
+// Share buttons live in the profile tab, which is present from first paint.
+document.addEventListener('DOMContentLoaded', () => {
+  const wire = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  };
+  wire('shareOpenBtn', openShareModal);
+  wire('shareCloseBtn', closeShareModal);
+
+  // The arrow on the Overall card was decoration with no handler; point it at
+  // the breakdown it visually suggests rather than leaving it dead.
+  wire('overallExpandBtn', () => {
+    document.querySelector('#overallTab .section-head')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  wire('shareBtn', shareAttendance);
+  wire('shareCopyBtn', copyShareLink);
+  wire('shareSheetBtn', openShareSheet);
+  wire('shareRevokeBtn', revokeShare);
+
+  // Tapping the dark area closes it, like the announcement card.
+  const overlay = document.getElementById('shareOverlay');
+  if (overlay) overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeShareModal();
+  });
+
+  // Sharing sends people to a link, so close the sheet once they have gone.
+  const wa = document.getElementById('shareWhatsapp');
+  if (wa) wa.addEventListener('click', () => setTimeout(closeShareModal, 400));
+});

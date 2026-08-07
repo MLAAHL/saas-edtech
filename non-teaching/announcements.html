@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Announcements | Admin Panel</title>
+  <link rel="icon" type="image/png" href="logo2.png" />
+  <script src="js/config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1" />
+  <link rel="stylesheet" href="css/profile.css">
+
+  <style>
+    :root {
+      --bg-root: #0C0C0E;
+      --bg-sidebar: #111113;
+      --bg-surface: #161618;
+      --bg-card: #1A1A1D;
+      --bg-card-hover: #1F1F22;
+      --bg-elevated: #242427;
+      --border: rgba(255, 255, 255, 0.05);
+      --border-hover: rgba(255, 255, 255, 0.09);
+      --text-primary: #E8E8EC;
+      --text-secondary: #8A8A92;
+      --text-muted: #4E4E56;
+      --green: #34D399;
+      --green-dim: rgba(52, 211, 153, 0.15);
+      --red: #F87171;
+      --red-dim: rgba(248, 113, 113, 0.15);
+      --amber: #FBBF24;
+      --amber-dim: rgba(251, 191, 36, 0.15);
+      --purple: #A78BFA;
+      --purple-dim: rgba(167, 139, 250, 0.12);
+      --sidebar-w: 220px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-root);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .sidebar {
+      width: var(--sidebar-w); background: var(--bg-sidebar);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      padding: 20px 12px; flex-shrink: 0; overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar { width: 0; }
+    .sb-logo { padding: 4px 8px; margin-bottom: 20px; text-align: center; }
+    .sb-logo img { width: 100%; height: auto; border-radius: 8px; }
+    .sb-group { margin-bottom: 8px; }
+    .sb-link {
+      display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+      text-decoration: none; color: var(--text-secondary); font-size: 13px; font-weight: 500;
+      transition: all .15s;
+    }
+    .sb-link:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }
+    .sb-link.active { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); font-weight: 600; }
+    .sb-link .material-symbols-rounded { font-size: 18px; }
+    .sb-divider { height: 1px; background: var(--border); margin: 12px 8px; }
+    .sb-bottom { margin-top: auto; padding-top: 12px; }
+    .sb-logout {
+      display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+      width: 100%; background: none; border: none; color: var(--text-muted); font-size: 13px;
+      font-weight: 500; font-family: inherit; cursor: pointer;
+    }
+    .sb-logout:hover { background: var(--red-dim); color: var(--red); }
+
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      padding: 24px 32px 0; display: flex; justify-content: space-between;
+      align-items: flex-start; flex-shrink: 0;
+    }
+    .topbar h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+    .topbar p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .scroll { flex: 1; overflow-y: auto; padding: 20px 32px 40px; }
+
+    .grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px;
+    }
+    .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .card .hint { font-size: 11.5px; color: var(--text-muted); margin-bottom: 18px; }
+
+    label.fl {
+      display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--text-muted); margin-bottom: 6px;
+    }
+    input[type="text"], input[type="url"], input[type="datetime-local"], textarea, select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-elevated); color: var(--text-primary);
+      font-family: inherit; font-size: 13px; margin-bottom: 14px; outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--purple); }
+    textarea { resize: vertical; min-height: 84px; }
+
+    .aud-btn {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-secondary);
+      font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .aud-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+    .aud-btn.active { background: var(--purple-dim); border-color: var(--purple); color: var(--purple); }
+
+    .pick-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer;
+      border-bottom: 1px solid var(--border); font-size: 12.5px;
+    }
+    .pick-row:last-child { border-bottom: none; }
+    .pick-row:hover { background: var(--bg-card-hover); }
+    .pick-row.picked { background: var(--purple-dim); }
+    .pick-row .pick-name { flex: 1; font-weight: 600; }
+    .pick-row .pick-meta { font-size: 10.5px; color: var(--text-muted); }
+
+    .pick-chip {
+      display: inline-flex; align-items: center; gap: 6px; background: var(--purple-dim);
+      color: var(--purple); border-radius: 20px; padding: 3px 8px 3px 10px;
+      font-size: 11px; font-weight: 600;
+    }
+    .pick-chip button {
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-size: 13px; line-height: 1; padding: 0;
+    }
+
+    .drop {
+      border: 1px dashed var(--border-hover); border-radius: 10px; padding: 18px;
+      text-align: center; cursor: pointer; margin-bottom: 14px; background: var(--bg-elevated);
+      font-size: 12.5px; color: var(--text-secondary);
+    }
+    .drop:hover { border-color: var(--purple); color: var(--text-primary); }
+    .drop img { max-width: 100%; max-height: 150px; border-radius: 8px; display: block; margin: 0 auto 8px; }
+
+    .btn {
+      padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; font-family: inherit; transition: all .2s;
+    }
+    .btn-primary { background: var(--purple); color: #12121A; }
+    .btn-primary:disabled { opacity: .5; cursor: default; }
+    .btn-ghost { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-danger { background: var(--red-dim); color: var(--red); }
+    .btn-sm { padding: 6px 12px; font-size: 11.5px; }
+
+    .row { display: flex; align-items: center; gap: 10px; }
+
+    .ann {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 12px; display: flex; gap: 14px; align-items: flex-start;
+    }
+    .ann.live { border-color: var(--green); }
+    .ann img { width: 86px; height: 66px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--bg-elevated); }
+    .ann .t { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .ann .b { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.5; }
+    .ann .m { font-size: 10.5px; color: var(--text-muted); }
+    .pill {
+      font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .pill.live { background: var(--green-dim); color: var(--green); }
+    .pill.off { background: var(--bg-elevated); color: var(--text-muted); }
+
+    #toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--bg-elevated); border: 1px solid var(--border-hover);
+      color: var(--text-primary); padding: 12px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; z-index: 100; opacity: 0;
+      pointer-events: none; transition: opacity .25s;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+
+<body>
+  <aside class="sidebar">
+    <div class="sb-logo"><img src="logo.png" alt="MLA"></div>
+    <div class="sb-group">
+      <a class="sb-link" href="dashboard"><span class="material-symbols-rounded">dashboard</span> Dashboard</a>
+      <a class="sb-link" href="students"><span class="material-symbols-rounded">group</span> Students</a>
+      <a class="sb-link" href="teachers"><span class="material-symbols-rounded">school</span> Teachers</a>
+      <a class="sb-link" href="report"><span class="material-symbols-rounded">assessment</span> Reports</a>
+      <a class="sb-link" href="view-attendance"><span class="material-symbols-rounded">fact_check</span> View Attendance</a>
+      <a class="sb-link" href="promotion"><span class="material-symbols-rounded">trending_up</span> Promote</a>
+      <a class="sb-link" href="mentorship"><span class="material-symbols-rounded">diversity_3</span> Mentors</a>
+      <a class="sb-link" href="parents-status"><span class="material-symbols-rounded">phone_iphone</span> Parent Status</a>
+      <a class="sb-link active" href="announcements"><span class="material-symbols-rounded">campaign</span> Announcements</a>
+      <a class="sb-link" href="ai-assistant"><span class="material-symbols-rounded">auto_awesome</span> AI Assistant</a>
+    </div>
+    <div class="sb-bottom">
+      <div class="sb-divider"></div>
+      <button class="sb-logout" id="logoutBtn">
+        <span class="material-symbols-rounded">logout</span> Log out
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1>Announcements</h1>
+        <p>A card shown to parents when they open the app. Each parent sees it once.</p>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <div class="grid">
+        <div class="card">
+          <h2>New announcement</h2>
+          <div class="hint">Several can run at once for different classes. A parent
+            sees the newest one that applies to them.</div>
+
+          <label class="fl">Who sees it</label>
+          <div id="audChoice" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <button type="button" class="aud-btn active" data-aud="all">Everyone</button>
+            <button type="button" class="aud-btn" data-aud="class">A whole class</button>
+            <button type="button" class="aud-btn" data-aud="selected">Selected students</button>
+          </div>
+
+          <div id="audClassPanel" style="display:none;">
+            <div style="display:flex; gap:8px;">
+              <select id="aStream" style="flex:1;"></select>
+              <select id="aSemester" style="width:140px;">
+                <option value="ALL">All semesters</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+                <option value="3">Semester 3</option>
+                <option value="4">Semester 4</option>
+                <option value="5">Semester 5</option>
+                <option value="6">Semester 6</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="audSelectedPanel" style="display:none;">
+            <input type="text" id="aPickSearch" placeholder="Search name or student ID…" autocomplete="off">
+            <div id="aPickChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+            <div id="aPickList" style="max-height:170px; overflow-y:auto; border:1px solid var(--border);
+                 border-radius:8px; background:var(--bg-elevated); margin-bottom:6px;"></div>
+            <div class="row" style="justify-content:space-between; margin-bottom:14px;">
+              <span id="aPickCount" style="font-size:11px; color:var(--text-muted);">0 selected</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="aPickClear">Clear</button>
+            </div>
+          </div>
+
+          <div id="audReach" style="font-size:11.5px; color:var(--text-muted); margin-bottom:16px;"></div>
+
+          <label class="fl">Image</label>
+          <div class="drop" id="imageDrop">
+            <img id="imagePreview" hidden alt="">
+            <span id="imageLabel">Click to upload a poster (optional)</span>
+          </div>
+          <input type="file" id="imageInput" accept="image/*" hidden>
+
+          <label class="fl">Title</label>
+          <input type="text" id="fTitle" maxlength="80" placeholder="e.g. Annual Day 2026">
+
+          <label class="fl">Description</label>
+          <textarea id="fBody" maxlength="400"
+            placeholder="e.g. Join us on 20 August at the main auditorium, 5 pm onwards."></textarea>
+
+          <label class="fl">Link (optional)</label>
+          <input type="url" id="fLink" placeholder="https://…">
+
+          <label class="fl">Button text</label>
+          <input type="text" id="fCta" maxlength="30" placeholder="Learn more">
+
+          <label class="fl">Show until (optional)</label>
+          <input type="datetime-local" id="fEnds">
+
+          <div class="row" style="justify-content:flex-end;">
+            <button class="btn btn-ghost" id="resetBtn">Clear</button>
+            <button class="btn btn-primary" id="publishBtn">Publish</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <h2>How it looks</h2>
+            <div class="hint">A rough preview of the card parents will see.</div>
+            <div style="background:#fff; border-radius:18px; overflow:hidden; max-width:330px;">
+              <img id="pvImage" style="width:100%; max-height:170px; object-fit:cover; display:none;" alt="">
+              <div style="padding:16px;">
+                <div id="pvTitle" style="color:#212529; font-size:16px; font-weight:700; margin-bottom:6px;">Your title</div>
+                <div id="pvBody" style="color:#6C757D; font-size:13px; line-height:1.5; margin-bottom:14px;">Your description appears here.</div>
+                <div style="display:flex; gap:8px;">
+                  <div style="padding:10px 16px; background:#F1F3F5; color:#6C757D; border-radius:12px; font-size:13px; font-weight:600;">Skip</div>
+                  <div id="pvCta" style="flex:1; padding:10px 16px; background:#212529; color:#fff; border-radius:12px; font-size:13px; font-weight:700; text-align:center;">Learn more</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Published</h2>
+            <div class="hint">Only the one marked live is shown in the app.</div>
+            <div id="annList">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) { window.location.href = './'; return; }
+      window.dispatchEvent(new CustomEvent('admin:ready'));
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './';
+    });
+  </script>
+
+  <script src="js/announcements.js?v=2"></script>
+</body>
+
+</html>

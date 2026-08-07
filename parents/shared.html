@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Attendance | MLAAHL</title>
+  <link rel="icon" type="image/png" href="logo.png">
+
+  <!-- A shared link should not end up in search results. -->
+  <meta name="robots" content="noindex, nofollow">
+
+  <meta property="og:title" content="Attendance — MLA Academy of Higher Learning">
+  <meta property="og:description" content="A student's attendance summary, shared from the MLAAHL Parents App.">
+  <meta property="og:image" content="https://parents.mlaahl.online/assets/og-icon.jpg">
+
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="js/config.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #E8E8E8 0%, #F0EFED 40%, #E0DEDA 100%);
+      --text-dark: #212529;
+      --text-grey: #6C757D;
+      --danger: #DC3545;
+      --success: #28A745;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-dark);
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 460px; margin: 0 auto; }
+
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      justify-content: center; margin-bottom: 22px;
+    }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .brand span { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 14px; color: var(--text-grey); }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 32px;
+      padding: 28px 24px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+      margin-bottom: 18px;
+    }
+
+    .who { text-align: center; margin-bottom: 24px; }
+    .who h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 4px;
+    }
+    .who p { font-size: 13.5px; color: var(--text-grey); font-weight: 500; }
+
+    .headline { text-align: center; margin-bottom: 22px; }
+    .headline .pct {
+      font-family: 'Outfit', sans-serif;
+      font-size: 62px; font-weight: 700; line-height: 1; letter-spacing: -2px;
+    }
+    .headline .lbl {
+      font-size: 12px; font-weight: 600; color: var(--text-grey);
+      text-transform: uppercase; letter-spacing: .08em; margin-top: 6px;
+    }
+    .low { color: var(--danger); }
+    .ok { color: var(--text-dark); }
+
+    .tally { display: flex; gap: 10px; }
+    .tally div {
+      flex: 1; background: rgba(255, 255, 255, 0.55); border-radius: 18px;
+      padding: 12px; text-align: center;
+    }
+    .tally .v { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 600; }
+    .tally .l { font-size: 10.5px; color: var(--text-grey); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+    h2 {
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600;
+      margin-bottom: 14px; padding-left: 4px;
+    }
+
+    .subj { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .subj:last-child { border-bottom: none; }
+    .subj .ini {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: #E4EAF8; color: var(--text-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 13px;
+    }
+    .subj .info { flex: 1; min-width: 0; }
+    .subj .nm { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+    .subj .sub { font-size: 11.5px; color: var(--text-grey); }
+    .subj .p { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600; }
+
+    .bar { height: 5px; background: rgba(0,0,0,0.05); border-radius: 10px; margin-top: 6px; overflow: hidden; }
+    .bar i { display: block; height: 100%; border-radius: 10px; background: var(--text-dark); }
+    .bar i.low { background: var(--danger); }
+
+    .foot { text-align: center; font-size: 11.5px; color: var(--text-grey); line-height: 1.6; }
+    .foot a { color: var(--text-dark); font-weight: 600; text-decoration: none; }
+
+    .msg { text-align: center; padding: 40px 20px; color: var(--text-grey); font-size: 14px; line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    .cta {
+      display: block; width: 100%; padding: 17px; margin-top: 4px;
+      background: rgba(33, 37, 41, 0.9); color: #fff; border-radius: 100px;
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600;
+      text-align: center; text-decoration: none;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <img src="logo.png" alt="">
+      <span>MLA Academy of Higher Learning</span>
+    </div>
+
+    <div id="content" class="hidden">
+      <div class="panel">
+        <div class="who">
+          <h1 id="sName"></h1>
+          <p id="sClass"></p>
+        </div>
+
+        <div class="headline">
+          <div class="pct" id="sPct">—</div>
+          <div class="lbl">Overall attendance</div>
+        </div>
+
+        <div class="tally">
+          <div><div class="v" id="sPresent">0</div><div class="l">Present</div></div>
+          <div><div class="v" id="sAbsent">0</div><div class="l">Absent</div></div>
+          <div><div class="v" id="sTotal">0</div><div class="l">Classes</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Subject-wise</h2>
+        <div id="subjects"></div>
+      </div>
+
+      <div class="panel" style="padding:20px;">
+        <a class="cta" href="./">Open the Parents App</a>
+      </div>
+
+      <p class="foot">
+        Shared from the MLAAHL Parents App &middot; <span id="stamp"></span><br>
+        <a href="https://onezerolabs.in" target="_blank" rel="noopener">onezerolabs.in</a>
+      </p>
+    </div>
+
+    <div id="state" class="panel">
+      <div class="msg">Loading attendance…</div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.APP_CONFIG.API_BASE_URL;
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function initials(subject) {
+      const parts = String(subject).split(/[\s-]+/).filter(Boolean);
+      if (parts.length === 1) return parts[0].substring(0, 3).toUpperCase();
+      return parts.map(p => p[0]).join('').substring(0, 3).toUpperCase();
+    }
+
+    function fail(message) {
+      document.getElementById('state').innerHTML = `<div class="msg">${esc(message)}</div>`;
+    }
+
+    (async () => {
+      // Token comes from the path (/s/abc…) or the query (?t=abc…).
+      const fromQuery = new URLSearchParams(location.search).get('t');
+      const fromPath = location.pathname.split('/').filter(Boolean).pop();
+      const token = fromQuery || (fromPath && fromPath !== 'shared' ? fromPath : '');
+
+      if (!token) { fail('This link is missing its code.'); return; }
+
+      try {
+        const res = await fetch(`${API}/share/${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (!data.success) { fail(data.error || 'This link is no longer available.'); return; }
+
+        document.getElementById('sName').textContent = data.student.name || '';
+        document.getElementById('sClass').textContent =
+          `${data.student.stream || ''} · Semester ${data.student.semester ?? ''}`;
+
+        const o = data.overall;
+        const pct = document.getElementById('sPct');
+        pct.textContent = o.percentage + '%';
+        pct.className = 'pct ' + (o.percentage < 75 ? 'low' : 'ok');
+        document.getElementById('sPresent').textContent = o.present;
+        document.getElementById('sAbsent').textContent = o.absent;
+        document.getElementById('sTotal').textContent = o.totalClasses;
+
+        document.getElementById('subjects').innerHTML = data.subjectWise.length
+          ? data.subjectWise.map(s => `
+              <div class="subj">
+                <div class="ini">${esc(initials(s.subject))}</div>
+                <div class="info">
+                  <div class="nm">${esc(s.subject)}</div>
+                  <div class="sub">${s.present} of ${s.totalClasses} classes</div>
+                  <div class="bar"><i class="${s.percentage < 75 ? 'low' : ''}" style="width:${s.percentage}%"></i></div>
+                </div>
+                <div class="p ${s.percentage < 75 ? 'low' : ''}">${s.percentage}%</div>
+              </div>`).join('')
+          : '<div class="msg">No attendance recorded yet.</div>';
+
+        document.getElementById('stamp').textContent =
+          new Date(data.generatedAt).toLocaleString('en-IN',
+            { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+        document.getElementById('state').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      } catch (err) {
+        fail('Could not load this attendance. Check your connection and try again.');
+      }
+    })();
+  </script>
+</body>
+
+</html>

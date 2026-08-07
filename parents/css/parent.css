@@ -507,3 +507,205 @@ body.auto-login-in-progress #loginScreen {
   100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
 }
 
+
+/* ===== COLLEGE ANNOUNCEMENT ===================================== */
+/* A card over the dashboard on opening. Dismissed once, never shown
+   again for that announcement — the id is remembered locally. */
+
+.announce-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(20, 20, 22, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: announceFade .25s ease;
+}
+
+.announce-overlay[hidden] { display: none; }
+
+/* Built from the same pieces as .glass-login-panel so the card reads as part
+   of the app rather than something bolted on. */
+.announce-card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  /* Never taller than the viewport, so a long notice scrolls inside the card
+     rather than pushing its buttons off screen. */
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 32px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  animation: announceRise .3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes announceFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Grows from the centre, since that is where the card now sits. */
+@keyframes announceRise {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Same circular treatment as the app's .icon-btn. */
+.announce-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-dark);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Square, so every poster is framed identically however it was shot. The card
+   scrolls and cannot clip its children, so the image rounds its own corners —
+   inset slightly to sit inside the card's border like the app's own artwork. */
+.announce-image {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 10px auto 0;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #E4EAF8;
+  border-radius: 24px;
+}
+
+/* An author `display` beats the hidden attribute, so a card with no poster
+   would otherwise show an empty square. */
+.announce-image[hidden] { display: none; }
+
+.announce-body { padding: 18px 22px 22px; }
+
+/* With no poster above it, the text needs room to clear the rounded corner. */
+.announce-image[hidden] + .announce-body { padding-top: 26px; }
+
+.announce-body h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 6px;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+  /* Clear of the close button on a card with no image. */
+  padding-right: 34px;
+}
+
+.announce-body p {
+  font-size: 14px;
+  color: var(--text-grey);
+  line-height: 1.55;
+  margin-bottom: 20px;
+  white-space: pre-wrap;
+}
+
+.announce-body p:empty { display: none; }
+
+/* pre-wrap exists so an announcement keeps the line breaks the college typed.
+   The share sheet's copy is static markup, where it would preserve the source
+   indentation instead. */
+#shareOverlay .announce-body p { white-space: normal; }
+
+.announce-actions { display: flex; gap: 10px; align-items: center; }
+
+/* Pills in Outfit, matching .glass-btn-primary rather than inventing a shape. */
+.announce-skip {
+  flex: 0 0 auto;
+  padding: 15px 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text-grey);
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.announce-skip:active { transform: scale(0.97); }
+
+.announce-cta {
+  flex: 1;
+  padding: 15px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  background: rgba(33, 37, 41, 0.9);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transition: 0.3s;
+}
+
+.announce-cta:active { transform: scale(0.97); }
+
+.announce-cta[hidden] { display: none; }
+
+/* With no link to offer, Skip is the only action and should fill the row. */
+.announce-actions:not(:has(.announce-cta:not([hidden]))) .announce-skip { flex: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .announce-overlay, .announce-card { animation: none; }
+}
+
+/* Section heading with an action on the right. */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-head .section-title { margin-bottom: 0; }
+
+.share-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 100px;
+  background: #fff;
+  color: var(--text-dark);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+
+.share-pill .material-symbols-rounded { font-size: 17px; }
+.share-pill:active { transform: scale(0.96); }

@@ -208,6 +208,8 @@ const firebaseUsersRoutes = require("./routes/firebaseUsers");
 const mentorshipRoutes = require("./routes/mentorship");
 const mentorshipAttendanceRoutes = require("./routes/mentorshipAttendance");
 const broadcastRoutes = require("./routes/broadcast");
+const announcementRoutes = require("./routes/announcements");
+const shareRoutes = require("./routes/share");
 const parentRoutes = require("./routes/parentRoutes");
 const pushRoutes = require("./routes/pushRoutes");
 
@@ -299,7 +301,11 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/firebase-users", strictLimiter, firebaseUsersRoutes);
 app.use("/api/mentorship", mentorshipRoutes);
 app.use("/api/mentorship-attendance", mentorshipAttendanceRoutes);
-app.use("/api/broadcast", broadcastRoutes);
+// Mass notifications reach every parent at once, so they get the tighter
+// limiter rather than the general one.
+app.use("/api/broadcast", strictLimiter, broadcastRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/share", shareRoutes);
 app.use("/api/parent", parentRoutes);
 app.use("/api/push", pushRoutes);
 
