@@ -993,7 +993,9 @@ router.get('/completed', async (req, res) => {
       semester: doc.semester,
       subject: doc.subject,
       date: doc.date,
-      completedAt: doc.createdAt || new Date(`${doc.date} ${doc.time.split('-')[0]}`).toISOString(),
+      // Mentoring rows carry no time, so fall back to the date alone.
+      completedAt: doc.createdAt ||
+        new Date(`${doc.date} ${(doc.time || '').split('-')[0]}`.trim()).toISOString(),
       time: doc.time,
       teacherEmail: doc.teacherEmail,
       presentCount: doc.presentCount || doc.studentsPresent?.length || 0,

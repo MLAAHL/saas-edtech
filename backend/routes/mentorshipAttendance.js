@@ -25,17 +25,6 @@ const MENTORING_STREAM = 'MENTORING';
 const MENTORING_SEMESTER = 1;
 const MENTORING_SUBJECT = 'MENTORING SESSION';
 
-// The screen asks for a date but not a time, and a register column needs one.
-function currentHourSlot() {
-  const fmt = (h) => {
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hour = h % 12 === 0 ? 12 : h % 12;
-    return `${hour}:00 ${ampm}`;
-  };
-  const h = new Date().getHours();
-  return `${fmt(h)} - ${fmt((h + 1) % 24)}`;
-}
-
 /**
  * Mirror a session into `attendance` so it shows up in History (which reads
  * that collection by teacherEmail) and in the Attendance Register.
@@ -54,7 +43,6 @@ async function mirrorToAttendance(db, { mentorEmail, date, present, absent }) {
     teacherEmail: mentorEmail
   };
 
-  const existing = await db.collection('attendance').findOne(key);
   const now = new Date();
 
   await db.collection('attendance').updateOne(
@@ -63,8 +51,10 @@ async function mirrorToAttendance(db, { mentorEmail, date, present, absent }) {
       $set: {
         ...key,
         subjectType: 'CORE',
-        // Keep the original slot on a correction so the register column stays put.
-        time: existing?.time || currentHourSlot(),
+        // No time: the screen asks only for a date, and a mentoring session is
+        // not a timetabled period. Deriving one from the server clock produced
+        // a slot the mentor never chose (and in UTC at that).
+        time: '',
         studentsPresent: present,
         studentsAbsent: absent,
         totalStudents: present.length + absent.length,

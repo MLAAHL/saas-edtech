@@ -1360,10 +1360,12 @@ function updateCompletedDisplay() {
               </div>
               
               <div class="card-badge-row" style="margin-top: 4px; opacity: 0.8; flex-wrap: wrap; gap: 12px;">
+                ${isMentoring || !classTiming ? '' : `
                 <div class="card-detail" style="display: flex; align-items: center; gap: 4px;">
                   <span class="material-symbols-rounded" style="font-size: 14px; color: #F59E0B; font-variation-settings: 'FILL' 1;">schedule</span>
                   <span>${classTiming}</span>
                 </div>
+                `}
                 <div class="card-detail" style="display: flex; align-items: center; gap: 4px;">
                    <span class="material-symbols-rounded" style="font-size: 14px;">calendar_today</span>
                    <span>${dateStr}</span>

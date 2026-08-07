@@ -42,6 +42,15 @@ function shortDate(iso) {
   return m ? `${m[3]}/${m[2]}` : esc(iso);
 }
 
+// "2026-08-01" -> "Sat, Aug 2026" under the column number. Parsed by hand
+// because new Date("2026-08-01") is UTC and can slip a day westward.
+function longDate(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', year: 'numeric' });
+}
+
 function setMessage(icon, text) {
   const el = document.getElementById('msg');
   el.innerHTML = `<span class="material-symbols-rounded">${icon}</span>${esc(text)}`;
@@ -71,8 +80,10 @@ function render() {
   document.getElementById('sAvg').textContent = avg + '%';
   document.getElementById('sLow').textContent = held.filter(s => s.attendancePercentage < 75).length;
 
+  // Date only — a mentoring session is not a timetabled period, so there is no
+  // honest time to put here.
   const head = sessions.map(s => `
-    <th><div class="d">${shortDate(s.date)}</div>${esc(s.time || '')}</th>`).join('');
+    <th><div class="d">${shortDate(s.date)}</div>${esc(longDate(s.date))}</th>`).join('');
 
   const rows = students.map((s, i) => {
     const cells = s.attendance.map(a => {
@@ -129,7 +140,7 @@ function exportCsv() {
   if (!register || !register.sessions.length) return;
   const rows = [
     ['#', 'Name', 'Student ID', 'Class',
-     ...register.sessions.map(s => `${s.date} ${s.time || ''}`.trim()),
+     ...register.sessions.map(s => s.date),
      'Present', 'Absent', '%']
   ];
   register.students.forEach((s, i) => {
