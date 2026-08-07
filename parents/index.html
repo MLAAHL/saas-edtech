@@ -13,7 +13,7 @@
   <!-- chart.js is fetched on demand by loadChartLibrary(), only when the
        Insights tab draws a chart. See js/parent.js -->
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="css/parent.css?v=8">
+  <link rel="stylesheet" href="css/parent.css?v=9">
 </head>
 <body>
   <script>
@@ -56,6 +56,23 @@
             style="width:100%; margin-top:10px; padding:12px; border:none; border-radius:100px; background:none; color:var(--danger); font-family:'Outfit',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer;">
             Turn off this link
           </button>
+        </div>
+
+        <!-- Confirming in place, rather than stacking a second dialog over the
+             first or falling back to the browser's own grey box. -->
+        <div id="shareConfirm" class="hidden share-confirm">
+          <div class="share-confirm-icon">
+            <span class="material-symbols-rounded">link_off</span>
+          </div>
+          <div class="share-confirm-title">Turn off this link?</div>
+          <div class="share-confirm-text">
+            Anyone you already sent it to will no longer be able to open it.
+            You can create a new link at any time.
+          </div>
+          <div class="share-confirm-actions">
+            <button id="shareConfirmCancel" class="announce-skip" style="flex:1;">Keep it</button>
+            <button id="shareConfirmYes" class="share-danger-btn">Turn off</button>
+          </div>
         </div>
 
         <button id="shareBtn" class="announce-cta" style="width:100%;">Create share link</button>
@@ -539,6 +556,6 @@
     </div>
   </div>
 
-  <script src="js/parent.js?v=13"></script>
+  <script src="js/parent.js?v=14"></script>
 </body>
 </html>

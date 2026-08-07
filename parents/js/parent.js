@@ -963,6 +963,7 @@ function openShareModal() {
   const overlay = document.getElementById('shareOverlay');
   if (!overlay) return;
   document.getElementById('shareNote').textContent = '';
+  askRevoke(false);
   overlay.hidden = false;
   // Ask the server in case a link was made on an earlier visit.
   refreshShareState();
@@ -1044,21 +1045,38 @@ async function refreshShareState() {
   } catch { /* leave the panel as it is */ }
 }
 
-async function revokeShare() {
-  if (!confirm('Turn off the link? Anyone you already sent it to will no longer be able to open it.')) return;
+// The sheet swaps to a confirm state in place. A second dialog over the first
+// would stack, and the browser's own box looks nothing like the app.
+function askRevoke(show) {
+  document.getElementById('shareConfirm').classList.toggle('hidden', !show);
+  document.getElementById('shareReady').classList.toggle('hidden', show);
+  document.querySelector('#shareOverlay .announce-body p').style.display = show ? 'none' : '';
+  document.getElementById('shareHeading').style.display = show ? 'none' : '';
+  if (show) document.getElementById('shareNote').textContent = '';
+}
 
+async function revokeShare() {
   const note = document.getElementById('shareNote');
+  const yes = document.getElementById('shareConfirmYes');
+  yes.disabled = true;
+  yes.textContent = 'Turning off…';
+
   try {
     const res = await authFetch(`${API}/share/revoke`, { method: 'POST' });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
 
     shareState = { url: '', name: '' };
+    askRevoke(false);
     document.getElementById('shareReady').classList.add('hidden');
     document.getElementById('shareBtn').classList.remove('hidden');
     note.textContent = 'Link turned off. Creating a new one gives a different address.';
   } catch (err) {
+    askRevoke(false);
     note.textContent = 'Could not turn it off: ' + err.message;
+  } finally {
+    yes.disabled = false;
+    yes.textContent = 'Turn off';
   }
 }
 
@@ -1612,7 +1630,9 @@ document.addEventListener('DOMContentLoaded', () => {
   wire('shareBtn', shareAttendance);
   wire('shareCopyBtn', copyShareLink);
   wire('shareSheetBtn', openShareSheet);
-  wire('shareRevokeBtn', revokeShare);
+  wire('shareRevokeBtn', () => askRevoke(true));
+  wire('shareConfirmCancel', () => askRevoke(false));
+  wire('shareConfirmYes', revokeShare);
 
   // Tapping the dark area closes it, like the announcement card.
   const overlay = document.getElementById('shareOverlay');
