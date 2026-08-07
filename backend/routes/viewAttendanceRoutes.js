@@ -20,7 +20,7 @@ const attendanceSchema = new mongoose.Schema({
   semester: { type: Number, required: true, min: 1, max: 8 },
   subject: { type: String, required: true, trim: true },
   subjectCode: { type: String, trim: true },
-  subjectType: { type: String, enum: ['CORE', 'LANGUAGE', 'ELECTIVE'], default: 'CORE' },
+  subjectType: { type: String, enum: ['CORE', 'LANGUAGE', 'ELECTIVE', 'LAB'], default: 'CORE' },
   date: { type: Date, required:  true },
   time: { type: String, required: true },
   studentsPresent: { type: [String], required: true },

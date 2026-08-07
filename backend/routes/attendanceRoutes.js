@@ -335,7 +335,10 @@ const attendanceSchema = new mongoose.Schema({
   semester: { type: Number, required: true, min: 1, max: 8 },
   subject: { type: String, required: true, trim: true },
   subjectCode: { type: String, trim: true },
-  subjectType: { type: String, enum: ['CORE', 'LANGUAGE', 'ELECTIVE'], default: 'CORE' },
+  // LAB belongs here: the subjects collection has held LAB subjects all along,
+  // and leaving it out of the enum meant every lab attendance save was rejected
+  // by validation and lost. A lab is taken by the whole class, like a CORE.
+  subjectType: { type: String, enum: ['CORE', 'LANGUAGE', 'ELECTIVE', 'LAB'], default: 'CORE' },
   date: { type: String, required: true },
   time: { type: String, required: true },
   studentsPresent: { type: [String], required: true },
