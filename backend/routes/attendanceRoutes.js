@@ -619,8 +619,18 @@ async function getRegisterStudents(db, stream, semester, subject, sessions) {
   ]))].filter(id => !byId.has(id));
 
   if (missing.length > 0) {
+    // Scoped to this stream on purpose. Student IDs are only unique within a
+    // stream — a retired class's IDs can be reissued elsewhere — so looking a
+    // bare ID up across the whole college would put another stream's student
+    // on this register. Mentoring is the exception: its roll is drawn from
+    // every class by definition.
+    const scope = { studentID: { $in: missing } };
+    if (!isMentoringStream(stream)) {
+      scope.stream = { $regex: new RegExp(`^${stream}$`, 'i') };
+    }
+
     const found = await studentsCollection
-      .find({ studentID: { $in: missing } })
+      .find(scope)
       .project({ studentID: 1, name: 1 })
       .toArray();
     found.forEach(r => { if (!byId.has(r.studentID)) byId.set(r.studentID, r); });
