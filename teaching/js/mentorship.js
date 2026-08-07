@@ -240,7 +240,17 @@ async function submit() {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
 
-    toast(data.message || 'Saved', 'ok');
+    // Say how many parents were reached, so a mentor knows the alerts went out
+    // and which mentees could not be reached at all.
+    let note = data.message || 'Saved';
+    if (data.notificationsSent) {
+      note += ` ${data.notificationsSent} parent${data.notificationsSent === 1 ? '' : 's'} notified.`;
+    }
+    const noApp = (data.studentsWithNoParentApp || []).length;
+    if (noApp) {
+      note += ` ${noApp} without the parent app.`;
+    }
+    toast(note, 'ok');
     await loadSession(date);
   } catch (err) {
     console.error(err);

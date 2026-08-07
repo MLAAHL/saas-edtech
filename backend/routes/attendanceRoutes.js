@@ -44,10 +44,14 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
     const allStudents = await col.find(studentQuery).toArray();
 
     const notifTitle = 'Attendance Alert';
+    // A mentoring session has no period and no time — it is not timetabled — so
+    // the sentence has to read without one.
+    const label = isMentoringStream(stream) ? 'the mentoring session' : subject;
+    const when = time ? `${date} at ${time}` : date;
     // Named rather than "your child": a parent with two students at the college
     // cannot tell which one an unnamed alert is about.
     const bodyFor = (name) =>
-      `${name || 'Your child'} was marked ABSENT for ${subject} on ${date} at ${time}.`;
+      `${name || 'Your child'} was marked ABSENT for ${label} on ${when}.`;
 
     const stats = {
       notificationsSent: 0,
@@ -1675,3 +1679,6 @@ router.get('/health', (req, res) => {
 });
 
 module.exports = router;
+// Shared with the mentoring routes so a mentoring absence reaches parents
+// through exactly the same dispatch as a class absence.
+module.exports.notifyAbsentParents = notifyAbsentParents;

@@ -8,12 +8,13 @@
 // The synthetic stream keeps it out of every real subject's figures, so it
 // still cannot affect the 75% subject eligibility rule.
 //
-// Parents are not notified of a mentorship absence. That is intentional: an
-// "absent" push for a mentoring session reads to a parent like a missed class.
+// An absence notifies the parent, through the same dispatch a class absence
+// uses, so a mentee's parent hears about a missed mentoring session too.
 
 const express = require('express');
 const router = express.Router();
 const firebaseAuth = require('../middleware/firebaseAuth');
+const { notifyAbsentParents } = require('./attendanceRoutes');
 
 router.use(firebaseAuth);
 
@@ -212,6 +213,19 @@ router.post('/', async (req, res) => {
 
     await mirrorToAttendance(req.db, { mentorEmail, date, present, absent });
 
+    // Only students newly marked absent are notified. Correcting a session must
+    // not push the same alert again to everyone who was already absent on it.
+    const alreadyAbsent = new Set(existing ? (existing.studentsAbsent || []) : []);
+    const newlyAbsent = absent.filter(id => !alreadyAbsent.has(id));
+
+    let notifStats = { notificationsSent: 0, notificationsFailed: 0, studentsWithNoParentApp: [] };
+    if (newlyAbsent.length > 0) {
+      notifStats = await notifyAbsentParents(
+        req, req.db, MENTORING_STREAM, MENTORING_SEMESTER, MENTORING_SUBJECT,
+        date, '', [], { menteeIds: new Set(newlyAbsent) }
+      );
+    }
+
     if (existing) {
       await req.db.collection(COLLECTION).updateOne(
         { _id: existing._id },
@@ -221,7 +235,8 @@ router.post('/', async (req, res) => {
         success: true, updated: true, id: existing._id,
         presentCount: doc.presentCount, absentCount: doc.absentCount,
         totalStudents: doc.totalStudents,
-        message: `Updated ${date}: ${doc.presentCount} present, ${doc.absentCount} absent.`
+        message: `Updated ${date}: ${doc.presentCount} present, ${doc.absentCount} absent.`,
+        ...notifStats
       });
     }
 
@@ -230,7 +245,8 @@ router.post('/', async (req, res) => {
       success: true, updated: false, id: result.insertedId,
       presentCount: doc.presentCount, absentCount: doc.absentCount,
       totalStudents: doc.totalStudents,
-      message: `Saved ${date}: ${doc.presentCount} present, ${doc.absentCount} absent.`
+      message: `Saved ${date}: ${doc.presentCount} present, ${doc.absentCount} absent.`,
+      ...notifStats
     });
   } catch (error) {
     console.error('❌ Mentorship attendance save error:', error);
