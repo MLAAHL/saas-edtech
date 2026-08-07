@@ -549,7 +549,7 @@ function loadUserInfo() {
             console.log('⚠️ No user authenticated');
             hideLoadingOverlay();
             document.body.classList.remove('auth-loading');
-            window.location.replace('index.html');
+            window.location.replace('./None');
             resolve(null);
           }
         });
@@ -1376,7 +1376,7 @@ function updateCompletedDisplay() {
             
             <button
               onclick="${isMentoring
-                ? `window.location.href='mentorship-register.html'`
+                ? `window.location.href='mentorship-registerNone'`
                 : `viewAttendanceDetails('${item.stream}', ${item.semester}, '${item.subject}', '${dateForURL}')`}"
               class="action-icon-btn"
               style="background: #F8FAFC; color: #10B981; margin-left: 8px;"
@@ -1409,7 +1409,7 @@ function viewAttendanceDetails(stream, semester, subject, date) {
   console.log('📅 Navigating to attendance view:', viewState);
 
   showNotification(`Loading attendance for ${subject}...`, 'info');
-  window.location.href = 'view-attendance.html';
+  window.location.href = 'view-attendanceNone';
 }
 
 window.viewAttendanceDetails = viewAttendanceDetails;
@@ -1616,7 +1616,7 @@ async function takeAttendance(itemId) {
 
     showNotification('Starting attendance... ', 'success');
     console.log('🚀 Navigating to attendance.html');
-    window.location.href = 'attendance.html';
+    window.location.href = 'attendanceNone';
 
   } catch (error) {
     console.error('❌ Take attendance error:', error);
@@ -1755,7 +1755,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!userData.userEmail) {
       showNotification('Please log in', 'warning');
-      setTimeout(() => window.location.href = 'index.html', 2000);
+      setTimeout(() => window.location.href = './None', 2000);
       return;
     }
 

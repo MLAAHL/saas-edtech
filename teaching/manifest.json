@@ -2,7 +2,7 @@
     "name": "Teachers Portal",
     "short_name": "Teachers",
     "description": "Smart Attendance System for Teaching Staff",
-    "start_url": "index.html",
+    "start_url": "./",
     "display": "standalone",
     "background_color": "#F8FAFC",
     "theme_color": "#6366F1",

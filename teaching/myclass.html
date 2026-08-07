@@ -1642,12 +1642,12 @@
       <span class="nav-label">History</span>
     </button>
 
-    <button class="nav-item" onclick="window.location.href='mentorship.html'">
+    <button class="nav-item" onclick="window.location.href='mentorshipNone'">
       <span class="material-symbols-rounded">diversity_3</span>
       <span class="nav-label">Mentees</span>
     </button>
 
-    <button class="nav-item" onclick="window.location.href='ai-assistant.html'">
+    <button class="nav-item" onclick="window.location.href='ai-assistantNone'">
       <span class="material-symbols-rounded">auto_awesome</span>
       <span class="nav-label">AI</span>
     </button>
@@ -1783,7 +1783,7 @@
     });
 
     function viewAttendance() {
-      window.location.href = 'view-attendance.html';
+      window.location.href = 'view-attendanceNone';
     }
 
     function toggleNotificationDropdown(e) {
@@ -1855,8 +1855,8 @@
     function logout() {
       if (window.firebaseAuth && window.firebaseSignOut) {
         window.firebaseSignOut(window.firebaseAuth)
-          .then(() => window.location.href = 'index.html')
-          .catch(() => window.location.href = 'index.html');
+          .then(() => window.location.href = './None')
+          .catch(() => window.location.href = './None');
       }
     }
 

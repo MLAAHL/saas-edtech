@@ -234,7 +234,7 @@ async function authFetch(url, options = {}) {
             }
             
             setTimeout(() => {
-                window.location.href = '/index.html'; // Or whatever the root login is
+                window.location.href = '/None'; // Or whatever the root login is
             }, 2000);
             return res; // Stop execution
         }

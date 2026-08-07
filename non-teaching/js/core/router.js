@@ -5,10 +5,18 @@
 (function () {
   'use strict';
 
+  // Pages are linked and served without the .html suffix, but a bookmark or a
+  // local file:// open can still carry one — compare on the bare name so both
+  // forms light up the same nav item.
+  function normalise(value) {
+    var name = String(value || '').split('?')[0].split('#')[0];
+    name = name.split('/').pop();
+    if (name.slice(-5) === '.html') name = name.slice(0, -5);
+    return name || 'index';
+  }
+
   function getCurrentPage() {
-    var path = window.location.pathname;
-    var filename = path.split('/').pop() || 'index.html';
-    return filename;
+    return normalise(window.location.pathname);
   }
 
   function highlightActiveNav() {
@@ -16,10 +24,8 @@
     var links = document.querySelectorAll('.sb-link');
 
     links.forEach(function (link) {
-      var href = link.getAttribute('href') || '';
       link.classList.remove('active');
-
-      if (href === currentPage) {
+      if (normalise(link.getAttribute('href')) === currentPage) {
         link.classList.add('active');
       }
     });
@@ -27,18 +33,18 @@
 
   function getPageTitle(filename) {
     var titles = {
-      'dashboard.html': 'Dashboard',
-      'students.html': 'Students',
-      'report.html': 'Reports',
-      'view-attendance.html': 'View Attendance',
-      'promotion.html': 'Promote',
-      'ai-assistant.html': 'AI Assistant',
-      'teachers.html': 'Teachers',
-      'parents-status.html': 'Parent Status',
-      'mentorship.html': 'Mentors',
-      'index.html': 'Login'
+      'dashboard': 'Dashboard',
+      'students': 'Students',
+      'report': 'Reports',
+      'view-attendance': 'View Attendance',
+      'promotion': 'Promote',
+      'ai-assistant': 'AI Assistant',
+      'teachers': 'Teachers',
+      'parents-status': 'Parent Status',
+      'mentorship': 'Mentors',
+      'index': 'Login'
     };
-    return titles[filename] || 'Dashboard';
+    return titles[normalise(filename)] || 'Dashboard';
   }
 
   function renderBreadcrumb(containerId, extraItems) {
@@ -47,10 +53,10 @@
 
     var page = getCurrentPage();
     var items = [
-      { label: 'Dashboard', href: 'dashboard.html' }
+      { label: 'Dashboard', href: 'dashboard' }
     ];
 
-    if (page !== 'dashboard.html') {
+    if (page !== 'dashboard') {
       items.push({ label: getPageTitle(page), href: null });
     }
 

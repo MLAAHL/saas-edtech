@@ -1050,13 +1050,13 @@
   </div>
 
   <nav class="bottom-nav">
-    <a href="myclass.html" class="nav-item"><span class="material-symbols-rounded">home</span><span
+    <a href="myclassNone" class="nav-item"><span class="material-symbols-rounded">home</span><span
         class="nav-label">Home</span></a>
-    <a href="myclass.html#subjects" class="nav-item"><span class="material-symbols-rounded">menu_book</span><span
+    <a href="myclass#subjects" class="nav-item"><span class="material-symbols-rounded">menu_book</span><span
         class="nav-label">Subjects</span></a>
-    <a href="myclass.html#history" class="nav-item"><span class="material-symbols-rounded">history</span><span
+    <a href="myclass#history" class="nav-item"><span class="material-symbols-rounded">history</span><span
         class="nav-label">History</span></a>
-    <a href="ai-assistant.html" class="nav-item active"><span class="material-symbols-rounded">auto_awesome</span><span
+    <a href="ai-assistantNone" class="nav-item active"><span class="material-symbols-rounded">auto_awesome</span><span
         class="nav-label">AI</span></a>
   </nav>
 
@@ -1068,7 +1068,7 @@
     const auth = getAuth(app);
     window.firebaseAuth = auth;
     onAuthStateChanged(auth, async user => {
-      if (!user) return window.location.replace('index.html');
+      if (!user) return window.location.replace('./None');
       const authGuard = document.getElementById('auth-guard');
       if (authGuard) authGuard.remove();
       const email = user.email;

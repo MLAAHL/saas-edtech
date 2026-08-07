@@ -2,7 +2,7 @@
   "name": "Admin Portal",
   "short_name": "Admin",
   "description": "Smart Attendance Non-Teaching Administrative Portal",
-  "start_url": "index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0C0C0E",
   "theme_color": "#A78BFA",

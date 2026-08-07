@@ -157,7 +157,7 @@ document.getElementById('authForm')?.addEventListener('submit', async e => {
 
     // Faster redirect
     setTimeout(() => {
-      window.location.replace('myclass.html');
+      window.location.replace('myclassNone');
     }, 400);
 
   } catch (err) {

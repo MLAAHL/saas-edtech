@@ -1,7 +1,7 @@
 // ============================================================================
 // CACHE VERSION — BUMP THIS ON EVERY DEPLOY TO BUST ALL CACHES
 // ============================================================================
-const CACHE_VERSION = 39;
+const CACHE_VERSION = 40;
 const CACHE_NAME = `teaching-v${CACHE_VERSION}`;
 const STATIC_CACHE = `static-v${CACHE_VERSION}`;
 const API_CACHE = `api-v${CACHE_VERSION}`;
@@ -10,13 +10,16 @@ const API_CACHE = `api-v${CACHE_VERSION}`;
 const MAX_API_CACHE_ENTRIES = 50;
 
 // Static assets to pre-cache
+// Extensionless, matching how the pages are linked and navigated to. Caching
+// './myclass.html' would never be hit by a navigation to '/myclass'.
 const STATIC_ASSETS = [
     './',
-    './index.html',
-    './myclass.html',
-    './attendance.html',
-    './view-attendance.html',
-    './ai-assistant.html',
+    './myclass',
+    './attendance',
+    './view-attendance',
+    './ai-assistant',
+    './mentorship',
+    './mentorship-register',
     './js/config.js',
     './js/index.js',
     './js/login.js',

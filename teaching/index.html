@@ -75,7 +75,7 @@
     onAuthStateChanged(auth, (user) => {
       if (user) {
         // User is logged in - redirect without ever showing login form
-        window.location.replace('myclass.html');
+        window.location.replace('myclassNone');
       } else {
         // User is not logged in - hide loader and reveal login form smoothly
         var loader = document.getElementById('auth-guard-loader');

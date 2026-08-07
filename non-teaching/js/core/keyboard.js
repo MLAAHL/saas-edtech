@@ -131,7 +131,7 @@
     // Ctrl+Shift+D — Go to dashboard
     if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
       e.preventDefault();
-      window.location.href = 'dashboard.html';
+      window.location.href = 'dashboardNone';
       return;
     }
   });

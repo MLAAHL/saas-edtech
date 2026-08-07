@@ -148,7 +148,7 @@
 
   <div class="topbar">
     <div class="wrap">
-      <a class="back-btn" href="myclass.html" aria-label="Back to my classes">
+      <a class="back-btn" href="myclassNone" aria-label="Back to my classes">
         <span class="material-symbols-rounded">arrow_back</span>
       </a>
       <div style="flex:1; min-width:0;">
@@ -195,7 +195,7 @@
     window.firebaseAuth = auth;
 
     onAuthStateChanged(auth, (user) => {
-      if (!user) { window.location.href = 'index.html'; return; }
+      if (!user) { window.location.href = './None'; return; }
       window.dispatchEvent(new CustomEvent('mentorship:ready'));
     });
   </script>
