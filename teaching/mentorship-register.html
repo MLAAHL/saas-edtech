@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentoring Register</title>
+
+  <link rel="icon" type="image/png" href="logo2.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366F1">
+  <link rel="apple-touch-icon" href="logo2.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://mlaahl.online" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+
+  <script src="js/config.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #6366F1;
+      --text-primary: #334155;
+      --text-secondary: #64748B;
+      --bg-accent: #F8FAFC;
+      --danger: #EF4444;
+      --success: #10B981;
+      --border: #E2E8F0;
+    }
+
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded', sans-serif;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-accent);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding-bottom: 40px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+    .topbar {
+      background: #fff; border-bottom: 1px solid var(--border);
+      padding: 14px 0; position: sticky; top: 0; z-index: 30;
+    }
+    .topbar .wrap { display: flex; align-items: center; gap: 12px; }
+    .back-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--bg-accent);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      color: var(--text-primary); flex-shrink: 0; text-decoration: none;
+    }
+    .topbar h1 { font-family: 'Outfit', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+    .topbar .sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 1px; }
+
+    .card {
+      background: #fff; border: 1px solid var(--border); border-radius: 16px;
+      padding: 16px; margin-top: 16px;
+    }
+
+    .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 110px; background: var(--bg-accent); border-radius: 12px; padding: 10px 12px; text-align: center; }
+    .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .stat .l { font-size: 10.5px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+    .stat.ok .v { color: var(--success); }
+    .stat.no .v { color: var(--danger); }
+
+    .toolbar { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    input[type="search"] {
+      flex: 1; min-width: 180px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
+      font-family: inherit; font-size: 14.5px; color: var(--text-primary); background: #fff; outline: none;
+    }
+    input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+    .btn-ghost {
+      padding: 11px 16px; border: 1px solid var(--border); background: #fff; border-radius: 12px;
+      font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-primary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-ghost:active { background: var(--bg-accent); }
+    .btn-ghost .material-symbols-rounded { font-size: 18px; }
+
+    /* The grid is as wide as the mentor has sessions, so it scrolls on its own
+       rather than pushing the page sideways. */
+    .table-wrap { margin-top: 16px; overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
+    table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13.5px; }
+    th, td { padding: 11px 12px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--border); }
+    thead th {
+      position: sticky; top: 0; background: #fff; z-index: 5;
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-secondary);
+    }
+    thead th .d { font-size: 12px; color: var(--text-primary); font-weight: 700; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(99,102,241,.03); }
+
+    /* Name and ID stay visible while the session columns scroll. */
+    .col-idx { width: 44px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .col-name { text-align: left; position: sticky; left: 0; background: #fff; z-index: 4; min-width: 190px; }
+    thead .col-name { z-index: 6; }
+    tbody tr:hover .col-name { background: #FAFAFE; }
+    .col-name .nm { font-weight: 600; }
+    .col-name .meta { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+    .col-id { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--text-secondary); text-align: left; }
+
+    .mark { display: inline-flex; width: 26px; height: 26px; border-radius: 8px; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+    .mark.p { background: rgba(16,185,129,.12); color: var(--success); }
+    .mark.a { background: rgba(239,68,68,.12); color: var(--danger); }
+    .mark.n { color: var(--border); }
+
+    .num { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .num.p { color: var(--success); }
+    .num.a { color: var(--danger); }
+    .pct { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pct.low { color: var(--danger); }
+
+    .msg { padding: 44px 20px; text-align: center; color: var(--text-secondary); font-size: 14px; }
+    .msg .material-symbols-rounded { font-size: 46px; color: var(--border); display: block; margin: 0 auto 10px; }
+    .hidden { display: none !important; }
+    .row-hidden { display: none; }
+
+    #toast {
+      position: fixed; left: 50%; transform: translateX(-50%) translateY(-20px); top: 16px;
+      background: #1F2937; color: #fff; padding: 12px 18px; border-radius: 12px;
+      font-size: 13.5px; font-weight: 600; z-index: 100; opacity: 0; pointer-events: none;
+      transition: opacity .25s, transform .25s; max-width: 90%; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.err { background: var(--danger); }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <div class="wrap">
+      <a class="back-btn" href="myclass.html" aria-label="Back to my classes">
+        <span class="material-symbols-rounded">arrow_back</span>
+      </a>
+      <div style="flex:1; min-width:0;">
+        <h1>Mentoring Register</h1>
+        <div class="sub" id="sub">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card hidden" id="summaryCard">
+      <div class="stats">
+        <div class="stat"><div class="v" id="sSessions">0</div><div class="l">Sessions</div></div>
+        <div class="stat"><div class="v" id="sStudents">0</div><div class="l">Mentees</div></div>
+        <div class="stat ok"><div class="v" id="sAvg">0%</div><div class="l">Average</div></div>
+        <div class="stat no"><div class="v" id="sLow">0</div><div class="l">Below 75%</div></div>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Search name or ID…" autocomplete="off">
+        <button class="btn-ghost" id="exportBtn">
+          <span class="material-symbols-rounded">download</span> Excel
+        </button>
+      </div>
+    </div>
+
+    <div id="tableHost"></div>
+
+    <div class="msg" id="msg">
+      <span class="material-symbols-rounded">hourglass_empty</span>
+      Loading your mentoring sessions…
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      window.dispatchEvent(new CustomEvent('mentorship:ready'));
+    });
+  </script>
+
+  <script src="js/mentorship-register.js?v=1"></script>
+</body>
+
+</html>

@@ -673,16 +673,16 @@ router.get('/streams', async (req, res) => {
     
     console.log(`✅ Found ${streams.length} streams:`, streams);
 
-    // Surfaced alongside the real streams so a mentor can pick it in My Classes;
-    // no student record carries this stream, the roster is the mentor's mentees.
-    const withMentoring = streams.includes(MENTORING_STREAM)
-      ? streams.slice()
-      : streams.concat(MENTORING_STREAM);
+    // MENTORING is deliberately not offered here. It is not a class — its roll
+    // is a mentor's mentee list, which spans up to eleven real classes — so it
+    // has its own screens (Mentees, and the mentoring register) instead of
+    // pretending to be a stream with one semester.
+    const visible = streams.filter(s => !isMentoringStream(s)).sort();
 
     res.json({
       success: true,
-      streams: withMentoring.sort(),
-      count: withMentoring.length
+      streams: visible,
+      count: visible.length
     });
     
   } catch (error) {

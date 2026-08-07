@@ -1316,6 +1316,9 @@ function updateCompletedDisplay() {
     elements.completedList.innerHTML = completedClasses.map(item => {
       const classTiming = item.time || getClassTiming(item.completedAt);
       const sessionNum = sessionMap.get(item.id) || '?';
+      // A mentoring group is not a class: its students come from up to eleven
+      // stream/semester pairs, so stream and semester badges would be untrue.
+      const isMentoring = String(item.stream || '').trim().toUpperCase() === 'MENTORING';
       const completedDate = new Date(item.completedAt);
       const dateStr = completedDate.toLocaleDateString('en-US', {
         month: 'short',
@@ -1344,11 +1347,15 @@ function updateCompletedDisplay() {
             </div>
             
             <div class="card-info" style="flex: 1; min-width: 0;">
-              <div class="card-subject" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B; margin-bottom: 8px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;">${item.subject}</div>
-              
+              <div class="card-subject" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B; margin-bottom: 8px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;">${isMentoring ? 'Mentoring Session' : item.subject}</div>
+
               <div class="card-badge-row" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                 ${isMentoring ? `
+                 <span class="card-badge badge-stream">${item.totalStudents} MENTEE${item.totalStudents === 1 ? '' : 'S'}</span>
+                 ` : `
                  <span class="card-badge badge-stream">${item.stream}</span>
                  <span class="card-badge badge-sem">SEM ${item.semester}</span>
+                 `}
                  <span style="font-size: 10px; font-weight: 800; color: #4F46E5; background: #EEF2FF; padding: 4px 8px; border-radius: 6px; white-space: nowrap; border: 1px solid #E0E7FF; line-height: 1;">SESSION ${sessionNum}</span>
               </div>
               
@@ -1365,8 +1372,10 @@ function updateCompletedDisplay() {
               </div>
             </div>
             
-            <button 
-              onclick="viewAttendanceDetails('${item.stream}', ${item.semester}, '${item.subject}', '${dateForURL}')"
+            <button
+              onclick="${isMentoring
+                ? `window.location.href='mentorship-register.html'`
+                : `viewAttendanceDetails('${item.stream}', ${item.semester}, '${item.subject}', '${dateForURL}')`}"
               class="action-icon-btn"
               style="background: #F8FAFC; color: #10B981; margin-left: 8px;"
             >

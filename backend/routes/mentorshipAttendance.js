@@ -286,6 +286,99 @@ router.get('/history', async (req, res) => {
   }
 });
 
+// GET /register - the full grid for the signed-in mentor: every session they
+// have taken, against every student who appears in one.
+//
+// Read from `attendance` rather than this route's own collection so a session
+// counts however it was taken, and scoped to this mentor's teacherEmail: a
+// mentoring group belongs to one mentor, and 22 mentors share the same
+// synthetic class, so an unscoped query would mix all of them together.
+router.get('/register', async (req, res) => {
+  try {
+    const mentor = await findMentor(req.db, req.user?.email);
+    if (!mentor) return res.json({ success: true, sessions: [], students: [], isMentor: false });
+
+    const mentorEmail = mentor.email.toLowerCase();
+    const sessions = await req.db.collection('attendance').find({
+      stream: MENTORING_STREAM,
+      subject: MENTORING_SUBJECT,
+      teacherEmail: mentorEmail,
+      isDeleted: { $ne: true }
+    }).toArray();
+
+    const toMinutes = (t) => {
+      const m = String(t || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!m) return 0;
+      let h = parseInt(m[1], 10);
+      if (/PM/i.test(m[3]) && h !== 12) h += 12;
+      if (/AM/i.test(m[3]) && h === 12) h = 0;
+      return h * 60 + parseInt(m[2], 10);
+    };
+    sessions.sort((a, b) =>
+      String(a.date).localeCompare(String(b.date)) || toMinutes(a.time) - toMinutes(b.time));
+
+    // Everyone the sessions name, plus anyone on the list today who has not been
+    // marked yet, so a newly added mentee still gets a row.
+    const named = new Set();
+    sessions.forEach(s => {
+      (s.studentsPresent || []).forEach(id => named.add(id));
+      (s.studentsAbsent || []).forEach(id => named.add(id));
+    });
+    (mentor.mentees || []).forEach(m => { if (m.studentID) named.add(m.studentID); });
+
+    const ids = [...named];
+    const records = await req.db.collection('students')
+      .find({ studentID: { $in: ids } },
+            { projection: { studentID: 1, name: 1, stream: 1, semester: 1 } })
+      .toArray();
+    const byId = new Map();
+    records.forEach(r => { if (!byId.has(r.studentID)) byId.set(r.studentID, r); });
+    // A mentee whose student record was deleted keeps the name from the list.
+    (mentor.mentees || []).forEach(m => {
+      if (m.studentID && !byId.has(m.studentID)) {
+        byId.set(m.studentID, { studentID: m.studentID, name: m.name, stream: m.stream, semester: m.semester });
+      }
+    });
+
+    const students = ids.map(id => {
+      const s = byId.get(id) || { studentID: id, name: id };
+      let presentCount = 0;
+      const attendance = sessions.map(sess => {
+        // Absent is only meaningful if the student was on the roll that day.
+        const wasPresent = (sess.studentsPresent || []).includes(id);
+        const wasListed = wasPresent || (sess.studentsAbsent || []).includes(id);
+        if (wasPresent) presentCount++;
+        return { sessionId: String(sess._id), status: wasPresent ? 'P' : (wasListed ? 'A' : '-') };
+      });
+      const held = attendance.filter(a => a.status !== '-').length;
+      return {
+        studentID: id,
+        name: s.name || id,
+        stream: s.stream || null,
+        semester: s.semester ?? null,
+        attendance,
+        presentCount,
+        absentCount: held - presentCount,
+        sessionsHeld: held,
+        attendancePercentage: held ? Math.round((presentCount / held) * 100) : 0
+      };
+    }).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+    res.json({
+      success: true,
+      isMentor: true,
+      mentorName: mentor.name || mentorEmail.split('@')[0],
+      sessions: sessions.map(s => ({ _id: String(s._id), date: s.date, time: s.time })),
+      students,
+      totalSessions: sessions.length,
+      totalStudents: students.length
+    });
+  } catch (error) {
+    console.error('❌ Mentorship register error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /summary - per-student attendance across all recorded sessions.
 router.get('/summary', async (req, res) => {
   try {
