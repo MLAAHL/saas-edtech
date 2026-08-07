@@ -973,8 +973,21 @@ async function loadInsights() {
     // 2. Subject Bar Chart
     const subjectChartCard = document.getElementById('subjectChartCard');
     const ctx = document.getElementById('subjectBarChart');
+    // The chart library is fetched over the network, so a parent on a poor
+    // connection must still get the rest of the tab — the shortage list and the
+    // insights below matter more than the graphic.
+    let chartReady = true;
     if (ctx && subjectChartCard && data.subjectAnalytics) {
-       await loadChartLibrary();
+       try {
+          await loadChartLibrary();
+       } catch (e) {
+          console.warn('Chart library unavailable:', e);
+          chartReady = false;
+          subjectChartCard.style.display = 'none';
+       }
+    }
+
+    if (chartReady && ctx && subjectChartCard && data.subjectAnalytics) {
        if (window.subjectChartInstance) window.subjectChartInstance.destroy();
        const labels = data.subjectAnalytics.map(sub => {
           const parts = sub.subject.split(/[\s-]+/).filter(p => p.length > 0);
