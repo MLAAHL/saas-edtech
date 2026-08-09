@@ -74,7 +74,15 @@ async function notifyAbsentParents(req, db, stream, semester, subject, date, tim
       const sid = (student.studentID || '').trim();
       const sname = (student.name || '').trim();
       
-      const isPresent = studentsPresentArray.some(e => {
+      // A re-submission of the same class must not contradict the first one:
+      // anyone it recorded present stays present here, so a double-tap that
+      // sends a shorter list cannot raise an absence alert against them.
+      const wasPresentBefore = classFilter.alreadyPresent
+        ? (classFilter.alreadyPresent.has(sid.toLowerCase()) ||
+           classFilter.alreadyPresent.has(sname.toLowerCase()))
+        : false;
+
+      const isPresent = wasPresentBefore || studentsPresentArray.some(e => {
         const entry = (e || '').trim();
         return entry === sid || entry.toLowerCase() === sid.toLowerCase() ||
                entry === sname || entry.toLowerCase() === sname.toLowerCase();
@@ -494,6 +502,47 @@ async function getMenteeIdsFor(db, teacherEmail) {
   );
   if (!teacher) return null;
   return new Set((teacher.mentees || []).map(m => m.studentID).filter(Boolean));
+}
+
+/**
+ * Record one slot, replacing an earlier submission for the same class rather
+ * than sitting beside it.
+ *
+ * A teacher double-tapping the confirm dialog, or a phone retrying a request
+ * that had already succeeded, used to create a second session for the same
+ * period. The register then showed the class twice, and the notifier ran
+ * again — so a student the first submission had marked present could be told
+ * they were absent by the second.
+ *
+ * Returns who the previous version had marked present, so the caller can
+ * notify only parents who have not already been told.
+ */
+async function saveAttendanceSlot(db, data) {
+  const key = {
+    stream: data.stream,
+    semester: data.semester,
+    subject: data.subject,
+    date: data.date,
+    time: data.time,
+    isDeleted: { $ne: true }
+  };
+
+  const existing = await db.collection('attendance').findOne(key);
+
+  if (!existing) {
+    const saved = await new Attendance(data).save();
+    return { id: saved._id, previousPresent: null };
+  }
+
+  await db.collection('attendance').updateOne(
+    { _id: existing._id },
+    { $set: { ...data, updatedAt: new Date(), resubmittedAt: new Date() } }
+  );
+
+  return {
+    id: existing._id,
+    previousPresent: new Set((existing.studentsPresent || []).map(x => String(x).trim().toLowerCase()))
+  };
 }
 
 function filterStudentsBySubject(students, subjectDetails, manualLanguage = null, manualElective = null) {
@@ -1503,7 +1552,11 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     console.log(`📚 Saving ${hours}-hour attendance for ${subject} (${timeSlots.join(', ')})`);
     
     const savedIds = [];
-    
+    // Everyone an earlier submission for this class already had present, so a
+    // re-submit cannot contradict it and cannot notify the same parent twice.
+    const alreadyPresent = new Set();
+    let wasResubmit = false;
+
     for (const slot of timeSlots) {
       const attendanceData = {
         stream, 
@@ -1534,9 +1587,12 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
         attendanceData.electiveSubject = electiveSubject;
       }
       
-      const saved = await new Attendance(attendanceData).save();
-      savedIds.push(saved._id);
-      console.log(`✅ Attendance saved for slot ${slot}:`, saved._id);
+      const { id, previousPresent } = await saveAttendanceSlot(req.db, attendanceData);
+      savedIds.push(id);
+      if (previousPresent) {
+        wasResubmit = true;
+        previousPresent.forEach(v => alreadyPresent.add(v));
+      }
     }
     
     clearCachePattern(`attendance:${stream}`);
@@ -1555,6 +1611,7 @@ router.post('/attendance/:stream/sem:semester/:subject', async (req, res) => {
     if (subjectDetails && subjectDetails.isMentorSession) {
       classFilter.menteeIds = (await getMenteeIdsFor(req.db, teacherEmail)) || new Set();
     }
+    if (wasResubmit) classFilter.alreadyPresent = alreadyPresent;
     const notifStats = await notifyAbsentParents(req, req.db, stream, semesterNumber, subject, date, time, studentsPresent, classFilter);
     
     res.json({ 
@@ -1609,7 +1666,11 @@ router.post('/attendance', async (req, res) => {
     console.log(`📚 Saving ${hours}-hour attendance for ${subject} (${timeSlots.join(', ')})`);
     
     const savedIds = [];
-    
+    // Everyone an earlier submission for this class already had present, so a
+    // re-submit cannot contradict it and cannot notify the same parent twice.
+    const alreadyPresent = new Set();
+    let wasResubmit = false;
+
     for (const slot of timeSlots) {
       const attendanceData = {
         stream: finalStream, 
@@ -1640,9 +1701,12 @@ router.post('/attendance', async (req, res) => {
         attendanceData.electiveSubject = electiveSubject;
       }
       
-      const saved = await new Attendance(attendanceData).save();
-      savedIds.push(saved._id);
-      console.log(`✅ Attendance saved for slot ${slot}:`, saved._id);
+      const { id, previousPresent } = await saveAttendanceSlot(req.db, attendanceData);
+      savedIds.push(id);
+      if (previousPresent) {
+        wasResubmit = true;
+        previousPresent.forEach(v => alreadyPresent.add(v));
+      }
     }
     
     clearCachePattern(`attendance:${finalStream}`);
@@ -1660,6 +1724,7 @@ router.post('/attendance', async (req, res) => {
     if (subjectDetails && subjectDetails.isMentorSession) {
       classFilter.menteeIds = (await getMenteeIdsFor(req.db, teacherEmail)) || new Set();
     }
+    if (wasResubmit) classFilter.alreadyPresent = alreadyPresent;
     const notifStats = await notifyAbsentParents(req, req.db, finalStream, finalSemester, subject, date, time, studentsPresent, classFilter);
     
     res.json({ 
