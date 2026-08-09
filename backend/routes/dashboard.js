@@ -464,7 +464,6 @@ router.get('/streams/stats', async (req, res) => {
       semesters: stat.semesters.sort()
     }));
 
-    console.log(`✅ Found ${formattedStats.length} streams`);
 
     res.json({
       success: true,

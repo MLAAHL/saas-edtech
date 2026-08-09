@@ -674,7 +674,6 @@ async function getRegisterStudents(db, stream, semester, subject, sessions) {
 
 router.get('/streams', async (req, res) => {
   try {
-    console.log('🔥 /api/streams route HIT');
     
     if (!req.db) {
       return res.status(503).json({ success: false, error: 'Database unavailable' });
@@ -692,7 +691,6 @@ router.get('/streams', async (req, res) => {
       }
     }
     
-    console.log(`✅ Found ${streams.length} streams:`, streams);
 
     // MENTORING is deliberately not offered here. It is not a class — its roll
     // is a mentor's mentee list, which spans up to eleven real classes — so it

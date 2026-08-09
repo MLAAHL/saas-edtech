@@ -45,7 +45,6 @@ router.use(firebaseAuth);
 // 1. GET ALL STREAMS (NO /api/ PREFIX!)
 // ============================================================================
 router.get('/streams', async (req, res) => {
-  console.log('📡 GET /streams');
   try {
     const db = await getDatabase();
     const streams = await db.collection('streams').find({ isActive: true }).toArray();
@@ -57,7 +56,6 @@ router.get('/streams', async (req, res) => {
       semesters: stream.semesters
     }));
     
-    console.log(`✅ Returning ${formattedStreams.length} streams`);
     res.json({
       success: true,
       streams: formattedStreams

@@ -182,8 +182,39 @@ app.use((req, res, next) => {
 // REQUEST LOGGER
 // ============================================================================
 
+// A line per request wrote 33 MB a day and told us nothing: the overwhelming
+// majority were healthy GETs nobody reads back. Log what is worth reading —
+// anything that failed, anything slow, and every write.
+const SLOW_MS = 1000;
+
+// Housekeeping the apps fire on a timer. They are writes, but a successful one
+// is noise: between them they were 100,000 lines of the last log.
+const QUIET_PATHS = [
+  '/api/parent/update-activity',
+  '/api/parent/update-notification-status',
+  '/api/parent/notifications/clear',
+  '/api/push/register',
+  '/api/health',
+  '/health'
+];
+
 app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.path}`);
+  const started = Date.now();
+
+  res.on('finish', () => {
+    const ms = Date.now() - started;
+    const failed = res.statusCode >= 400;
+    const slow = ms >= SLOW_MS;
+    const write = req.method !== 'GET' && req.method !== 'HEAD';
+
+    // A failure is always worth a line, even from a quiet path.
+    if (!failed && QUIET_PATHS.some(p => req.path.startsWith(p))) return;
+    if (!failed && !slow && !write) return;
+
+    const mark = failed ? '⚠️' : slow ? '🐢' : '✏️';
+    console.log(`${mark} ${req.method} ${req.originalUrl.split('?')[0]} ${res.statusCode} ${ms}ms`);
+  });
+
   next();
 });
 

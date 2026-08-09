@@ -34,7 +34,6 @@ const firebaseAuth = async (req, res, next) => {
     };
     req.user = req.firebaseUser; // ✅ Ensure backward compatibility with req.user
     
-    console.log('✅ Token verified for user:', decoded.email);
     next();
   } catch (err) {
     console.error('❌ Firebase token verification failed:', err.message);

@@ -310,7 +310,6 @@ router.post('/update-activity', parentAuth, async (req, res) => {
     const tid = studentID.trim();
     const col = req.db.collection('students');
     
-    console.log(`[PARENTS] Activity update for: ${tid}`);
     
     await col.updateOne(
       { studentID: { $regex: new RegExp(`^${tid}$`, 'i') }, isActive: true },

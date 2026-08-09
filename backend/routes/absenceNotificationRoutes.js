@@ -39,7 +39,6 @@ router.get('/streams', async (req, res) => {
     const collection = req.db.collection('students');
     const streams = await collection.distinct('stream', { isActive: true });
     
-    console.log(`✅ Found ${streams.length} streams`);
     
     res.json({
       success: true,
