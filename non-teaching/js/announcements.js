@@ -3,9 +3,7 @@
 const API = window.APP_CONFIG.API_BASE_URL;
 
 let uploadedImageUrl = '';
-let audienceType = 'all';
-let students = [];          // loaded once, for the class list and the picker
-let picked = new Set();
+let students = [];          // loaded once, shared by both tabs
 
 async function authHeaders(extra) {
   const headers = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
@@ -30,6 +28,187 @@ function esc(s) {
 function el(id) { return document.getElementById(id); }
 
 // ---------- audience ----------
+//
+// Both tabs choose who a message is for in the same way, so they run the same
+// picker rather than a copy each. Two copies would drift, and the one that
+// drifted would be the one deciding who receives a notification.
+
+function makeAudience(ids, opts) {
+  const state = { type: opts.initial || 'all', picked: new Set() };
+
+  function matching() {
+    if (state.type === 'selected') return students.filter(s => state.picked.has(s.studentID));
+    if (state.type === 'all') return students;
+
+    const stream = el(ids.stream).value;
+    const sem = el(ids.semester).value;
+    return students.filter(s =>
+      (stream === 'ALL' || String(s.stream || '').toLowerCase() === stream.toLowerCase()) &&
+      (sem === 'ALL' || Number(s.semester) === Number(sem)));
+  }
+
+  function refreshReach() {
+    const box = el(ids.reach);
+    if (!box) return;
+
+    if (!students.length) {
+      box.textContent = 'Loading the student list…';
+      box.style.color = 'var(--text-muted)';
+      return;
+    }
+
+    const n = matching().length;
+    if (n === 0) {
+      // Sending to nobody is always a mistake, so say so rather than let it
+      // through and leave the sender wondering why nothing arrived.
+      box.textContent = state.type === 'selected'
+        ? 'Nobody picked yet — search and tick the students below.'
+        : 'No student matches that class, so nobody would get this.';
+      box.style.color = 'var(--amber)';
+      return;
+    }
+
+    box.textContent = opts.reachText(n);
+    box.style.color = 'var(--text-muted)';
+  }
+
+  function render() {
+    const q = (el(ids.search).value || '').trim().toLowerCase();
+    const list = el(ids.list);
+
+    // Chosen students stay on top so refining a search never hides them.
+    const chosen = students.filter(s => state.picked.has(s.studentID));
+    const matches = q
+      ? students.filter(s => !state.picked.has(s.studentID) &&
+          ((s.name || '').toLowerCase().includes(q) || (s.studentID || '').toLowerCase().includes(q)))
+      : [];
+
+    const rows = [...chosen, ...matches.slice(0, 40)];
+    list.innerHTML = rows.length
+      ? rows.map(s => `
+          <div class="pick-row ${state.picked.has(s.studentID) ? 'picked' : ''}" data-id="${esc(s.studentID)}">
+            <input type="checkbox" ${state.picked.has(s.studentID) ? 'checked' : ''} tabindex="-1"
+                   style="width:auto; margin:0;">
+            <span class="pick-name">${esc(s.name || s.studentID)}</span>
+            <span class="pick-meta">${esc(s.stream || '')} ${s.semester ? 'Sem ' + s.semester : ''}</span>
+          </div>`).join('')
+      : `<div style="padding:14px; font-size:12px; color:var(--text-muted);">
+           ${q ? 'No student matches that.' : 'Type a name or student ID to find people.'}
+         </div>`;
+
+    el(ids.count).textContent = `${state.picked.size} selected`;
+
+    el(ids.chips).innerHTML = chosen.slice(0, 10).map(s => `
+        <span class="pick-chip">${esc((s.name || s.studentID).split(' ')[0])}
+          <button type="button" data-remove="${esc(s.studentID)}">&times;</button>
+        </span>`).join('') +
+      (chosen.length > 10 ? `<span class="pick-chip">+${chosen.length - 10} more</span>` : '');
+
+    refreshReach();
+  }
+
+  function setType(kind) {
+    state.type = kind;
+    el(ids.choice).querySelectorAll('.aud-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset[ids.dataKey] === kind));
+    el(ids.classPanel).style.display = kind === 'class' ? 'block' : 'none';
+    el(ids.selectedPanel).style.display = kind === 'selected' ? 'block' : 'none';
+    if (kind === 'selected') render();
+    refreshReach();
+  }
+
+  function wire() {
+    el(ids.choice).addEventListener('click', e => {
+      const b = e.target.closest('.aud-btn');
+      if (b) setType(b.dataset[ids.dataKey]);
+    });
+    el(ids.search).addEventListener('input', render);
+    el(ids.list).addEventListener('click', e => {
+      const row = e.target.closest('.pick-row');
+      if (!row) return;
+      const id = row.dataset.id;
+      state.picked.has(id) ? state.picked.delete(id) : state.picked.add(id);
+      render();
+    });
+    el(ids.chips).addEventListener('click', e => {
+      const b = e.target.closest('[data-remove]');
+      if (!b) return;
+      state.picked.delete(b.dataset.remove);
+      render();
+    });
+    el(ids.clear).addEventListener('click', () => {
+      state.picked.clear();
+      el(ids.search).value = '';
+      render();
+    });
+    [ids.stream, ids.semester].forEach(id => {
+      const node = el(id);
+      if (node) node.addEventListener('change', refreshReach);
+    });
+  }
+
+  function fillStreams() {
+    const streams = [...new Set(students.map(s => s.stream).filter(Boolean))].sort();
+    el(ids.stream).innerHTML = '<option value="ALL">All streams</option>' +
+      streams.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  }
+
+  function reset() {
+    state.picked.clear();
+    el(ids.search).value = '';
+    setType(opts.initial || 'all');
+  }
+
+  return {
+    get type() { return state.type; },
+    get picked() { return state.picked; },
+    matching, refreshReach, render, setType, wire, fillStreams, reset,
+
+    // What the announcement endpoint expects.
+    cardPayload() {
+      if (state.type === 'selected') {
+        return { audienceType: 'selected', studentIDs: Array.from(state.picked) };
+      }
+      if (state.type === 'class') {
+        return { audienceType: 'class', stream: el(ids.stream).value, semester: el(ids.semester).value };
+      }
+      return { audienceType: 'all' };
+    },
+
+    // What the broadcast endpoint expects — the same choice, different words.
+    pushPayload() {
+      if (state.type === 'selected') return { studentIDs: Array.from(state.picked) };
+      if (state.type === 'class') {
+        return { stream: el(ids.stream).value, semester: el(ids.semester).value };
+      }
+      return { stream: 'ALL', semester: 'ALL' };
+    },
+
+    label() {
+      if (state.type === 'all') return 'everyone';
+      if (state.type === 'selected') return `${state.picked.size} chosen student(s)`;
+      const st = el(ids.stream).value;
+      const sm = el(ids.semester).value;
+      return `${st === 'ALL' ? 'all streams' : st}${sm === 'ALL' ? '' : ' semester ' + sm}`;
+    }
+  };
+}
+
+const cardAud = makeAudience({
+  choice: 'audChoice', classPanel: 'audClassPanel', selectedPanel: 'audSelectedPanel',
+  stream: 'aStream', semester: 'aSemester', search: 'aPickSearch', list: 'aPickList',
+  chips: 'aPickChips', count: 'aPickCount', clear: 'aPickClear', reach: 'audReach',
+  dataKey: 'aud'
+}, { initial: 'all', reachText: n => `${n} student${n === 1 ? '' : 's'} will see this card.` });
+
+const pushAud = makeAudience({
+  choice: 'nAudChoice', classPanel: 'nAudClassPanel', selectedPanel: 'nAudSelectedPanel',
+  stream: 'nStream', semester: 'nSemester', search: 'nPickSearch', list: 'nPickList',
+  chips: 'nPickChips', count: 'nPickCount', clear: 'nPickClear', reach: 'nReach',
+  dataKey: 'naud'
+}, { initial: 'all', reachText: n => `${n} student${n === 1 ? '' : 's'} in this group. ` +
+                                     `Only those with the app and notifications on will get it — ` +
+                                     `check before sending.` });
 
 async function loadStudents() {
   try {
@@ -40,103 +219,10 @@ async function loadStudents() {
     console.warn('Could not load students:', err);
   }
 
-  const streams = [...new Set(students.map(s => s.stream).filter(Boolean))].sort();
-  el('aStream').innerHTML = '<option value="ALL">All streams</option>' +
-    streams.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-  refreshReach();
-}
-
-// Everything the server needs to decide who this is for.
-function audiencePayload() {
-  if (audienceType === 'selected') {
-    return { audienceType: 'selected', studentIDs: Array.from(picked) };
-  }
-  if (audienceType === 'class') {
-    return { audienceType: 'class', stream: el('aStream').value, semester: el('aSemester').value };
-  }
-  return { audienceType: 'all' };
-}
-
-// How many students the current choice covers, so the reach is visible before
-// publishing rather than after.
-function matchingStudents() {
-  if (audienceType === 'selected') return students.filter(s => picked.has(s.studentID));
-  if (audienceType === 'all') return students;
-
-  const stream = el('aStream').value;
-  const sem = el('aSemester').value;
-  return students.filter(s =>
-    (stream === 'ALL' || String(s.stream || '').toLowerCase() === stream.toLowerCase()) &&
-    (sem === 'ALL' || Number(s.semester) === Number(sem)));
-}
-
-function refreshReach() {
-  const box = el('audReach');
-
-  if (!students.length) {
-    box.textContent = 'Loading the student list…';
-    box.style.color = 'var(--text-muted)';
-    return;
-  }
-
-  const n = matchingStudents().length;
-  if (n === 0) {
-    // Publishing to nobody is always a mistake, so say so rather than let it
-    // through and leave the sender wondering why no parent saw it.
-    box.textContent = audienceType === 'selected'
-      ? 'Nobody picked yet — search and tick the students below.'
-      : 'No student matches that class, so nobody would see this.';
-    box.style.color = 'var(--amber)';
-    return;
-  }
-
-  box.textContent = `${n} student${n === 1 ? '' : 's'} will see this card.`;
-  box.style.color = 'var(--text-muted)';
-}
-
-function setAudience(kind) {
-  audienceType = kind;
-  document.querySelectorAll('.aud-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.aud === kind));
-  el('audClassPanel').style.display = kind === 'class' ? 'block' : 'none';
-  el('audSelectedPanel').style.display = kind === 'selected' ? 'block' : 'none';
-  if (kind === 'selected') renderPickList();
-  refreshReach();
-}
-
-function renderPickList() {
-  const q = (el('aPickSearch').value || '').trim().toLowerCase();
-  const list = el('aPickList');
-
-  // Chosen students stay on top so refining a search never hides them.
-  const chosen = students.filter(s => picked.has(s.studentID));
-  const matches = q
-    ? students.filter(s => !picked.has(s.studentID) &&
-        ((s.name || '').toLowerCase().includes(q) || (s.studentID || '').toLowerCase().includes(q)))
-    : [];
-
-  const rows = [...chosen, ...matches.slice(0, 40)];
-  list.innerHTML = rows.length
-    ? rows.map(s => `
-        <div class="pick-row ${picked.has(s.studentID) ? 'picked' : ''}" data-id="${esc(s.studentID)}">
-          <input type="checkbox" ${picked.has(s.studentID) ? 'checked' : ''} tabindex="-1"
-                 style="width:auto; margin:0;">
-          <span class="pick-name">${esc(s.name || s.studentID)}</span>
-          <span class="pick-meta">${esc(s.stream || '')} ${s.semester ? 'Sem ' + s.semester : ''}</span>
-        </div>`).join('')
-    : `<div style="padding:14px; font-size:12px; color:var(--text-muted);">
-         ${q ? 'No student matches that.' : 'Type a name or student ID to find people.'}
-       </div>`;
-
-  el('aPickCount').textContent = `${picked.size} selected`;
-
-  el('aPickChips').innerHTML = chosen.slice(0, 10).map(s => `
-      <span class="pick-chip">${esc((s.name || s.studentID).split(' ')[0])}
-        <button type="button" data-remove="${esc(s.studentID)}">&times;</button>
-      </span>`).join('') +
-    (chosen.length > 10 ? `<span class="pick-chip">+${chosen.length - 10} more</span>` : '');
-
-  refreshReach();
+  cardAud.fillStreams();
+  pushAud.fillStreams();
+  cardAud.refreshReach();
+  pushAud.refreshReach();
 }
 
 
@@ -268,11 +354,18 @@ async function loadList() {
           <div class="m" style="margin-bottom:10px;">
             ${a.dismissedBy} dismissed &middot; ${a.openedBy} opened the link &middot;
             by ${esc(a.createdBy)} on ${new Date(a.createdAt).toLocaleDateString('en-IN')}
+            ${a.notifiedAt ? `<br><span style="color:var(--green); font-weight:600;">
+              Notification sent to ${a.notifiedCount} device(s) on
+              ${new Date(a.notifiedAt).toLocaleDateString('en-IN')}${a.notifySends > 1 ? ` &middot; sent ${a.notifySends} times` : ''}
+            </span>` : ''}
           </div>
           <div class="row">
             <button class="btn btn-ghost btn-sm" data-toggle="${a._id}" data-active="${a.isActive}">
               ${a.isActive ? 'Turn off' : 'Make live'}
             </button>
+            ${a.isActive ? `<button class="btn btn-ghost btn-sm" data-notify="${a._id}">
+              ${a.notifiedAt ? 'Send again' : 'Send notification'}
+            </button>` : ''}
             <button class="btn btn-ghost btn-sm" data-reset="${a._id}">Show again to all</button>
             <button class="btn btn-danger btn-sm" data-del="${a._id}">Delete</button>
           </div>
@@ -289,8 +382,8 @@ async function publish() {
   const title = el('fTitle').value.trim();
   if (!title) { toast('A title is required'); return; }
 
-  const reach = matchingStudents().length;
-  if (audienceType === 'selected' && picked.size === 0) {
+  const reach = cardAud.matching().length;
+  if (cardAud.type === 'selected' && cardAud.picked.size === 0) {
     toast('Pick at least one student, or choose Everyone');
     return;
   }
@@ -301,7 +394,7 @@ async function publish() {
 
   // Sending to the whole college is worth a second look; the other audiences
   // are already spelled out on screen.
-  if (audienceType === 'all' && !confirm(`Show this to all ${reach} parents?`)) return;
+  if (cardAud.type === 'all' && !confirm(`Show this to all ${reach} parents?`)) return;
 
   const btn = el('publishBtn');
   btn.disabled = true;
@@ -320,16 +413,13 @@ async function publish() {
                   (el('fAction').value === 'ack' ? 'Got it' : ''),
         endsAt: el('fEnds').value || null,
         isActive: true,
-        ...audiencePayload()
+        ...cardAud.cardPayload()
       })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
 
-    const who = audienceType === 'all' ? 'everyone'
-      : audienceType === 'selected' ? `${picked.size} selected student(s)`
-      : `${el('aStream').value}${el('aSemester').value === 'ALL' ? '' : ' sem ' + el('aSemester').value}`;
-    toast(`Published to ${who} — they will see it on next open`);
+    toast(`Published to ${cardAud.label()} — they will see it on next open`);
     clearForm();
     loadList();
   } catch (err) {
@@ -341,14 +431,13 @@ async function publish() {
 }
 
 function clearForm() {
-  ['fTitle', 'fBody', 'fLink', 'fCta', 'fEnds', 'aPickSearch'].forEach(id => { el(id).value = ''; });
+  ['fTitle', 'fBody', 'fLink', 'fCta', 'fEnds'].forEach(id => { el(id).value = ''; });
   el('fAction').value = 'ack';
   refreshActionRows();
   uploadedImageUrl = '';
-  picked.clear();
   el('imagePreview').hidden = true;
   el('imageLabel').textContent = 'Click to upload a poster (optional)';
-  setAudience('all');
+  cardAud.reset();
   refreshPreview();
 }
 
@@ -366,6 +455,344 @@ async function act(id, method, path, confirmText) {
   }
 }
 
+// ---------- tabs ----------
+
+const PANE_TEXT = {
+  cards: ['Announcements', 'A card shown to parents when they open the app. Each parent sees it once.'],
+  notify: ['Send notification', 'A push notification straight to the parent\'s phone. It cannot be taken back.']
+};
+
+function showPane(name) {
+  document.querySelectorAll('.tab').forEach(b => {
+    const on = b.dataset.pane === name;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  el('paneCards').hidden = name !== 'cards';
+  el('paneNotify').hidden = name !== 'notify';
+  el('pageTitle').textContent = PANE_TEXT[name][0];
+  el('pageLede').textContent = PANE_TEXT[name][1];
+}
+
+// ---------- the notification tab ----------
+
+function refreshPushPreview() {
+  const t = el('nTitle').value.trim();
+  const b = el('nBody').value.trim();
+  // Shown with the placeholders filled in, so the sender sees a real sentence
+  // rather than {name} and only discovers the wording on a parent's phone.
+  const sample = students[0];
+  const fill = (s) => (el('nPersonalise').checked && sample)
+    ? s.replace(/\{name\}/gi, sample.name || '')
+       .replace(/\{firstName\}/gi, (sample.name || '').split(/\s+/)[0] || '')
+    : s;
+
+  el('nPvTitle').textContent = t ? fill(t) : 'Your title';
+  el('nPvBody').textContent = b ? fill(b) : 'Your message appears here.';
+  el('nCount').textContent = `${el('nBody').value.length} / 500`;
+}
+
+async function checkPushAudience() {
+  const box = el('nPreviewBox');
+  const btn = el('nPreviewBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/broadcast/preview`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        title: el('nTitle').value,
+        body: el('nBody').value,
+        personalised: el('nPersonalise').checked,
+        ...pushAud.pushPayload()
+      })
+    });
+    const d = await res.json();
+    if (!d.success) throw new Error(d.error);
+
+    const classes = Object.entries(d.byClass || {})
+      .sort((a, b) => b[1] - a[1]).slice(0, 6)
+      .map(([k, v]) => `<div style="display:flex; justify-content:space-between;">
+                          <span>${esc(k)}</span><span>${v}</span></div>`).join('');
+
+    box.innerHTML = `
+      <div style="font-size:22px; font-weight:700; color:var(--text-primary);
+                  line-height:1.1; margin-bottom:2px;">${d.reachable}</div>
+      <div style="margin-bottom:12px;">
+        of ${d.total} will actually get it${d.unreachable
+          ? ` &middot; <span style="color:var(--amber);">${d.unreachable} unreachable</span>` : ''}
+      </div>
+      ${d.unreachable ? `<div style="font-size:11.5px; margin-bottom:12px;">
+        Those ${d.unreachable} have no app installed or notifications switched off.
+        A notification cannot reach them at all.
+      </div>` : ''}
+      ${classes ? `<div style="border-top:1px solid var(--border); padding-top:10px; margin-bottom:12px;">
+        ${classes}</div>` : ''}
+      ${(d.sample || []).length ? `
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+                    color:var(--text-muted); margin-bottom:6px;">How it reads</div>
+        ${d.sample.map(s => `
+          <div style="background:var(--bg-elevated); border:1px solid var(--border);
+                      border-radius:8px; padding:9px 11px; margin-bottom:6px;">
+            <div style="font-weight:700; color:var(--text-primary); font-size:12.5px;">${esc(s.title)}</div>
+            <div style="font-size:12px;">${esc(s.body)}</div>
+            <div style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">to ${esc(s.name)}</div>
+          </div>`).join('')}` : ''}
+    `;
+  } catch (err) {
+    box.innerHTML = `<span style="color:var(--red);">Could not check: ${esc(err.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- when to send ----------
+
+let sendWhen = 'now';
+
+function setWhen(kind) {
+  sendWhen = kind;
+  el('nWhenChoice').querySelectorAll('.aud-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.when === kind));
+  el('nLaterPanel').style.display = kind === 'later' ? 'block' : 'none';
+  el('nSendBtn').textContent = kind === 'later' ? 'Schedule' : 'Send';
+  refreshWhenNote();
+}
+
+// The value of a datetime-local field is wall-clock text with no timezone. The
+// server runs on UTC, so it is turned into a real instant here, where the
+// browser knows what the sender actually meant.
+function chosenInstant() {
+  const v = el('nSendAt').value;
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function localFieldValue(date) {
+  const p = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}` +
+         `T${p(date.getHours())}:${p(date.getMinutes())}`;
+}
+
+function refreshWhenNote() {
+  const box = el('nWhenNote');
+  if (!box) return;
+  const d = chosenInstant();
+
+  if (!d) {
+    box.textContent = 'Pick a date and time.';
+    box.style.color = 'var(--text-muted)';
+    return;
+  }
+
+  const mins = Math.round((d.getTime() - Date.now()) / 60000);
+  if (mins < 0) {
+    box.textContent = 'That time has already passed.';
+    box.style.color = 'var(--amber)';
+    return;
+  }
+
+  const when = d.toLocaleString('en-IN',
+    { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  const away = mins < 60 ? `${mins} min` : mins < 1440
+    ? `${Math.round(mins / 60)} hr` : `${Math.round(mins / 1440)} day(s)`;
+  box.textContent = `Sends ${when} — ${away} from now.`;
+  box.style.color = 'var(--text-muted)';
+}
+
+function applyPreset(kind) {
+  const d = new Date();
+  if (kind === 'morning') { d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); }
+  else { d.setHours(18, 0, 0, 0); if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); }
+  el('nSendAt').value = localFieldValue(d);
+  refreshWhenNote();
+}
+
+async function sendPush() {
+  const title = el('nTitle').value.trim();
+  const body = el('nBody').value.trim();
+
+  if (!title || !body) { toast('A title and a message are both needed'); return; }
+  if (pushAud.type === 'selected' && pushAud.picked.size === 0) {
+    toast('Pick at least one student, or choose Everyone');
+    return;
+  }
+
+  const reach = pushAud.matching().length;
+  if (reach === 0) { toast('That group has no students in it'); return; }
+
+  const later = sendWhen === 'later';
+  const when = later ? chosenInstant() : null;
+
+  if (later) {
+    if (!when) { toast('Pick a date and time to send it'); return; }
+    if (when.getTime() < Date.now()) { toast('That time has already passed'); return; }
+  }
+
+  const ask = later
+    ? `Schedule this notification?\n\n` +
+      `To: ${pushAud.label()} — up to ${reach} students\n` +
+      `Title: ${title}\n` +
+      `Sends: ${when.toLocaleString('en-IN',
+        { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}\n\n` +
+      `You can cancel it any time before then.`
+    // Spelled out in full, because sending now reaches people instantly and
+    // cannot be undone.
+    : `Send this notification now?\n\n` +
+      `To: ${pushAud.label()} — up to ${reach} students\n` +
+      `Title: ${title}\n\n` +
+      `It arrives on their phone immediately and cannot be taken back.`;
+
+  if (!confirm(ask)) return;
+
+  const btn = el('nSendBtn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = later ? 'Scheduling…' : 'Sending…';
+
+  try {
+    const res = await fetch(`${API}/broadcast/${later ? 'schedule' : 'send'}`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        title, body,
+        personalised: el('nPersonalise').checked,
+        ...pushAud.pushPayload(),
+        ...(later ? { sendAt: when.toISOString() } : {})
+      })
+    });
+    const d = await res.json();
+    if (!d.success) throw new Error(d.error);
+
+    if (later) {
+      toast('Scheduled');
+      el('nPreviewBox').innerHTML =
+        `<span style="color:var(--green); font-weight:600;">Queued for ` +
+        `${esc(new Date(d.sendAt).toLocaleString('en-IN',
+          { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}` +
+        `</span>`;
+      loadQueue();
+    } else {
+      toast(d.message || `Sent to ${d.sent} device(s)`);
+      el('nPreviewBox').innerHTML =
+        `<span style="color:var(--green); font-weight:600;">${esc(d.message || 'Sent')}</span>`;
+    }
+  } catch (err) {
+    toast(later ? 'Could not schedule: ' + err.message : 'Could not send: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+// ---------- the queue ----------
+
+const QUEUE_LABEL = {
+  pending:   ['Waiting',   'var(--amber)'],
+  sending:   ['Sending',   'var(--purple)'],
+  sent:      ['Sent',      'var(--green)'],
+  cancelled: ['Cancelled', 'var(--text-muted)'],
+  failed:    ['Failed',    'var(--red)'],
+  missed:    ['Missed',    'var(--red)']
+};
+
+async function loadQueue() {
+  const host = el('nQueue');
+  try {
+    const res = await fetch(`${API}/broadcast/scheduled`, { headers: await authHeaders() });
+    const d = await res.json();
+    if (!d.success) throw new Error(d.error);
+
+    if (!d.scheduled.length) {
+      host.textContent = 'Nothing queued.';
+      return;
+    }
+
+    host.innerHTML = d.scheduled.map(s => {
+      const [word, colour] = QUEUE_LABEL[s.status] || [s.status, 'var(--text-muted)'];
+      const when = new Date(s.sendAt).toLocaleString('en-IN',
+        { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+      return `
+        <div style="border-bottom:1px solid var(--border); padding:9px 0;">
+          <div class="row" style="justify-content:space-between; gap:8px;">
+            <span style="font-weight:600; color:var(--text-primary);">${esc(s.title)}</span>
+            <span style="color:${colour}; font-weight:700; font-size:10.5px;
+                  text-transform:uppercase; letter-spacing:.05em;">${word}</span>
+          </div>
+          <div style="font-size:11.5px; margin-top:2px;">
+            ${esc(when)} &middot; ${esc(s.audienceLabel || '')}
+            ${s.status === 'sent' ? ` &middot; reached ${s.sent} device(s)` : ''}
+            ${s.status === 'pending' ? ` &middot; about ${s.reachableWhenQueued} reachable` : ''}
+          </div>
+          ${s.note ? `<div style="font-size:11px; color:var(--amber); margin-top:2px;">${esc(s.note)}</div>` : ''}
+          ${s.status === 'pending'
+            ? `<button class="btn btn-ghost btn-sm" style="margin-top:6px;"
+                 data-cancel="${s.id}">Cancel</button>` : ''}
+        </div>`;
+    }).join('');
+  } catch (err) {
+    host.innerHTML = `<span style="color:var(--red);">${esc(err.message)}</span>`;
+  }
+}
+
+// Push an announcement to phones.
+//
+// The card alone only appears when a parent happens to open the app. This sends
+// it as a notification too — so the count is checked with the server first and
+// shown in the confirmation, because a send cannot be taken back.
+async function sendNotification(btn) {
+  const id = btn.dataset.notify;
+  const label = btn.textContent.trim();
+
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  try {
+    const res = await fetch(`${API}/announcements/${id}/notify-preview`, {
+      headers: await authHeaders()
+    });
+    const p = await res.json();
+    if (!p.success) throw new Error(p.error);
+
+    if (p.reachable === 0) {
+      toast('Nobody in that audience has notifications switched on');
+      return;
+    }
+
+    let ask = `Send "${p.title}" as a notification?\n\n` +
+              `To: ${p.audienceLabel}\n` +
+              `It will reach ${p.reachable} of ${p.total} students.`;
+    if (p.unreachable > 0) {
+      ask += `\n${p.unreachable} have no app or notifications off — they will still see the card.`;
+    }
+    if (p.alreadySentAt) {
+      ask += `\n\nThis was already sent on ` +
+             `${new Date(p.alreadySentAt).toLocaleDateString('en-IN')}. ` +
+             `Sending again means those parents get it a second time.`;
+    }
+    ask += '\n\nThis cannot be undone.';
+
+    if (!confirm(ask)) return;
+
+    btn.textContent = 'Sending…';
+    const sendRes = await fetch(`${API}/announcements/${id}/notify`, {
+      method: 'POST', headers: await authHeaders()
+    });
+    const out = await sendRes.json();
+    if (!out.success) throw new Error(out.error);
+
+    toast(out.message || 'Sent');
+    loadList();
+  } catch (err) {
+    toast('Failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
 // ---------- wiring ----------
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -379,26 +806,59 @@ document.addEventListener('DOMContentLoaded', () => {
   el('publishBtn').addEventListener('click', publish);
   el('resetBtn').addEventListener('click', clearForm);
 
-  document.querySelectorAll('.aud-btn').forEach(b =>
-    b.addEventListener('click', () => setAudience(b.dataset.aud)));
-  el('aStream').addEventListener('change', refreshReach);
-  el('aSemester').addEventListener('change', refreshReach);
-  el('aPickSearch').addEventListener('input', renderPickList);
+  cardAud.wire();
+  pushAud.wire();
 
-  el('aPickList').addEventListener('click', (e) => {
-    const row = e.target.closest('.pick-row');
-    if (!row) return;
-    const id = row.dataset.id;
-    if (picked.has(id)) picked.delete(id); else picked.add(id);
-    renderPickList();
+  // Tabs
+  document.querySelectorAll('.tab').forEach(b =>
+    b.addEventListener('click', () => showPane(b.dataset.pane)));
+
+  // The notification tab
+  ['nTitle', 'nBody'].forEach(id =>
+    el(id).addEventListener('input', refreshPushPreview));
+  el('nPersonalise').addEventListener('change', refreshPushPreview);
+  el('nPreviewBtn').addEventListener('click', checkPushAudience);
+  el('nSendBtn').addEventListener('click', sendPush);
+
+  // When to send
+  el('nWhenChoice').addEventListener('click', e => {
+    const b = e.target.closest('[data-when]');
+    if (b) setWhen(b.dataset.when);
+  });
+  el('nSendAt').addEventListener('input', refreshWhenNote);
+  el('nLaterPanel').addEventListener('click', e => {
+    const b = e.target.closest('[data-preset]');
+    if (b) applyPreset(b.dataset.preset);
   });
 
-  el('aPickChips').addEventListener('click', (e) => {
-    const id = e.target.dataset?.remove;
-    if (id) { picked.delete(id); renderPickList(); }
+  // The queue
+  el('nQueueRefresh').addEventListener('click', loadQueue);
+  el('nQueue').addEventListener('click', async e => {
+    const b = e.target.closest('[data-cancel]');
+    if (!b) return;
+    if (!confirm('Cancel this scheduled notification? It will not be sent.')) return;
+    try {
+      const res = await fetch(`${API}/broadcast/scheduled/${b.dataset.cancel}`, {
+        method: 'DELETE', headers: await authHeaders()
+      });
+      const d = await res.json();
+      if (!d.success) throw new Error(d.error);
+      toast('Cancelled');
+      loadQueue();
+    } catch (err) {
+      toast(err.message);
+      loadQueue();
+    }
   });
-
-  el('aPickClear').addEventListener('click', () => { picked.clear(); renderPickList(); });
+  el('nClearBtn').addEventListener('click', () => {
+    el('nTitle').value = '';
+    el('nBody').value = '';
+    pushAud.reset();
+    el('nPreviewBox').innerHTML =
+      'Press <strong style="color:var(--text-primary);">Check who gets it</strong> ' +
+      'to see how many parents this reaches, and how it reads for the first few.';
+    refreshPushPreview();
+  });
 
   el('annList').addEventListener('click', async (e) => {
     const t = e.target;
@@ -410,6 +870,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ isActive: makeLive })
       });
       loadList();
+    } else if (t.dataset.notify) {
+      await sendNotification(t);
     } else if (t.dataset.reset) {
       act(t.dataset.reset, 'POST', '/reset-dismissals',
           'Show this again to every parent who already dismissed it?');
@@ -420,6 +882,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshActionRows();
   refreshPreview();
+  refreshPushPreview();
+  setWhen('now');
+  showPane('cards');
+  loadQueue();
 });
 
 

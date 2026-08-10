@@ -64,6 +64,28 @@
     .grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
     @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
 
+    /* Tabs sit on the page's own rule, so the selected one reads as the sheet
+       in front rather than a button that happens to be highlighted. */
+    .tabs {
+      display: flex; gap: 4px; padding: 16px 32px 0; flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 14px; border: 1px solid transparent; border-bottom: none;
+      border-radius: 8px 8px 0 0; background: none; cursor: pointer;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      color: var(--text-muted); transition: color .15s, background .15s;
+      position: relative; top: 1px;
+    }
+    .tab:hover { color: var(--text-secondary); background: rgba(255, 255, 255, 0.03); }
+    .tab.active {
+      color: var(--text-primary); background: var(--bg-root);
+      border-color: var(--border); border-bottom: 1px solid var(--bg-root);
+    }
+    .tab .material-symbols-rounded { font-size: 17px; }
+    .tab:focus-visible { outline: 2px solid var(--purple); outline-offset: -2px; }
+
     .card {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 14px; padding: 20px;
@@ -218,12 +240,27 @@
   <div class="main">
     <div class="topbar">
       <div>
-        <h1>Announcements</h1>
-        <p>A card shown to parents when they open the app. Each parent sees it once.</p>
+        <h1 id="pageTitle">Announcements</h1>
+        <p id="pageLede">A card shown to parents when they open the app. Each parent sees it once.</p>
       </div>
     </div>
 
+    <!-- Two ways of reaching a parent: a card they find when they open the app,
+         and a notification that reaches their phone. Kept on one screen because
+         they are the same job. -->
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" id="tabBtnCards" aria-selected="true"
+              aria-controls="paneCards" data-pane="cards">
+        <span class="material-symbols-rounded">campaign</span> In-app card
+      </button>
+      <button class="tab" role="tab" id="tabBtnNotify" aria-selected="false"
+              aria-controls="paneNotify" data-pane="notify">
+        <span class="material-symbols-rounded">notifications_active</span> Send notification
+      </button>
+    </div>
+
     <div class="scroll">
+      <div id="paneCards" role="tabpanel" aria-labelledby="tabBtnCards">
       <div class="grid">
         <div class="card">
           <h2>New announcement</h2>
@@ -336,6 +373,132 @@
           </div>
         </div>
       </div>
+      </div>
+
+      <!-- Send notification -->
+      <div id="paneNotify" role="tabpanel" aria-labelledby="tabBtnNotify" hidden>
+        <div class="grid">
+          <div class="card">
+            <h2>Send a notification</h2>
+            <p class="hint">
+              This buzzes the parent's phone straight away. Unlike a card, it cannot be
+              edited, dismissed or taken back once it has gone.
+            </p>
+
+            <label class="fl">Who receives it</label>
+            <div id="nAudChoice" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+              <button type="button" class="aud-btn active" data-naud="all">Everyone</button>
+              <button type="button" class="aud-btn" data-naud="class">A whole class</button>
+              <button type="button" class="aud-btn" data-naud="selected">Chosen students</button>
+            </div>
+
+            <div id="nAudClassPanel" style="display:none;">
+              <div style="display:flex; gap:10px;">
+                <select id="nStream" style="flex:1;"></select>
+                <select id="nSemester" style="width:140px;">
+                  <option value="ALL">All semesters</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                  <option value="3">Semester 3</option>
+                  <option value="4">Semester 4</option>
+                  <option value="5">Semester 5</option>
+                  <option value="6">Semester 6</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="nAudSelectedPanel" style="display:none;">
+              <input type="text" id="nPickSearch" placeholder="Search name or student ID…" autocomplete="off">
+              <div id="nPickChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+              <div id="nPickList" style="max-height:170px; overflow-y:auto; border:1px solid var(--border);
+                   border-radius:10px; background:var(--bg-elevated); margin-bottom:6px;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span id="nPickCount" style="font-size:11px; color:var(--text-muted);">0 selected</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="nPickClear">Clear</button>
+              </div>
+            </div>
+
+            <div id="nReach" style="font-size:11.5px; color:var(--text-muted); margin-bottom:16px;"></div>
+
+            <label class="fl">Title</label>
+            <input type="text" id="nTitle" maxlength="80" placeholder="e.g. Holiday notice">
+
+            <label class="fl">Message</label>
+            <textarea id="nBody" maxlength="500" rows="4"
+              placeholder="e.g. The college will remain closed on Monday."></textarea>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+              <span style="font-size:11px; color:var(--text-muted);">
+                Use <code style="color:var(--purple)">{name}</code> or
+                <code style="color:var(--purple)">{firstName}</code> for the student's name.
+              </span>
+              <span id="nCount" style="font-size:11px; color:var(--text-muted);">0 / 500</span>
+            </div>
+
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:18px; cursor:pointer;">
+              <input type="checkbox" id="nPersonalise" checked style="width:auto; margin:0;">
+              Address each parent by their child's name
+            </label>
+
+            <label class="fl">When</label>
+            <div id="nWhenChoice" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+              <button type="button" class="aud-btn active" data-when="now">Send now</button>
+              <button type="button" class="aud-btn" data-when="later">At a set time</button>
+            </div>
+
+            <div id="nLaterPanel" style="display:none;">
+              <input type="datetime-local" id="nSendAt" style="margin-bottom:6px;">
+              <div class="row" style="gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-ghost btn-sm" data-preset="morning">Tomorrow 9am</button>
+                <button type="button" class="btn btn-ghost btn-sm" data-preset="evening">Today 6pm</button>
+              </div>
+              <div id="nWhenNote" style="font-size:11.5px; color:var(--text-muted); margin-bottom:14px;"></div>
+            </div>
+
+            <div class="row" style="justify-content:flex-end;">
+              <button class="btn btn-ghost" id="nClearBtn">Clear</button>
+              <button class="btn btn-ghost" id="nPreviewBtn">Check who gets it</button>
+              <button class="btn btn-primary" id="nSendBtn">Send</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" style="margin-bottom:16px;">
+              <h2>On the phone</h2>
+              <p class="hint">Roughly how the notification will appear.</p>
+              <div style="background:var(--bg-elevated); border:1px solid var(--border-hover);
+                   border-radius:14px; padding:14px 16px;">
+                <div style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+                     letter-spacing:.08em; margin-bottom:6px;">MLA Academy</div>
+                <div id="nPvTitle" style="font-size:14px; font-weight:700; margin-bottom:3px;">Your title</div>
+                <div id="nPvBody" style="font-size:12.5px; color:var(--text-secondary); line-height:1.45;">
+                  Your message appears here.
+                </div>
+              </div>
+              <p class="hint" style="margin:12px 0 0;">
+                A phone shows about two lines on the lock screen. Anything longer is only
+                read once the parent opens it.
+              </p>
+            </div>
+
+            <div class="card" style="margin-bottom:16px;">
+              <h2>Before you send</h2>
+              <div id="nPreviewBox" style="font-size:12.5px; color:var(--text-muted);">
+                Press <strong style="color:var(--text-primary);">Check who gets it</strong>
+                to see how many parents this reaches, and how it reads for the first few.
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row" style="justify-content:space-between; margin-bottom:4px;">
+                <h2 style="margin:0;">Queued</h2>
+                <button class="btn btn-ghost btn-sm" id="nQueueRefresh">Refresh</button>
+              </div>
+              <p class="hint">Waiting to be sent, and what recently went out.</p>
+              <div id="nQueue" style="font-size:12.5px; color:var(--text-muted);">Loading…</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -361,7 +524,7 @@
     });
   </script>
 
-  <script src="js/announcements.js?v=4"></script>
+  <script src="js/announcements.js?v=5"></script>
 </body>
 
 </html>

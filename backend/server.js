@@ -168,6 +168,10 @@ mongoose
   .then(() => {
     console.log("✅ MongoDB connected");
     app.locals.db = mongoose.connection.db;
+
+    // Notifications queued for a later hour. Started only once there is a
+    // database to read the queue from.
+    require('./jobs/scheduledNotifications').start(() => app.locals.db);
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);

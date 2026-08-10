@@ -8,6 +8,8 @@ const express = require('express');
 const router = express.Router();
 const firebaseAuth = require('../middleware/firebaseAuth');
 const parentAuth = require('../middleware/parentAuth');
+// The push sender, shared with the broadcast screen rather than reimplemented.
+const broadcast = require('./broadcast');
 
 const COLLECTION = 'announcements';
 
@@ -96,7 +98,10 @@ function shape(doc) {
     createdBy: doc.createdBy,
     createdAt: doc.createdAt,
     dismissedBy: (doc.dismissedBy || []).length,
-    openedBy: (doc.openedBy || []).length
+    openedBy: (doc.openedBy || []).length,
+    notifiedAt: doc.notifiedAt || null,
+    notifiedCount: doc.notifiedCount || 0,
+    notifySends: doc.notifySends || 0
   };
 }
 
@@ -275,6 +280,131 @@ router.post('/:id/reset-dismissals', async (req, res) => {
       { $set: { dismissedBy: [], updatedAt: new Date() } });
     res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PUSHING A CARD TO PHONES
+// ---------------------------------------------------------------------------
+//
+// A card only appears when a parent happens to open the app. These two routes
+// also push it as a notification, to the same people the card is addressed to —
+// the audience is read from the stored announcement rather than sent up again,
+// so the notice and the alert can never go to different groups.
+
+// The announcement's own audience, in the shape the sender expects.
+function audienceToQuery(a) {
+  if (!a || a.type === 'all') return { stream: 'ALL', semester: 'ALL' };
+  if (a.type === 'selected') return { studentIDs: a.studentIDs || [] };
+  return { stream: a.stream || 'ALL', semester: a.semester == null ? 'ALL' : a.semester };
+}
+
+// GET /:id/notify-preview - how many would actually receive it. Sending cannot
+// be undone, so the count is shown before the button does anything.
+router.get('/:id/notify-preview', async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Bad announcement id' });
+    }
+    const doc = await req.db.collection(COLLECTION).findOne({ _id: new ObjectId(req.params.id) });
+    if (!doc) return res.status(404).json({ success: false, error: 'No such announcement' });
+
+    const q = audienceToQuery(doc.audience);
+    const all = await broadcast.resolveAudience(req.db, q);
+    const reachable = await broadcast.resolveAudience(req.db, { ...q, onlyReachable: true });
+
+    res.json({
+      success: true,
+      title: doc.title,
+      audienceLabel: audienceLabel(doc.audience),
+      total: all.length,
+      reachable: reachable.length,
+      unreachable: all.length - reachable.length,
+      alreadySentAt: doc.notifiedAt || null,
+      alreadySentCount: doc.notifiedCount || 0
+    });
+  } catch (error) {
+    console.error('❌ Announcement notify preview error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /:id/notify - push it.
+router.post('/:id/notify', async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Bad announcement id' });
+    }
+    const col = req.db.collection(COLLECTION);
+    const doc = await col.findOne({ _id: new ObjectId(req.params.id) });
+    if (!doc) return res.status(404).json({ success: false, error: 'No such announcement' });
+
+    // A card that is switched off is not on anyone's screen; pushing it would
+    // announce something they then could not find.
+    if (!doc.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: 'This announcement is switched off. Make it live first, then send.'
+      });
+    }
+
+    const title = clean(doc.title, MAX_TITLE);
+    // The card body can run to 400 characters, which is far past what a phone
+    // shows on the lock screen. Cut it there rather than letting the notice
+    // trail off mid-sentence.
+    const full = clean(doc.body, MAX_BODY);
+    const body = full.length > 160 ? full.slice(0, 157).trimEnd() + '…' : full;
+
+    if (!title || !body) {
+      return res.status(400).json({ success: false, error: 'This announcement has no text to send.' });
+    }
+
+    const students = await broadcast.resolveAudience(req.db, {
+      ...audienceToQuery(doc.audience), onlyReachable: true
+    });
+
+    if (students.length === 0) {
+      return res.json({
+        success: true, sent: 0, failed: 0, recipients: 0,
+        message: 'Nobody in that audience has the app installed with notifications on.'
+      });
+    }
+
+    const { sent, failed, devices } = await broadcast.deliver(
+      req.db, students, title, body, false);
+
+    // Recorded on the announcement so the panel can show it has already gone
+    // out, and a second send is a deliberate choice rather than an accident.
+    await col.updateOne({ _id: doc._id }, {
+      $set: { notifiedAt: new Date(), notifiedCount: sent, notifiedBy: req.user?.email || 'unknown' },
+      $inc: { notifySends: 1 }
+    });
+
+    await req.db.collection('notification_logs').insertOne({
+      type: 'announcement-push',
+      announcementId: String(doc._id),
+      title, body,
+      audience: audienceLabel(doc.audience),
+      recipients: students.length,
+      devices, sent, failed,
+      sentBy: req.user?.email || 'unknown',
+      sentAt: new Date()
+    });
+
+    console.log(`📢 Announcement "${title}" pushed by ${req.user?.email}: ${sent} delivered, ${failed} failed`);
+
+    res.json({
+      success: true,
+      recipients: students.length,
+      devices, sent, failed,
+      message: `Sent to ${sent} device(s) across ${students.length} parent(s).` +
+               (failed ? ` ${failed} failed.` : '')
+    });
+  } catch (error) {
+    console.error('❌ Announcement notify error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
