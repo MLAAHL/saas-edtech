@@ -14,6 +14,7 @@
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1" />
   <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/sidebar.css">
 
   <style>
     :root {
@@ -50,32 +51,6 @@
       overflow: hidden;
       -webkit-font-smoothing: antialiased;
     }
-
-    .sidebar {
-      width: var(--sidebar-w); background: var(--bg-sidebar);
-      border-right: 1px solid var(--border); display: flex; flex-direction: column;
-      padding: 20px 12px; flex-shrink: 0; overflow-y: auto;
-    }
-    .sidebar::-webkit-scrollbar { width: 0; }
-    .sb-logo { padding: 4px 8px; margin-bottom: 20px; text-align: center; }
-    .sb-logo img { width: 100%; height: auto; border-radius: 8px; }
-    .sb-group { margin-bottom: 8px; }
-    .sb-link {
-      display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
-      text-decoration: none; color: var(--text-secondary); font-size: 13px; font-weight: 500;
-      transition: all .15s;
-    }
-    .sb-link:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }
-    .sb-link.active { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); font-weight: 600; }
-    .sb-link .material-symbols-rounded { font-size: 18px; }
-    .sb-divider { height: 1px; background: var(--border); margin: 12px 8px; }
-    .sb-bottom { margin-top: auto; padding-top: 12px; }
-    .sb-logout {
-      display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
-      width: 100%; background: none; border: none; color: var(--text-muted); font-size: 13px;
-      font-weight: 500; font-family: inherit; cursor: pointer;
-    }
-    .sb-logout:hover { background: var(--red-dim); color: var(--red); }
 
     .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .topbar {
@@ -186,23 +161,56 @@
 
 <body>
   <aside class="sidebar">
-    <div class="sb-logo"><img src="logo.png" alt="MLA"></div>
-    <div class="sb-group">
-      <a class="sb-link" href="dashboard"><span class="material-symbols-rounded">dashboard</span> Dashboard</a>
-      <a class="sb-link" href="students"><span class="material-symbols-rounded">group</span> Students</a>
-      <a class="sb-link" href="teachers"><span class="material-symbols-rounded">school</span> Teachers</a>
-      <a class="sb-link" href="report"><span class="material-symbols-rounded">assessment</span> Reports</a>
-      <a class="sb-link" href="view-attendance"><span class="material-symbols-rounded">fact_check</span> View Attendance</a>
-      <a class="sb-link" href="promotion"><span class="material-symbols-rounded">trending_up</span> Promote</a>
-      <a class="sb-link" href="mentorship"><span class="material-symbols-rounded">diversity_3</span> Mentors</a>
-      <a class="sb-link" href="parents-status"><span class="material-symbols-rounded">phone_iphone</span> Parent Status</a>
-      <a class="sb-link active" href="announcements"><span class="material-symbols-rounded">campaign</span> Announcements</a>
-      <a class="sb-link" href="ai-assistant"><span class="material-symbols-rounded">auto_awesome</span> AI Assistant</a>
+    <div class="sb-logo">
+      <img src="logo.png" alt="Logo">
     </div>
+    <div class="sb-group">
+      <a href="dashboard" class="sb-link">
+        <span class="material-symbols-rounded">dashboard</span> Dashboard
+      </a>
+      <a href="students" class="sb-link">
+        <span class="material-symbols-rounded">group</span> Students
+      </a>
+      <a href="report" class="sb-link">
+        <span class="material-symbols-rounded">description</span> Reports
+      </a>
+      <a href="view-attendance" class="sb-link">
+        <span class="material-symbols-rounded">assignment</span> View Attendance
+      </a>
+      <a href="promotion" class="sb-link">
+        <span class="material-symbols-rounded">trending_up</span> Promote
+      </a>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-group">
+      <a href="ai-assistant" class="sb-link">
+        <span class="material-symbols-rounded">auto_awesome</span> AI Assistant
+      </a>
+      <a href="teachers" class="sb-link">
+        <span class="material-symbols-rounded">badge</span> Teachers
+      </a>
+      <a href="parents-status" class="sb-link">
+        <span class="material-symbols-rounded">notifications</span> Parent Status
+      </a>
+      <a href="announcements" class="sb-link active">
+        <span class="material-symbols-rounded">campaign</span> Announcements
+      </a>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-group">
+      <a href="mentorship" class="sb-link">
+        <span class="material-symbols-rounded">school</span> Mentors
+      </a>
+    </div>
+
+    <div class="sb-divider"></div>
     <div class="sb-bottom">
-      <div class="sb-divider"></div>
       <button class="sb-logout" id="logoutBtn">
-        <span class="material-symbols-rounded">logout</span> Log out
+        <span class="material-symbols-rounded">logout</span> Log Out
       </button>
     </div>
   </aside>

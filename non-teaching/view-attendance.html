@@ -93,103 +93,6 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ══════════ SIDEBAR ══════════ */
-        .sidebar {
-            width: var(--sidebar-w);
-            background: var(--bg-sidebar);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            padding: 20px 12px;
-            flex-shrink: 0;
-            overflow-y: auto;
-        }
-
-        .sidebar::-webkit-scrollbar {
-            width: 0;
-        }
-
-        .sb-logo {
-            padding: 4px 8px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .sb-logo img {
-            width: 100%;
-            height: auto;
-            border-radius: 8px;
-        }
-
-        .sb-group {
-            margin-bottom: 8px;
-        }
-
-        .sb-link {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border-radius: 8px;
-            text-decoration: none;
-            color: var(--text-secondary);
-            font-size: 13px;
-            font-weight: 500;
-            transition: all .15s;
-        }
-
-        .sb-link:hover {
-            background: rgba(255, 255, 255, 0.04);
-            color: var(--text-primary);
-        }
-
-        .sb-link.active {
-            background: rgba(255, 255, 255, 0.06);
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        .sb-link .material-symbols-rounded {
-            font-size: 18px;
-        }
-
-        .sb-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 12px 8px;
-        }
-
-        .sb-bottom {
-            margin-top: auto;
-            padding-top: 12px;
-        }
-
-        .sb-logout {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border-radius: 8px;
-            width: 100%;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 13px;
-            font-weight: 500;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all .15s;
-        }
-
-        .sb-logout:hover {
-            background: var(--red-dim);
-            color: var(--red);
-        }
-
-        .sb-logout .material-symbols-rounded {
-            font-size: 18px;
-        }
-
         /* ══════════ MAIN ══════════ */
         .main {
             flex: 1;
@@ -457,8 +360,6 @@
             border-right: 1px solid rgba(255, 255, 255, 0.02);
             white-space: nowrap;
         }
-
-
 
         .modern-table tbody tr {
             transition: background 0.15s;
@@ -808,6 +709,7 @@
             display: none !important;
         }
     </style>
+  <link rel="stylesheet" href="css/sidebar.css">
 </head>
 <body class="auth-loading">
 
