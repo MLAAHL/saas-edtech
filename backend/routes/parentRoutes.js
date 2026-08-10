@@ -232,7 +232,7 @@ router.post('/login', async (req, res) => {
     res.json({
       success: true,
       token,
-      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester, parentEmail: student.parentEmail, parentPhone: student.parentPhone, mentorEmail: student.mentorEmail, mentorName: mentorName }
+      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester, parentEmail: student.parentEmail, parentPhone: student.parentPhone, mentorEmail: student.mentorEmail, mentorName: mentorName, photoUrl: student.photoUrl || null }
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -256,7 +256,7 @@ router.get('/me', parentAuth, async (req, res) => {
 
     res.json({
       success: true,
-      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester, parentEmail: student.parentEmail, parentPhone: student.parentPhone, mentorEmail: student.mentorEmail, mentorName: mentorName }
+      student: { studentID: student.studentID, name: student.name, stream: student.stream, semester: student.semester, parentEmail: student.parentEmail, parentPhone: student.parentPhone, mentorEmail: student.mentorEmail, mentorName: mentorName, photoUrl: student.photoUrl || null }
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

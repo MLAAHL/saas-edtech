@@ -139,19 +139,50 @@ function renderPickList() {
   refreshReach();
 }
 
+
+// The button either closes the card, sends the reader to a tab inside the app,
+// or opens a link. One picker, so no two can be set at once.
+const TAB_LABELS = { daily: 'Daily', full: 'Overall', insights: 'Insights', profile: 'Profile' };
+
+function actionPayload() {
+  const v = el('fAction').value;
+  if (v.startsWith('tab:')) return { actionTab: v.slice(4), linkUrl: '' };
+  if (v === 'link') return { actionTab: '', linkUrl: el('fLink').value.trim() };
+  // 'ack' carries no destination — the label alone makes it a button that
+  // simply closes the card.
+  return { actionTab: '', linkUrl: '' };
+}
+
+function refreshActionRows() {
+  const v = el('fAction').value;
+  el('linkRow').style.display = v === 'link' ? 'block' : 'none';
+  el('ctaRow').style.display = v ? 'block' : 'none';
+  el('fCta').placeholder = v.startsWith('tab:') ? 'Go to ' + TAB_LABELS[v.slice(4)]
+                         : v === 'ack' ? 'Got it'
+                         : 'Learn more';
+  refreshPreview();
+}
+
 // ---------- live preview ----------
 
 function refreshPreview() {
   el('pvTitle').textContent = el('fTitle').value || 'Your title';
   el('pvBody').textContent = el('fBody').value || 'Your description appears here.';
 
+  const action = el('fAction').value;
   const cta = el('pvCta');
-  if (el('fLink').value.trim()) {
+  if (action) {
     cta.style.display = 'block';
-    cta.textContent = el('fCta').value || 'Learn more';
+    cta.textContent = el('fCta').value ||
+      (action.startsWith('tab:') ? 'Go to ' + TAB_LABELS[action.slice(4)]
+       : action === 'ack' ? 'Got it' : 'Learn more');
   } else {
     cta.style.display = 'none';
   }
+
+  // An acknowledge button replaces Skip rather than sitting beside it.
+  const pvSkip = el('pvSkip');
+  if (pvSkip) pvSkip.style.display = action === 'ack' ? 'none' : 'block';
 
   const img = el('pvImage');
   if (uploadedImageUrl) {
@@ -210,6 +241,12 @@ async function loadList() {
     const res = await fetch(`${API}/announcements`, { headers: await authHeaders() });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
+
+    const stamp = el('annStamp');
+    if (stamp) {
+      stamp.textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN',
+        { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    }
 
     if (!data.announcements.length) {
       host.innerHTML = '<div style="font-size:12.5px; color:var(--text-muted);">Nothing published yet.</div>';
@@ -278,8 +315,9 @@ async function publish() {
         title,
         body: el('fBody').value.trim(),
         imageUrl: uploadedImageUrl,
-        linkUrl: el('fLink').value.trim(),
-        ctaLabel: el('fCta').value.trim(),
+        ...actionPayload(),
+        ctaLabel: el('fCta').value.trim() ||
+                  (el('fAction').value === 'ack' ? 'Got it' : ''),
         endsAt: el('fEnds').value || null,
         isActive: true,
         ...audiencePayload()
@@ -304,6 +342,8 @@ async function publish() {
 
 function clearForm() {
   ['fTitle', 'fBody', 'fLink', 'fCta', 'fEnds', 'aPickSearch'].forEach(id => { el(id).value = ''; });
+  el('fAction').value = 'ack';
+  refreshActionRows();
   uploadedImageUrl = '';
   picked.clear();
   el('imagePreview').hidden = true;
@@ -334,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   ['fTitle', 'fBody', 'fLink', 'fCta'].forEach(id =>
     el(id).addEventListener('input', refreshPreview));
+  el('fAction').addEventListener('change', refreshActionRows);
 
   el('publishBtn').addEventListener('click', publish);
   el('resetBtn').addEventListener('click', clearForm);
@@ -377,10 +418,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  refreshActionRows();
   refreshPreview();
+});
+
+
+
+// ---------- keep the list current ----------
+
+let listTimer = null;
+const LIST_REFRESH = 15000;
+
+function startListRefresh() {
+  stopListRefresh();
+  listTimer = setInterval(() => {
+    if (document.hidden) return;
+    // Redrawing under a cursor that is about to press Delete is worse than a
+    // slightly stale count, so hold off while the pointer is on the list.
+    if (el('annList').matches(':hover')) return;
+    loadList();
+  }, LIST_REFRESH);
+}
+
+function stopListRefresh() {
+  if (listTimer) clearInterval(listTimer);
+  listTimer = null;
+}
+
+// Catch up immediately on returning to the tab rather than waiting out the
+// interval, and stop polling while it is in the background.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopListRefresh();
+  } else {
+    loadList();
+    startListRefresh();
+  }
 });
 
 window.addEventListener('admin:ready', () => {
   loadList();
   loadStudents();
+  startListRefresh();
 });

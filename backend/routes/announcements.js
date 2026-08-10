@@ -7,6 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const firebaseAuth = require('../middleware/firebaseAuth');
+const parentAuth = require('../middleware/parentAuth');
 
 const COLLECTION = 'announcements';
 
@@ -104,9 +105,10 @@ function shape(doc) {
 // ---------------------------------------------------------------------------
 
 // GET /active - the one announcement a parent should see right now, or null.
-// Public: a parent has a session token from the parent app, not a Firebase one,
-// and the payload is a poster the college is broadcasting anyway.
-router.get('/active', async (req, res) => {
+// On the parent session, not the staff one. The app only asks for this after
+// the dashboard has loaded, so a token is always in hand by then; requiring it
+// means a class notice cannot be fished out by guessing student ids.
+router.get('/active', parentAuth, async (req, res) => {
   try {
     const now = new Date();
     const live = await req.db.collection(COLLECTION).find({
@@ -119,10 +121,10 @@ router.get('/active', async (req, res) => {
 
     if (live.length === 0) return res.json({ success: true, announcement: null });
 
-    // A targeted announcement needs to know who is asking. Without a student
-    // only college-wide notices are returned, so a stray request can never
-    // reveal a message meant for one class.
-    const studentID = String(req.query.studentID || '').trim();
+    // Who is asking comes from the signed-in session, never from the query
+    // string, so a targeted notice is matched against the real student rather
+    // than whichever id the caller typed.
+    const studentID = String(req.parentSession.studentID || '').trim();
     const student = studentID
       ? await req.db.collection('students').findOne(
           { studentID: { $regex: new RegExp(`^${studentID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
@@ -152,18 +154,20 @@ router.get('/active', async (req, res) => {
 
 // POST /:id/seen - a parent dismissed or opened it. Recorded so the college can
 // tell whether a notice landed; the app itself remembers locally.
-router.post('/:id/seen', async (req, res) => {
+router.post('/:id/seen', parentAuth, async (req, res) => {
   try {
     const { ObjectId } = require('mongodb');
-    const { studentID, action } = req.body;
+    const { action } = req.body;
     if (!ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ success: false, error: 'Bad announcement id' });
     }
 
-    // Unauthenticated, so the value is shape-checked before it goes into an
-    // array that only ever grows. Checked as given, never truncated first —
-    // trimming to length would let any oversized string through as its prefix.
-    const id = String(studentID || '').trim();
+    // From the session, so the tally of who saw a notice reflects real readers
+    // and cannot be stuffed with invented ids. Still shape-checked before it
+    // joins an array that only ever grows, and checked as given rather than
+    // truncated first — trimming would let an oversized value through as its
+    // prefix.
+    const id = String(req.parentSession.studentID || '').trim();
     if (!/^[A-Za-z0-9_-]{3,40}$/.test(id)) {
       return res.json({ success: true });
     }

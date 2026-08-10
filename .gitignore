@@ -1,5 +1,6 @@
 node_modules/
 *.py
+__pycache__/
 .env*
 *.json.key
 serviceAccountKey.json
@@ -14,4 +15,14 @@ build/
 bin/
 obj/
 parents/android/app/google-services.json  
-secrets_backup/  
+secrets_backup/
+
+# Student photographs live on the college server only, never in the repository.
+# The upload directory sits outside this folder, so these patterns are a second
+# line of defence rather than the mechanism.
+student-photos/
+uploads/
+*.jpg
+*.jpeg
+!parents/assets/*.jpg
+!teaching/**/*.jpg

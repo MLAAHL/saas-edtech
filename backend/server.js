@@ -77,6 +77,11 @@ const aiLimiter = rateLimit({
   }
 });
 
+// Student photos are served here, ahead of the API limiter. The admin list
+// renders hundreds of thumbnails in one go, and each is its own request — under
+// that limit a single page view would lock the user out.
+app.use('/photos', require("./routes/studentPhotos").publicRouter);
+
 app.use('/api/', generalLimiter);
 app.use('/api/chatbot', aiLimiter);
 app.use('/api/ai-assistant', aiLimiter);
@@ -241,6 +246,7 @@ const mentorshipAttendanceRoutes = require("./routes/mentorshipAttendance");
 const broadcastRoutes = require("./routes/broadcast");
 const announcementRoutes = require("./routes/announcements");
 const shareRoutes = require("./routes/share");
+const studentPhotoRoutes = require("./routes/studentPhotos");
 const parentRoutes = require("./routes/parentRoutes");
 const pushRoutes = require("./routes/pushRoutes");
 
@@ -337,6 +343,10 @@ app.use("/api/mentorship-attendance", mentorshipAttendanceRoutes);
 app.use("/api/broadcast", strictLimiter, broadcastRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/share", shareRoutes);
+app.use("/api/student-photos", studentPhotoRoutes);
+// The student setting their own photo, on the parent session rather than a
+// staff login. It takes no student id — the session decides whose photo it is.
+app.use("/api/my-photo", studentPhotoRoutes.selfRouter);
 app.use("/api/parent", parentRoutes);
 app.use("/api/push", pushRoutes);
 

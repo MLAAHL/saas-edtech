@@ -271,11 +271,26 @@
           <textarea id="fBody" maxlength="400"
             placeholder="e.g. Join us on 20 August at the main auditorium, 5 pm onwards."></textarea>
 
-          <label class="fl">Link (optional)</label>
-          <input type="url" id="fLink" placeholder="https://…">
+          <label class="fl">Button</label>
+          <select id="fAction">
+            <option value="ack">Just close the card — e.g. Got it</option>
+            <option value="">No button — just Skip</option>
+            <option value="tab:full">Go to a tab — Overall</option>
+            <option value="tab:daily">Go to a tab — Daily</option>
+            <option value="tab:insights">Go to a tab — Insights</option>
+            <option value="tab:profile">Go to a tab — Profile</option>
+            <option value="link">Open a link</option>
+          </select>
 
-          <label class="fl">Button text</label>
-          <input type="text" id="fCta" maxlength="30" placeholder="Learn more">
+          <div id="linkRow" style="display:none;">
+            <label class="fl">Link</label>
+            <input type="url" id="fLink" placeholder="https://…">
+          </div>
+
+          <div id="ctaRow">
+            <label class="fl">Button text</label>
+            <input type="text" id="fCta" maxlength="30" placeholder="Got it">
+          </div>
 
           <label class="fl">Show until (optional)</label>
           <input type="datetime-local" id="fEnds">
@@ -296,7 +311,7 @@
                 <div id="pvTitle" style="color:#212529; font-size:16px; font-weight:700; margin-bottom:6px;">Your title</div>
                 <div id="pvBody" style="color:#6C757D; font-size:13px; line-height:1.5; margin-bottom:14px;">Your description appears here.</div>
                 <div style="display:flex; gap:8px;">
-                  <div style="padding:10px 16px; background:#F1F3F5; color:#6C757D; border-radius:12px; font-size:13px; font-weight:600;">Skip</div>
+                  <div id="pvSkip" style="padding:10px 16px; background:#F1F3F5; color:#6C757D; border-radius:12px; font-size:13px; font-weight:600;">Skip</div>
                   <div id="pvCta" style="flex:1; padding:10px 16px; background:#212529; color:#fff; border-radius:12px; font-size:13px; font-weight:700; text-align:center;">Learn more</div>
                 </div>
               </div>
@@ -304,8 +319,11 @@
           </div>
 
           <div class="card">
-            <h2>Published</h2>
-            <div class="hint">Only the one marked live is shown in the app.</div>
+            <div class="row" style="justify-content:space-between; align-items:baseline;">
+              <h2>Published</h2>
+              <span id="annStamp" style="font-size:11px; color:var(--text-muted);"></span>
+            </div>
+            <div class="hint">Only the one marked live is shown in the app. Refreshes on its own.</div>
             <div id="annList">Loading…</div>
           </div>
         </div>
@@ -335,7 +353,7 @@
     });
   </script>
 
-  <script src="js/announcements.js?v=2"></script>
+  <script src="js/announcements.js?v=4"></script>
 </body>
 
 </html>

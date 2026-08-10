@@ -372,6 +372,30 @@ async function handleSignup(sid, pwd, confirmPwd) {
 
 
 
+// Fill a circular avatar with the student's photo, falling back to their
+// initials. The photo is served from the college's own server, sized on
+// upload, so the small one is a few kilobytes.
+function paintAvatar(el, student, size) {
+  if (!el) return;
+  const initials = (() => {
+    const parts = String(student.name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '';
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
+  })();
+
+  if (!student.photoUrl) { el.textContent = initials; return; }
+
+  const img = new Image();
+  img.src = `${API.replace(/\/api$/, '')}${student.photoUrl}?size=${size}`;
+  img.alt = student.name || '';
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+  // Show initials until it arrives, and keep them if it never does.
+  el.textContent = initials;
+  img.onload = () => { el.textContent = ''; el.appendChild(img); };
+}
+
 function setupDashboard(student) {
   currentStudent = student;
   localStorage.setItem('parentStudentID', student.studentID);
@@ -381,15 +405,8 @@ function setupDashboard(student) {
   if (sn) sn.textContent = student.name;
   if (sm) sm.textContent = `${student.stream} \u00B7 Semester ${student.semester}`;
   
-  // Set header avatar initials
-  const headerInitials = document.getElementById('headerAvatarInitials');
-  if (headerInitials && student.name) {
-    const parts = student.name.trim().split(/\s+/);
-    const initials = parts.length >= 2 
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : parts[0].substring(0, 2).toUpperCase();
-    headerInitials.textContent = initials;
-  }
+  // Header avatar: the photo if we have one, initials otherwise.
+  paintAvatar(document.getElementById('headerAvatarInitials'), student, 'sm');
   
   // Clear badge count natively via plugin
   if (window.Capacitor && window.Capacitor.Plugins.Badge) {
@@ -409,10 +426,9 @@ function setupDashboard(student) {
   if (pMeta) pMeta.textContent = `${student.stream} • Sem ${student.semester}`;
   if (pSubMeta) pSubMeta.textContent = student.studentID || 'ID Not Set';
   
-  const profileLargeInitial = document.getElementById('profileLargeInitial');
-  if (profileLargeInitial && student.name) {
-    profileLargeInitial.textContent = student.name.charAt(0).toUpperCase();
-  }
+  paintAvatar(document.getElementById('profileLargeInitial'), student, 'lg');
+  const removeBtn = document.getElementById('avatarRemove');
+  if (removeBtn) removeBtn.classList.toggle('hidden', !student.photoUrl);
 
   const displayEmail = document.getElementById('displayParentEmail');
   const displayPhone = document.getElementById('displayParentPhone');
@@ -906,6 +922,241 @@ async function loadFullAttendance() {
   } finally { hideLoading(); }
 }
 
+// ===== PROFILE PHOTO =====
+//
+// The student sets their own photo from this screen. The request carries no
+// student id — the session decides whose photo it is — and the server resizes
+// it on arrival, so a 5 MB camera file becomes a few kilobytes before it is
+// ever served back.
+
+function setAvatarBusy(busy) {
+  const sp = document.getElementById('avatarSpinner');
+  if (sp) sp.classList.toggle('hidden', !busy);
+}
+
+function refreshAvatars() {
+  if (!currentStudent) return;
+  paintAvatar(document.getElementById('profileLargeInitial'), currentStudent, 'lg');
+  paintAvatar(document.getElementById('headerAvatarInitials'), currentStudent, 'sm');
+  const remove = document.getElementById('avatarRemove');
+  if (remove) remove.classList.toggle('hidden', !currentStudent.photoUrl);
+}
+
+async function uploadAvatar(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('Please choose an image.'); return; }
+  if (file.size > 12 * 1024 * 1024) { alert('That image is too large. Please choose one under 12 MB.'); return; }
+
+  setAvatarBusy(true);
+  try {
+    const form = new FormData();
+    form.append('photo', file);
+
+    // authFetch sets a JSON content type, which would break the multipart
+    // boundary, so this one call builds its own headers.
+    const token = localStorage.getItem('parentAuthToken');
+    const res = await fetch(`${API}/my-photo`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Upload failed');
+
+    currentStudent.photoUrl = data.photoUrl;
+    refreshAvatars();
+  } catch (err) {
+    alert('Could not save that photo: ' + err.message);
+  } finally {
+    setAvatarBusy(false);
+  }
+}
+
+async function removeAvatar() {
+  if (!confirm('Remove your photo?')) return;
+  setAvatarBusy(true);
+  try {
+    const res = await authFetch(`${API}/my-photo`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    currentStudent.photoUrl = null;
+    refreshAvatars();
+  } catch (err) {
+    alert('Could not remove it: ' + err.message);
+  } finally {
+    setAvatarBusy(false);
+  }
+}
+
+// ----- cropper -------------------------------------------------------------
+//
+// The server used to pick the crop itself, guessing at the interesting part of
+// the picture, and got it wrong often enough to be worth replacing. Now the
+// student positions it and what they see inside the circle is what is saved.
+
+const crop = {
+  img: null,          // the loaded Image
+  stage: 0,           // stage width in CSS pixels, square
+  cover: 1,           // scale at which the image just covers the stage
+  zoom: 1,
+  x: 0, y: 0,         // top-left of the image relative to the stage
+  pointers: new Map(),
+  pinchStart: 0,
+  zoomStart: 1
+};
+
+const OUTPUT_PX = 800;   // the server resizes down from here
+
+function cropApply() {
+  const s = crop.cover * crop.zoom;
+  const w = crop.img.naturalWidth * s;
+  const h = crop.img.naturalHeight * s;
+
+  // Never let the image pull away from an edge and expose the background.
+  crop.x = Math.min(0, Math.max(crop.stage - w, crop.x));
+  crop.y = Math.min(0, Math.max(crop.stage - h, crop.y));
+
+  const el = document.getElementById('cropImage');
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.transform = `translate(${crop.x}px, ${crop.y}px)`;
+}
+
+function cropZoomTo(next, focusX, focusY) {
+  const before = crop.cover * crop.zoom;
+  crop.zoom = Math.min(3, Math.max(1, next));
+  const after = crop.cover * crop.zoom;
+
+  // Keep whatever is under the fingers (or the centre) where it is.
+  const fx = focusX === undefined ? crop.stage / 2 : focusX;
+  const fy = focusY === undefined ? crop.stage / 2 : focusY;
+  crop.x = fx - (fx - crop.x) * (after / before);
+  crop.y = fy - (fy - crop.y) * (after / before);
+
+  document.getElementById('cropZoom').value = crop.zoom;
+  cropApply();
+}
+
+function openCropper(file) {
+  const overlay = document.getElementById('cropOverlay');
+  const img = document.getElementById('cropImage');
+  const url = URL.createObjectURL(file);
+
+  const loaded = new Image();
+  loaded.onload = () => {
+    crop.img = loaded;
+    overlay.hidden = false;
+
+    // Measured after the overlay is shown, or the stage has no width yet.
+    crop.stage = document.getElementById('cropStage').clientWidth;
+    crop.cover = crop.stage / Math.min(loaded.naturalWidth, loaded.naturalHeight);
+    crop.zoom = 1;
+
+    const w = loaded.naturalWidth * crop.cover;
+    const h = loaded.naturalHeight * crop.cover;
+    crop.x = (crop.stage - w) / 2;      // start centred
+    crop.y = (crop.stage - h) / 2;
+
+    img.src = url;
+    document.getElementById('cropZoom').value = 1;
+    cropApply();
+  };
+  loaded.onerror = () => {
+    URL.revokeObjectURL(url);
+    alert('That image could not be opened. Please try another.');
+  };
+  loaded.src = url;
+  crop.objectUrl = url;
+}
+
+function closeCropper() {
+  document.getElementById('cropOverlay').hidden = true;
+  if (crop.objectUrl) { URL.revokeObjectURL(crop.objectUrl); crop.objectUrl = null; }
+  crop.pointers.clear();
+}
+
+// What the circle shows, at a size the server can work from.
+function cropToBlob() {
+  return new Promise(resolve => {
+    const canvas = document.createElement('canvas');
+    canvas.width = OUTPUT_PX;
+    canvas.height = OUTPUT_PX;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+
+    const k = OUTPUT_PX / crop.stage;
+    const s = crop.cover * crop.zoom * k;
+    ctx.drawImage(crop.img, crop.x * k, crop.y * k,
+                  crop.img.naturalWidth * s, crop.img.naturalHeight * s);
+
+    canvas.toBlob(b => resolve(b), 'image/jpeg', 0.92);
+  });
+}
+
+function wireCropper() {
+  const stage = document.getElementById('cropStage');
+  if (!stage) return;
+
+  stage.addEventListener('pointerdown', e => {
+    stage.setPointerCapture(e.pointerId);
+    crop.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (crop.pointers.size === 2) {
+      const [a, b] = [...crop.pointers.values()];
+      crop.pinchStart = Math.hypot(a.x - b.x, a.y - b.y);
+      crop.zoomStart = crop.zoom;
+    }
+  });
+
+  stage.addEventListener('pointermove', e => {
+    if (!crop.pointers.has(e.pointerId) || !crop.img) return;
+    const prev = crop.pointers.get(e.pointerId);
+    crop.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (crop.pointers.size === 1) {
+      crop.x += e.clientX - prev.x;
+      crop.y += e.clientY - prev.y;
+      cropApply();
+    } else if (crop.pointers.size === 2 && crop.pinchStart) {
+      const [a, b] = [...crop.pointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const box = stage.getBoundingClientRect();
+      cropZoomTo(crop.zoomStart * (dist / crop.pinchStart),
+                 (a.x + b.x) / 2 - box.left, (a.y + b.y) / 2 - box.top);
+    }
+  });
+
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(evt =>
+    stage.addEventListener(evt, e => { crop.pointers.delete(e.pointerId); crop.pinchStart = 0; }));
+
+  stage.addEventListener('wheel', e => {
+    if (!crop.img) return;
+    e.preventDefault();
+    const box = stage.getBoundingClientRect();
+    cropZoomTo(crop.zoom * (e.deltaY < 0 ? 1.08 : 0.93),
+               e.clientX - box.left, e.clientY - box.top);
+  }, { passive: false });
+
+  document.getElementById('cropZoom').addEventListener('input', e => {
+    if (crop.img) cropZoomTo(parseFloat(e.target.value));
+  });
+
+  document.getElementById('cropCancel').addEventListener('click', closeCropper);
+
+  document.getElementById('cropSave').addEventListener('click', async () => {
+    const btn = document.getElementById('cropSave');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const blob = await cropToBlob();
+      closeCropper();
+      await uploadAvatar(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save photo';
+    }
+  });
+}
+
 // ===== SHARE ATTENDANCE =====
 //
 // A link the parent can send anywhere. It carries a random token rather than
@@ -1109,10 +1360,14 @@ function rememberDismissal(id) {
 // must never be blocked by it.
 function reportAnnouncement(id, action) {
   try {
+    // The server reads the student from the session, so none is sent here.
     fetch(`${API}/announcements/${id}/seen`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentID: currentStudent?.studentID || '', action })
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('parentAuthToken') || ''}`
+      },
+      body: JSON.stringify({ action })
     }).catch(() => {});
   } catch { /* ignore */ }
 }
@@ -1130,9 +1385,12 @@ async function showAnnouncement() {
 
   try {
     // The student decides which announcements apply — a class notice must not
-    // reach a parent in another class.
+    // reach a parent in another class. The server takes that student from the
+    // session token rather than from us.
     const sid = currentStudent?.studentID || '';
-    const res = await fetch(`${API}/announcements/active?studentID=${encodeURIComponent(sid)}`);
+    const res = await fetch(`${API}/announcements/active`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('parentAuthToken') || ''}` }
+    });
     if (!res.ok) return;
     const data = await res.json();
     const a = data.announcement;
@@ -1163,9 +1421,26 @@ async function showAnnouncement() {
     // The button either sends them into the app or out to a link. An in-app
     // action must not behave like a link: no new tab, no navigation away.
     const cta = document.getElementById('announceCta');
+    const skip = document.getElementById('announceSkip');
     const tabNames = { daily: 'Daily', full: 'Overall', insights: 'Insights', profile: 'Profile' };
 
-    if (a.actionTab && tabNames[a.actionTab]) {
+    // A notice that goes nowhere still deserves a proper button. "Got it"
+    // acknowledges; Skip would be the same action worded as a dismissal, so
+    // only one of them is shown.
+    skip.hidden = false;
+
+    if (!a.actionTab && !a.linkUrl && a.ctaLabel) {
+      cta.textContent = a.ctaLabel;
+      cta.hidden = false;
+      cta.removeAttribute('href');
+      cta.removeAttribute('target');
+      cta.style.cursor = 'pointer';
+      cta.onclick = (e) => {
+        e.preventDefault();
+        closeAnnouncement(a.id, 'acknowledged');
+      };
+      skip.hidden = true;
+    } else if (a.actionTab && tabNames[a.actionTab]) {
       cta.textContent = a.ctaLabel || `Go to ${tabNames[a.actionTab]}`;
       cta.hidden = false;
       cta.removeAttribute('href');
@@ -1635,6 +1910,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', fn);
   };
+  const avatar = document.getElementById('avatarEdit');
+  const picker = document.getElementById('avatarInput');
+  if (avatar && picker) {
+    avatar.addEventListener('click', () => picker.click());
+    picker.addEventListener('change', e => {
+      const file = e.target.files[0];
+      picker.value = '';           // choosing the same file twice still fires
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { alert('Please choose an image.'); return; }
+      if (file.size > 12 * 1024 * 1024) { alert('That image is too large. Please choose one under 12 MB.'); return; }
+      openCropper(file);
+    });
+  }
+  wire('avatarRemove', removeAvatar);
+  wireCropper();
+
   wire('shareOpenBtn', openShareModal);
   wire('shareCloseBtn', closeShareModal);
 

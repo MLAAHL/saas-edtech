@@ -13,7 +13,7 @@
   <!-- chart.js is fetched on demand by loadChartLibrary(), only when the
        Insights tab draws a chart. See js/parent.js -->
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="css/parent.css?v=9">
+  <link rel="stylesheet" href="css/parent.css?v=11">
 </head>
 <body>
   <script>
@@ -25,6 +25,32 @@
   <!-- PULL TO REFRESH -->
   <div id="ptrIndicator" class="ptr-indicator">
     <span class="material-symbols-rounded">refresh</span>
+  </div>
+
+  <!-- PHOTO CROPPER — position and zoom before saving -->
+  <div id="cropOverlay" class="announce-overlay" hidden>
+    <div class="announce-card" role="dialog" aria-modal="true" aria-labelledby="cropHeading" style="max-width:380px;">
+      <div class="announce-body">
+        <h3 id="cropHeading">Adjust your photo</h3>
+        <p style="margin-bottom:16px;">Drag to move, pinch or use the slider to zoom.</p>
+
+        <div class="crop-stage" id="cropStage">
+          <img id="cropImage" alt="" draggable="false">
+          <div class="crop-mask"></div>
+        </div>
+
+        <div class="crop-zoom">
+          <span class="material-symbols-rounded">image</span>
+          <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1">
+          <span class="material-symbols-rounded" style="font-size:22px;">image</span>
+        </div>
+
+        <div class="crop-actions">
+          <button class="announce-skip" id="cropCancel" style="flex:1;">Cancel</button>
+          <button class="announce-cta" id="cropSave" style="flex:1;">Save photo</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- SHARE ATTENDANCE — opened from the Overall Performance card -->
@@ -328,8 +354,14 @@
 
           <!-- Main Hero Card -->
           <div style="background: white; border: 1px solid rgba(0,0,0,0.04); border-radius: 28px; padding: 30px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; display: flex; flex-direction: column; align-items: center; position: relative;">
-            <!-- Avatar -->
-            <div style="width: 84px; height: 84px; border-radius: 50%; background: #E8F5E9; color: #198754; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 500; margin-bottom: 16px;" id="profileLargeInitial">P</div>
+            <!-- Avatar — tap to set a photo -->
+            <div class="avatar-edit" id="avatarEdit">
+              <div style="width: 84px; height: 84px; border-radius: 50%; background: #E8F5E9; color: #198754; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 500; overflow: hidden;" id="profileLargeInitial">P</div>
+              <span class="avatar-edit-badge material-symbols-rounded">photo_camera</span>
+              <div class="avatar-edit-spinner hidden" id="avatarSpinner"><div class="spinner"></div></div>
+            </div>
+            <input type="file" id="avatarInput" accept="image/*" hidden>
+            <button id="avatarRemove" class="avatar-remove hidden">Remove photo</button>
             
             <!-- Name -->
             <h2 id="profileStudentName" style="font-size: 20px; font-weight: 700; color: var(--text-dark); margin: 0; text-align: center;">Student Name</h2>
@@ -556,6 +588,6 @@
     </div>
   </div>
 
-  <script src="js/parent.js?v=15"></script>
+  <script src="js/parent.js?v=20"></script>
 </body>
 </html>
