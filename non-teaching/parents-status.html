@@ -281,6 +281,7 @@
   </div>
 
   <!-- ══════════ FIREBASE ══════════ -->
+  <script src="js/profile-handler.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -312,6 +313,8 @@
         if (nm) nm.textContent = user.displayName || (user.email || '').split('@')[0];
         if (em) em.textContent = user.email || '';
         if (dot) dot.textContent = initials;
+        // Clicking the chip opens the name and photo editor.
+        if (typeof initProfileUpload === 'function') initProfileUpload(user.email);
 
         if (typeof window.fetchStatus === 'function') {
           window.fetchStatus(user);

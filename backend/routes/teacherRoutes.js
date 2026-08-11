@@ -475,7 +475,21 @@ router.get('/profile/email/:email', async (req, res) => {
 // ✅ UPDATE NAME ROUTE
 // ============================================================================
 
-router.patch('/profile/:email/name', async (req, res) => {
+// Only your own profile. The address in the URL is checked against the signed-in
+// account, so a member of staff cannot rename a colleague by editing the link.
+function ownProfileOnly(req, res, next) {
+  const asked = decodeURIComponent(req.params.email || '').toLowerCase().trim();
+  const signedIn = String(req.user?.email || '').toLowerCase().trim();
+  if (!signedIn || asked !== signedIn) {
+    return res.status(403).json({
+      success: false,
+      error: 'You can only change your own profile.'
+    });
+  }
+  next();
+}
+
+router.patch('/profile/:email/name', ownProfileOnly, async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email);
     const { name, firebaseUid } = req.body;
@@ -553,7 +567,7 @@ router.patch('/profile/:email/name', async (req, res) => {
 // ✅ UPDATE PROFILE IMAGE URL (CLOUDINARY SUPPORT)
 // ============================================================================
 
-router.patch('/profile/:email/image', async (req, res) => {
+router.patch('/profile/:email/image', ownProfileOnly, async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email);
     const { profileImageUrl } = req.body;
