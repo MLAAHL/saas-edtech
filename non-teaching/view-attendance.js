@@ -548,57 +548,31 @@ async function loadStreams() {
     }
 }
 
+// Every semester, always.
+//
+// This used to ask the server which semesters a stream had, and the server
+// answered from the students enrolled right now. So a semester whose students
+// had all moved on - promoted, graduated, or converted to another stream -
+// vanished from the list, taking its register with it, even though every
+// session was still recorded. BCA semester 1 is exactly that case: the class
+// converted to AI & ML, and three weeks of attendance became unreachable here.
+//
+// A register is a historical record, so the picker offers all six and lets the
+// subject list say whether anything was taught.
+const ALL_SEMESTERS = [1, 2, 3, 4, 5, 6];
+
 async function loadSemesters(stream) {
     const semesterSelect = document.getElementById('semesterSelect');
 
-    try {
-        semesterSelect.innerHTML = '<option value="">Loading...</option>';
+    if (!stream) {
+        semesterSelect.innerHTML = '<option value="">Select stream first</option>';
         semesterSelect.disabled = true;
-
-        if (!stream) {
-            semesterSelect.innerHTML = '<option value="">Select stream first</option>';
-            return;
-        }
-
-        console.log('📡 Fetching semesters for stream:', stream);
-
-        const authHeaders = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/streams/${encodeURIComponent(stream)}/semesters`, {
-            headers: {
-                ...authHeaders,
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('📦 Semesters API response:', data);
-
-        semesterSelect.innerHTML = '<option value="">-- Select Semester --</option>';
-
-        if (data.success && Array.isArray(data.semesters) && data.semesters.length > 0) {
-            data.semesters.forEach(semester => {
-                const option = document.createElement('option');
-                option.value = semester;
-                option.textContent = `Semester ${semester}`;
-                semesterSelect.appendChild(option);
-            });
-            semesterSelect.disabled = false;
-            console.log(`✅ Loaded ${data.semesters.length} semesters`);
-        } else {
-            throw new Error('No semesters found');
-        }
-
-    } catch (error) {
-        console.error('❌ Error loading semesters:', error);
-        semesterSelect.innerHTML = '<option value="">No semesters found</option>';
-        semesterSelect.disabled = true;
-        showNotification('Failed to load semesters', 'error');
+        return;
     }
+
+    semesterSelect.innerHTML = '<option value="">-- Select Semester --</option>' +
+        ALL_SEMESTERS.map(n => `<option value="${n}">Semester ${n}</option>`).join('');
+    semesterSelect.disabled = false;
 }
 
 async function loadSubjects(stream, semester) {
