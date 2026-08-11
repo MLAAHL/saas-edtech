@@ -53,11 +53,6 @@ a {
   text-decoration: none;
 }
 
-/* ── AUTH LOADING STATE ──────────────────────────────────────────────────── */
-body.auth-loading {
-  display: none !important;
-}
-
 /* ── SCROLLBARS ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;

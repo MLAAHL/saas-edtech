@@ -1,0 +1,98 @@
+/* The app shell.
+ *
+ * Every tab is a full page load, so the panel used to disappear and come back
+ * on each click. Two things caused that, and both are handled here.
+ *
+ * First: the whole page was hidden until Firebase had checked the session
+ * (`body.auth-loading { display: none }`). That check needs the Firebase SDK
+ * fetched from another host, so the screen stayed blank for as long as that
+ * took. The shell does not depend on the answer — only the data does — so the
+ * sidebar and heading are drawn straight away and a skeleton stands in for the
+ * content until it arrives.
+ *
+ * Second: navigating replaced the sidebar with an identical sidebar, which
+ * reads as a flicker. A view transition lets the browser carry the old frame
+ * into the new one, so the parts that did not change appear not to move.
+ */
+
+/* ── While the session is being checked ──────────────────────────────────── */
+
+/* The shell stays. Only what needs a signed-in user waits. */
+body.auth-loading .scroll > *,
+body.auth-loading .topbar-right,
+body.auth-loading .sb-profile {
+  visibility: hidden;
+}
+
+/* Something in the space the content will fill, so the panel does not read as
+   broken while it loads. Three bars is enough to say "loading" without
+   pretending to know the shape of what is coming. */
+body.auth-loading .scroll::before {
+  content: "";
+  display: block;
+  height: 76px;
+  border-radius: 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(
+    100deg,
+    var(--bg-card, #1A1A1D) 30%,
+    var(--bg-card-hover, #1F1F22) 50%,
+    var(--bg-card, #1A1A1D) 70%
+  );
+  background-size: 220% 100%;
+  animation: shellShimmer 1.1s ease-in-out infinite;
+}
+
+body.auth-loading .scroll::after {
+  content: "";
+  display: block;
+  height: 320px;
+  border-radius: 14px;
+  background: linear-gradient(
+    100deg,
+    var(--bg-card, #1A1A1D) 30%,
+    var(--bg-card-hover, #1F1F22) 50%,
+    var(--bg-card, #1A1A1D) 70%
+  );
+  background-size: 220% 100%;
+  animation: shellShimmer 1.1s ease-in-out infinite .12s;
+}
+
+@keyframes shellShimmer {
+  from { background-position: 180% 0; }
+  to   { background-position: -80% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.auth-loading .scroll::before,
+  body.auth-loading .scroll::after { animation: none; }
+}
+
+/* ── Moving between tabs ─────────────────────────────────────────────────── */
+
+/* Chrome carries the outgoing page into the incoming one rather than tearing
+   it down and rebuilding. Browsers without it navigate exactly as before.  */
+@view-transition { navigation: auto; }
+
+/* Named parts are matched across the two pages, so the browser understands
+   these are the same sidebar and the same panel rather than new ones. The
+   sidebar is told not to animate at all, which is what makes it look pinned. */
+.sidebar { view-transition-name: app-sidebar; }
+.main    { view-transition-name: app-main; }
+
+::view-transition-group(app-sidebar) { animation: none; }
+::view-transition-old(app-sidebar),
+::view-transition-new(app-sidebar) { animation: none; mix-blend-mode: normal; }
+
+/* The panel cross-fades quickly — enough to feel deliberate, short enough not
+   to feel like waiting. */
+::view-transition-old(app-main) { animation: shellOut .12s ease both; }
+::view-transition-new(app-main) { animation: shellIn .16s ease both; }
+
+@keyframes shellOut { to   { opacity: 0; } }
+@keyframes shellIn  { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(app-main),
+  ::view-transition-new(app-main) { animation: none; }
+}
