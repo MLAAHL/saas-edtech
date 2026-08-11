@@ -1,6 +1,6 @@
 {
   "appId": "com.mlaahl.parent",
-  "appName": "MLAAHL Parents App",
+  "appName": "MLAAHL",
   "webDir": "www",
   "server": {
     "url": "https://parents.mlaahl.online",

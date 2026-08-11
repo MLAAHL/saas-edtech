@@ -1,6 +1,6 @@
 {
-  "name": "MLAAHL Parents App",
-  "short_name": "MLAAHL Parents App",
+  "name": "MLAAHL",
+  "short_name": "MLAAHL",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#F8FAFC",
