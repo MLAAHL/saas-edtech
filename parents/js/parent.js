@@ -650,9 +650,8 @@ function pendingTab() {
 function goToNotificationTarget(data) {
   if (!data) return;
 
-  const link = String(data.linkUrl || '');
-  if (/^https?:\/\//i.test(link)) { window.open(link, '_blank', 'noopener'); return; }
-
+  // A tab inside the app, and nothing else. A notification never sends the
+  // reader out to a browser, whatever the payload asks for.
   const tab = String(data.actionTab || '');
   if (!NOTIFICATION_TABS.includes(tab)) return;
 

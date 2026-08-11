@@ -373,11 +373,12 @@ router.post('/:id/notify', async (req, res) => {
       });
     }
 
-    // The card already knows where its button goes; the notification lands in
-    // the same place, so tapping either does the same thing.
+    // The card already knows which tab its button opens, so the notification
+    // lands there too. A card whose button opens a link sends a notification
+    // that simply opens the app — the link stays on the card, where the reader
+    // can choose it, rather than a tap throwing them into a browser.
     const { sent, failed, devices } = await broadcast.deliver(
-      req.db, students, title, body, false,
-      { actionTab: doc.actionTab || '', linkUrl: doc.linkUrl || '' });
+      req.db, students, title, body, false, { actionTab: doc.actionTab || '' });
 
     // Recorded on the announcement so the panel can show it has already gone
     // out, and a second send is a deliberate choice rather than an accident.

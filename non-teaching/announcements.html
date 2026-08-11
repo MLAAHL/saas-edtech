@@ -440,16 +440,15 @@
             </label>
 
             <label class="fl">When they tap it</label>
-            <select id="nAction" style="margin-bottom:12px;">
-              <option value="">Just opens the app</option>
-              <option value="tab:daily">Go to Daily</option>
-              <option value="tab:full">Go to Overall</option>
-              <option value="tab:insights">Go to Insights</option>
-              <option value="tab:profile">Go to Profile</option>
-              <option value="link">Open a website</option>
+            <select id="nAction" style="margin-bottom:4px;">
+              <option value="">Opens the app</option>
+              <option value="tab:daily">Opens the app on Daily</option>
+              <option value="tab:full">Opens the app on Overall</option>
+              <option value="tab:insights">Opens the app on Insights</option>
+              <option value="tab:profile">Opens the app on Profile</option>
             </select>
-            <div id="nLinkRow" style="display:none;">
-              <input type="url" id="nLink" placeholder="https://…">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:14px;">
+              A notification always opens the app itself, never a browser.
             </div>
 
             <label class="fl">When</label>
@@ -537,7 +536,7 @@
     });
   </script>
 
-  <script src="js/announcements.js?v=6"></script>
+  <script src="js/announcements.js?v=7"></script>
 </body>
 
 </html>

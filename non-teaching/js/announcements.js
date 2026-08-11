@@ -549,25 +549,18 @@ async function checkPushAudience() {
 
 // ---------- where a tap lands ----------
 
-// One destination, never both: a notification can only open one thing.
+// A tab inside the app, or nothing. A notification never opens a browser, so
+// there is no link to carry.
 function pushActionPayload() {
   const v = el('nAction').value;
-  if (v.startsWith('tab:')) return { actionTab: v.slice(4), linkUrl: '' };
-  if (v === 'link') return { actionTab: '', linkUrl: el('nLink').value.trim() };
-  return { actionTab: '', linkUrl: '' };
-}
-
-function refreshPushAction() {
-  el('nLinkRow').style.display = el('nAction').value === 'link' ? 'block' : 'none';
+  return v.startsWith('tab:') ? { actionTab: v.slice(4) } : { actionTab: '' };
 }
 
 const PUSH_TAB_NAMES = { daily: 'Daily', full: 'Overall', insights: 'Insights', profile: 'Profile' };
 
 function pushActionLabel() {
   const a = pushActionPayload();
-  if (a.actionTab) return `opens the ${PUSH_TAB_NAMES[a.actionTab]} tab`;
-  if (a.linkUrl) return `opens ${a.linkUrl}`;
-  return 'just opens the app';
+  return a.actionTab ? `opens the app on ${PUSH_TAB_NAMES[a.actionTab]}` : 'opens the app';
 }
 
 // ---------- when to send ----------
@@ -653,10 +646,6 @@ async function sendPush() {
   if (later) {
     if (!when) { toast('Pick a date and time to send it'); return; }
     if (when.getTime() < Date.now()) { toast('That time has already passed'); return; }
-  }
-  if (el('nAction').value === 'link' && !/^https?:\/\//i.test(act.linkUrl)) {
-    toast('Enter a full web address starting with https://');
-    return;
   }
 
   const ask = later
@@ -848,7 +837,6 @@ document.addEventListener('DOMContentLoaded', () => {
   ['nTitle', 'nBody'].forEach(id =>
     el(id).addEventListener('input', refreshPushPreview));
   el('nPersonalise').addEventListener('change', refreshPushPreview);
-  el('nAction').addEventListener('change', refreshPushAction);
   el('nPreviewBtn').addEventListener('click', checkPushAudience);
   el('nSendBtn').addEventListener('click', sendPush);
 
@@ -886,8 +874,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el('nTitle').value = '';
     el('nBody').value = '';
     el('nAction').value = '';
-    el('nLink').value = '';
-    refreshPushAction();
     pushAud.reset();
     el('nPreviewBox').innerHTML =
       'Press <strong style="color:var(--text-primary);">Check who gets it</strong> ' +
@@ -918,7 +904,6 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshActionRows();
   refreshPreview();
   refreshPushPreview();
-  refreshPushAction();
   setWhen('now');
   showPane('cards');
   loadQueue();

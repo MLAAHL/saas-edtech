@@ -24,9 +24,10 @@ self.addEventListener('push', function(event) {
   }
 });
 
-// Tapping a notification can land on a particular tab, or open a link. The
-// destination travels in the payload, so the sender decides it rather than
-// every alert dropping the reader on the same screen.
+// Tapping a notification opens the app, and only ever the app. The sender can
+// name a tab so the reader lands on what the message was about, but a tap never
+// leaves for a browser — a parent who taps an attendance alert should find
+// themselves in the app they installed, not on a web page.
 const ALLOWED_TABS = ['daily', 'full', 'insights', 'profile'];
 
 self.addEventListener('notificationclick', function(event) {
@@ -34,17 +35,13 @@ self.addEventListener('notificationclick', function(event) {
 
   const data = event.notification.data || {};
   const tab = ALLOWED_TABS.indexOf(data.actionTab) !== -1 ? data.actionTab : '';
-  const link = /^https?:\/\//i.test(data.linkUrl || '') ? data.linkUrl : '';
 
-  // A link goes out to the browser; anything else stays in the app.
-  const target = link || (tab ? '/?tab=' + tab : '/');
+  // Always this origin. Nothing from the payload can redirect the tap
+  // somewhere else, whatever it contains.
+  const target = tab ? '/?tab=' + tab : '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      if (link) {
-        return clients.openWindow(link);
-      }
-
       // Already open: focus it and tell it which tab to show, rather than
       // reloading and losing whatever the reader was looking at.
       for (let i = 0; i < clientList.length; i++) {

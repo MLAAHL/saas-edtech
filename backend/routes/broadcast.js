@@ -77,25 +77,19 @@ async function resolveAudience(db, { studentIDs, stream, semester, onlyReachable
  * sending notifications would drift, and the one that drifted would be the one
  * nobody was watching.
  */
-// Where tapping the notification should land. A tab inside the app, or a link
-// out. Whitelisted, because the value is handed straight to the app's own
-// navigation, and http(s) only so a stored link can never become a javascript:
-// payload on someone's phone.
+// Where tapping the notification lands: a tab inside the app, and nothing else.
+// No URL is carried at all, so a tap can never send a parent out to a browser —
+// not by configuration, not by a malformed payload, not by mistake.
 const TABS = ['daily', 'full', 'insights', 'profile'];
 
 function readAction(body) {
-  const tab = TABS.includes(String(body.actionTab || '').trim())
-    ? String(body.actionTab).trim() : '';
-  const raw = String(body.linkUrl || '').trim();
-  const link = /^https?:\/\//i.test(raw) ? raw.slice(0, 500) : '';
-  // One destination, never both — a tap can only go to one place.
-  return tab ? { actionTab: tab, linkUrl: '' } : { actionTab: '', linkUrl: link };
+  const tab = String(body.actionTab || '').trim();
+  return { actionTab: TABS.includes(tab) ? tab : '' };
 }
 
 async function deliver(db, students, title, body, personalised, action = {}) {
   const col = db.collection('students');
-  const actionTab = action.actionTab || '';
-  const linkUrl = action.linkUrl || '';
+  const actionTab = TABS.includes(action.actionTab) ? action.actionTab : '';
   const messages = [];
   const tokenOwner = {};
   const webPushTasks = [];
@@ -118,7 +112,7 @@ async function deliver(db, students, title, body, personalised, action = {}) {
           // Every value in an FCM data payload must be a string.
           data: {
             type: 'announcement', title: t, body: b,
-            actionTab, linkUrl,
+            actionTab,
             timestamp: Date.now().toString()
           },
           android: {
@@ -147,7 +141,7 @@ async function deliver(db, students, title, body, personalised, action = {}) {
       const payload = JSON.stringify({
         title: t, body: b,
         data: {
-          type: 'announcement', actionTab, linkUrl,
+          type: 'announcement', actionTab,
           timestamp: Date.now().toString()
         }
       });
