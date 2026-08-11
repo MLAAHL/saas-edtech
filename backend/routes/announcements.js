@@ -315,9 +315,15 @@ router.get('/:id/notify-preview', async (req, res) => {
     const all = await broadcast.resolveAudience(req.db, q);
     const reachable = await broadcast.resolveAudience(req.db, { ...q, onlyReachable: true });
 
+    // The same trim the send applies, so the panel shows the sentence that
+    // will actually arrive rather than the longer one on the card.
+    const full = clean(doc.body, MAX_BODY);
+    const body = full.length > 160 ? full.slice(0, 157).trimEnd() + '…' : full;
+
     res.json({
       success: true,
       title: doc.title,
+      body,
       audienceLabel: audienceLabel(doc.audience),
       total: all.length,
       reachable: reachable.length,

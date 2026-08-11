@@ -492,6 +492,11 @@ function refreshPushPreview() {
   el('nCount').textContent = `${el('nBody').value.length} / 500`;
 }
 
+// Remembered so the confirmation can show the real number rather than the size
+// of the group. Tied to the audience it was measured for, so changing the
+// audience afterwards does not leave a stale figure on screen.
+let lastReachCheck = null;
+
 async function checkPushAudience() {
   const box = el('nPreviewBox');
   const btn = el('nPreviewBtn');
@@ -510,6 +515,11 @@ async function checkPushAudience() {
     });
     const d = await res.json();
     if (!d.success) throw new Error(d.error);
+
+    lastReachCheck = {
+      for: pushAud.label(),
+      total: d.total, reachable: d.reachable, unreachable: d.unreachable
+    };
 
     const classes = Object.entries(d.byClass || {})
       .sort((a, b) => b[1] - a[1]).slice(0, 6)
@@ -545,6 +555,51 @@ async function checkPushAudience() {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ---------- confirming a send ----------
+//
+// Replaces the browser's one-line box. This send reaches hundreds of phones at
+// once and cannot be recalled, so it is worth showing the message as the parent
+// will see it, next to who is getting it and when.
+
+let cfmResolve = null;
+
+function closeConfirm(answer) {
+  const overlay = el('confirmOverlay');
+  if (overlay.hidden) return;
+  overlay.hidden = true;
+  document.removeEventListener('keydown', cfmKeys);
+  const resolve = cfmResolve;
+  cfmResolve = null;
+  if (resolve) resolve(answer);
+}
+
+function cfmKeys(e) {
+  if (e.key === 'Escape') closeConfirm(false);
+  if (e.key === 'Enter') closeConfirm(true);
+}
+
+function askConfirm({ heading, title, body, rows, warn, goLabel, scheduled }) {
+  el('cfmHeading').textContent = heading;
+  el('cfmTitle').textContent = title;
+  el('cfmBody').textContent = body;
+  el('cfmIcon').classList.toggle('scheduled', !!scheduled);
+  el('cfmIcon').querySelector('.material-symbols-rounded').textContent =
+    scheduled ? 'schedule' : 'notifications_active';
+
+  el('cfmRows').innerHTML = rows
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('');
+
+  el('cfmWarn').textContent = warn;
+  el('cfmGo').textContent = goLabel;
+
+  el('confirmOverlay').hidden = false;
+  document.addEventListener('keydown', cfmKeys);
+  // Focus Cancel, not Send: a stray Enter should not fire this off.
+  setTimeout(() => el('cfmCancel').focus(), 30);
+
+  return new Promise(resolve => { cfmResolve = resolve; });
 }
 
 // ---------- where a tap lands ----------
@@ -648,23 +703,36 @@ async function sendPush() {
     if (when.getTime() < Date.now()) { toast('That time has already passed'); return; }
   }
 
-  const ask = later
-    ? `Schedule this notification?\n\n` +
-      `To: ${pushAud.label()} — up to ${reach} students\n` +
-      `Title: ${title}\n` +
-      `Tapping it: ${pushActionLabel()}\n` +
-      `Sends: ${when.toLocaleString('en-IN',
-        { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}\n\n` +
-      `You can cancel it any time before then.`
-    // Spelled out in full, because sending now reaches people instantly and
-    // cannot be undone.
-    : `Send this notification now?\n\n` +
-      `To: ${pushAud.label()} — up to ${reach} students\n` +
-      `Title: ${title}\n` +
-      `Tapping it: ${pushActionLabel()}\n\n` +
-      `It arrives on their phone immediately and cannot be taken back.`;
+  // The audience count comes from the checker if it has been run, because it
+  // knows how many can actually be reached; otherwise fall back to the size of
+  // the group and say so.
+  const rows = [
+    ['To', `${esc(pushAud.label())}`],
+    ['Reaches', lastReachCheck && lastReachCheck.for === pushAud.label()
+      ? `<span class="count">${lastReachCheck.reachable}</span> of ${lastReachCheck.total} students` +
+        (lastReachCheck.unreachable
+          ? ` <span style="color:var(--amber)">· ${lastReachCheck.unreachable} unreachable</span>` : '')
+      : `up to <span class="count">${reach}</span> students ` +
+        `<span style="color:var(--text-muted)">(press Check who gets it for the exact number)</span>`],
+    ['On tap', esc(pushActionLabel())],
+    ['When', later
+      ? esc(when.toLocaleString('en-IN', { weekday: 'long', day: 'numeric', month: 'short',
+                                           hour: 'numeric', minute: '2-digit' }))
+      : 'Immediately']
+  ];
+  if (el('nPersonalise').checked) rows.push(['Names', "Each parent sees their own child's name"]);
 
-  if (!confirm(ask)) return;
+  const ok = await askConfirm({
+    scheduled: later,
+    heading: later ? 'Schedule this notification?' : 'Send this notification now?',
+    title, body,
+    rows,
+    warn: later
+      ? 'You can cancel it any time before it sends.'
+      : 'It arrives on their phones straight away and cannot be taken back.',
+    goLabel: later ? 'Schedule it' : 'Send now'
+  });
+  if (!ok) return;
 
   const btn = el('nSendBtn');
   const original = btn.textContent;
@@ -781,20 +849,32 @@ async function sendNotification(btn) {
       return;
     }
 
-    let ask = `Send "${p.title}" as a notification?\n\n` +
-              `To: ${p.audienceLabel}\n` +
-              `It will reach ${p.reachable} of ${p.total} students.`;
+    const rows = [
+      ['To', esc(p.audienceLabel || 'Everyone')],
+      ['Reaches', `<span class="count">${p.reachable}</span> of ${p.total} students` +
+        (p.unreachable
+          ? ` <span style="color:var(--amber)">· ${p.unreachable} unreachable</span>` : '')],
+      ['When', 'Immediately']
+    ];
     if (p.unreachable > 0) {
-      ask += `\n${p.unreachable} have no app or notifications off — they will still see the card.`;
+      rows.push(['Note', `The ${p.unreachable} without notifications still see the card in the app.`]);
     }
-    if (p.alreadySentAt) {
-      ask += `\n\nThis was already sent on ` +
-             `${new Date(p.alreadySentAt).toLocaleDateString('en-IN')}. ` +
-             `Sending again means those parents get it a second time.`;
-    }
-    ask += '\n\nThis cannot be undone.';
 
-    if (!confirm(ask)) return;
+    // A second send means those parents are told twice, so it is stated rather
+    // than left for the sender to remember.
+    const warn = p.alreadySentAt
+      ? `Already sent on ${new Date(p.alreadySentAt).toLocaleDateString('en-IN')}. ` +
+        `Sending again means those parents receive it a second time. This cannot be undone.`
+      : 'It arrives on their phones straight away and cannot be taken back.';
+
+    const ok = await askConfirm({
+      heading: p.alreadySentAt ? 'Send this a second time?' : 'Send this as a notification?',
+      title: p.title,
+      body: p.body || '',
+      rows, warn,
+      goLabel: p.alreadySentAt ? 'Send again' : 'Send now'
+    });
+    if (!ok) return;
 
     btn.textContent = 'Sending…';
     const sendRes = await fetch(`${API}/announcements/${id}/notify`, {
@@ -839,6 +919,14 @@ document.addEventListener('DOMContentLoaded', () => {
   el('nPersonalise').addEventListener('change', refreshPushPreview);
   el('nPreviewBtn').addEventListener('click', checkPushAudience);
   el('nSendBtn').addEventListener('click', sendPush);
+
+  // The send confirmation
+  el('cfmCancel').addEventListener('click', () => closeConfirm(false));
+  el('cfmGo').addEventListener('click', () => closeConfirm(true));
+  el('confirmOverlay').addEventListener('click', (e) => {
+    // Clicking the dim area behind the card cancels, the same as Escape.
+    if (e.target === el('confirmOverlay')) closeConfirm(false);
+  });
 
   // When to send
   el('nWhenChoice').addEventListener('click', e => {

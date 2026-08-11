@@ -170,6 +170,63 @@
     .pill.live { background: var(--green-dim); color: var(--green); }
     .pill.off { background: var(--bg-elevated); color: var(--text-muted); }
 
+    /* ── Send confirmation ─────────────────────────────────────────────── */
+    .cfm-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      animation: cfmFade .16s ease;
+    }
+    .cfm-overlay[hidden] { display: none; }
+    @keyframes cfmFade { from { opacity: 0; } }
+
+    .cfm-card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: 16px; padding: 24px; width: 100%; max-width: 420px;
+      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, .7);
+      animation: cfmRise .18s ease;
+      max-height: 90vh; overflow-y: auto;
+    }
+    @keyframes cfmRise { from { transform: translateY(8px); opacity: 0; } }
+
+    .cfm-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: var(--purple-dim); color: var(--purple);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .cfm-icon.scheduled { background: var(--amber-dim); color: var(--amber); }
+    .cfm-card h2 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+
+    /* What the parent will actually see, rather than a description of it. */
+    .cfm-phone {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+    }
+    .cfm-phone-app {
+      font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .08em; margin-bottom: 5px;
+    }
+    .cfm-phone-title { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; }
+    .cfm-phone-body { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+
+    .cfm-rows { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin-bottom: 16px; }
+    .cfm-rows dt {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--text-muted); white-space: nowrap;
+    }
+    .cfm-rows dd { font-size: 12.5px; color: var(--text-primary); margin: 0; }
+    .cfm-rows dd .count { font-weight: 700; }
+
+    .cfm-warn {
+      font-size: 12px; color: var(--amber); background: var(--amber-dim);
+      border-radius: 8px; padding: 10px 12px; margin-bottom: 18px; line-height: 1.45;
+    }
+    .cfm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .cfm-actions .btn { min-width: 96px; }
+
     #toast {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
       background: var(--bg-elevated); border: 1px solid var(--border-hover);
@@ -514,6 +571,32 @@
     </div>
   </div>
 
+  <!-- Confirming a send. The one action on this page that reaches hundreds of
+       phones at once, so it is shown in full rather than in a one-line box. -->
+  <div id="confirmOverlay" class="cfm-overlay" hidden>
+    <div class="cfm-card" role="dialog" aria-modal="true" aria-labelledby="cfmHeading">
+      <div class="cfm-icon" id="cfmIcon">
+        <span class="material-symbols-rounded">notifications_active</span>
+      </div>
+      <h2 id="cfmHeading">Send this notification?</h2>
+
+      <div class="cfm-phone">
+        <div class="cfm-phone-app">MLA Academy</div>
+        <div class="cfm-phone-title" id="cfmTitle"></div>
+        <div class="cfm-phone-body" id="cfmBody"></div>
+      </div>
+
+      <dl class="cfm-rows" id="cfmRows"></dl>
+
+      <p class="cfm-warn" id="cfmWarn"></p>
+
+      <div class="cfm-actions">
+        <button class="btn btn-ghost" id="cfmCancel">Cancel</button>
+        <button class="btn btn-primary" id="cfmGo">Send now</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script type="module">
@@ -536,7 +619,7 @@
     });
   </script>
 
-  <script src="js/announcements.js?v=7"></script>
+  <script src="js/announcements.js?v=8"></script>
 </body>
 
 </html>
