@@ -1,47 +1,4 @@
-/* Profile Upload Styles */
-.avatar-pill {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-}
 
-.avatar-pill:hover {
-    background: var(--bg-card-hover) !important;
-    border-color: var(--border-hover) !important;
-    transform: translateY(-1px);
-}
-
-.avatar-pill:active {
-    transform: translateY(0);
-}
-
-.avatar-pill::after {
-    content: 'Update Photo';
-    position: absolute;
-    top: 100%;
-    right: 12px;
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 10px;
-    font-weight: 600;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    white-space: nowrap;
-    margin-top: 10px;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 100;
-    pointer-events: none;
-}
-
-.avatar-pill:hover::after {
-    opacity: 1;
-    visibility: visible;
-    margin-top: 6px;
-}
 
 @keyframes spin {
     from { transform: rotate(0deg); }

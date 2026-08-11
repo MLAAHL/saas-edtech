@@ -176,6 +176,58 @@
   padding-top: 12px;
 }
 
+/* Who is signed in. It sat in each page's header, which meant it moved about
+   and was missing on two pages; here it is in the same corner everywhere,
+   beside the button that signs them out. */
+.sb-profile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+
+.sb-profile-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--purple-dim);
+  color: var(--purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;          /* a photo is dropped in here as an <img> */
+  text-transform: uppercase;
+}
+
+.sb-profile-dot img { width: 100%; height: 100%; object-fit: cover; }
+
+/* min-width:0 on both, so a long address ellipsises instead of pushing the
+   sidebar wider than it should be. */
+.sb-profile-info { min-width: 0; }
+
+.sb-profile-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-profile-email {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sb-logout {
   display: flex;
   align-items: center;

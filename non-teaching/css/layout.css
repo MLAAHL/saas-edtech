@@ -35,44 +35,6 @@
   gap: 10px;
 }
 
-.avatar-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px 4px 4px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 40px;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-}
-
-.avatar-pill:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-hover);
-  transform: translateY(-1px);
-}
-
-.avatar-pill:active { transform: translateY(0); }
-
-.avatar-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366F1, #A78BFA);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  overflow: hidden;
-}
-
-.avatar-info .av-name { font-size: 11px; font-weight: 600; }
-.avatar-info .av-email { font-size: 9px; color: var(--text-muted); }
-
 /* ── SCROLL AREA ─────────────────────────────────────────────────────────── */
 .scroll {
   flex: 1;

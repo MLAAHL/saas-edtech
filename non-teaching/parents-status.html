@@ -178,6 +178,13 @@
     <div class="sb-divider"></div>
 
     <div class="sb-bottom">
+      <div class="sb-profile">
+        <div class="sb-profile-dot" id="headerAvatar"></div>
+        <div class="sb-profile-info">
+          <div class="sb-profile-name" id="headerUserFullName"></div>
+          <div class="sb-profile-email" id="headerUserEmail"></div>
+        </div>
+      </div>
       <button class="sb-logout" id="logoutBtn">
         <span class="material-symbols-rounded">logout</span> Log Out
       </button>
@@ -294,6 +301,18 @@
         window.location.replace("./");
       } else {
         document.body.classList.remove('auth-loading');
+
+        // Show who is signed in, in the sidebar.
+        const initials = (user.displayName || user.email || '?')
+          .replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
+          .slice(0, 2).map(w => w[0]).join('');
+        const dot = document.getElementById('headerAvatar');
+        const nm = document.getElementById('headerUserFullName');
+        const em = document.getElementById('headerUserEmail');
+        if (nm) nm.textContent = user.displayName || (user.email || '').split('@')[0];
+        if (em) em.textContent = user.email || '';
+        if (dot) dot.textContent = initials;
+
         if (typeof window.fetchStatus === 'function') {
           window.fetchStatus(user);
           // Periodically refresh every 10 seconds
