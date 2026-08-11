@@ -439,6 +439,19 @@
               Address each parent by their child's name
             </label>
 
+            <label class="fl">When they tap it</label>
+            <select id="nAction" style="margin-bottom:12px;">
+              <option value="">Just opens the app</option>
+              <option value="tab:daily">Go to Daily</option>
+              <option value="tab:full">Go to Overall</option>
+              <option value="tab:insights">Go to Insights</option>
+              <option value="tab:profile">Go to Profile</option>
+              <option value="link">Open a website</option>
+            </select>
+            <div id="nLinkRow" style="display:none;">
+              <input type="url" id="nLink" placeholder="https://…">
+            </div>
+
             <label class="fl">When</label>
             <div id="nWhenChoice" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
               <button type="button" class="aud-btn active" data-when="now">Send now</button>
@@ -524,7 +537,7 @@
     });
   </script>
 
-  <script src="js/announcements.js?v=5"></script>
+  <script src="js/announcements.js?v=6"></script>
 </body>
 
 </html>

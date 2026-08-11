@@ -24,19 +24,41 @@ self.addEventListener('push', function(event) {
   }
 });
 
+// Tapping a notification can land on a particular tab, or open a link. The
+// destination travels in the payload, so the sender decides it rather than
+// every alert dropping the reader on the same screen.
+const ALLOWED_TABS = ['daily', 'full', 'insights', 'profile'];
+
 self.addEventListener('notificationclick', function(event) {
-  console.log('[Service Worker] Notification click Received.');
   event.notification.close();
+
+  const data = event.notification.data || {};
+  const tab = ALLOWED_TABS.indexOf(data.actionTab) !== -1 ? data.actionTab : '';
+  const link = /^https?:\/\//i.test(data.linkUrl || '') ? data.linkUrl : '';
+
+  // A link goes out to the browser; anything else stays in the app.
+  const target = link || (tab ? '/?tab=' + tab : '/');
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      if (link) {
+        return clients.openWindow(link);
+      }
+
+      // Already open: focus it and tell it which tab to show, rather than
+      // reloading and losing whatever the reader was looking at.
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url.indexOf(self.location.origin) === 0 && 'focus' in client) {
+          if (tab && client.postMessage) {
+            client.postMessage({ type: 'open-tab', tab: tab });
+          }
           return client.focus();
         }
       }
+
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(target);
       }
     })
   );

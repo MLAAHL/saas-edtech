@@ -77,8 +77,25 @@ async function resolveAudience(db, { studentIDs, stream, semester, onlyReachable
  * sending notifications would drift, and the one that drifted would be the one
  * nobody was watching.
  */
-async function deliver(db, students, title, body, personalised) {
+// Where tapping the notification should land. A tab inside the app, or a link
+// out. Whitelisted, because the value is handed straight to the app's own
+// navigation, and http(s) only so a stored link can never become a javascript:
+// payload on someone's phone.
+const TABS = ['daily', 'full', 'insights', 'profile'];
+
+function readAction(body) {
+  const tab = TABS.includes(String(body.actionTab || '').trim())
+    ? String(body.actionTab).trim() : '';
+  const raw = String(body.linkUrl || '').trim();
+  const link = /^https?:\/\//i.test(raw) ? raw.slice(0, 500) : '';
+  // One destination, never both — a tap can only go to one place.
+  return tab ? { actionTab: tab, linkUrl: '' } : { actionTab: '', linkUrl: link };
+}
+
+async function deliver(db, students, title, body, personalised, action = {}) {
   const col = db.collection('students');
+  const actionTab = action.actionTab || '';
+  const linkUrl = action.linkUrl || '';
   const messages = [];
   const tokenOwner = {};
   const webPushTasks = [];
@@ -98,7 +115,12 @@ async function deliver(db, students, title, body, personalised) {
         messages.push({
           token,
           notification: { title: t, body: b },
-          data: { type: 'announcement', title: t, body: b, timestamp: Date.now().toString() },
+          // Every value in an FCM data payload must be a string.
+          data: {
+            type: 'announcement', title: t, body: b,
+            actionTab, linkUrl,
+            timestamp: Date.now().toString()
+          },
           android: {
             priority: 'high',
             ttl: ALERT_TTL_MS,
@@ -124,7 +146,10 @@ async function deliver(db, students, title, body, personalised) {
       if (!sub || !sub.endpoint) return;
       const payload = JSON.stringify({
         title: t, body: b,
-        data: { type: 'announcement', timestamp: Date.now().toString() }
+        data: {
+          type: 'announcement', actionTab, linkUrl,
+          timestamp: Date.now().toString()
+        }
       });
       webPushTasks.push(
         webpush.sendNotification(sub, payload, { urgency: 'high', TTL: ALERT_TTL_SECONDS })
@@ -250,7 +275,7 @@ router.post('/send', async (req, res) => {
     }
 
     const { sent, failed, devices } = await deliver(
-      req.db, students, cleanTitle, cleanBody, personalised);
+      req.db, students, cleanTitle, cleanBody, personalised, readAction(req.body));
 
     const audience = (Array.isArray(studentIDs) && studentIDs.length)
       ? `${students.length} selected student(s)`
@@ -362,6 +387,7 @@ router.post('/schedule', async (req, res) => {
       title: cleanTitle,
       body: cleanBody,
       personalised: !!personalised,
+      action: readAction(req.body),
       audience,
       audienceLabel: label,
       sendAt: when,

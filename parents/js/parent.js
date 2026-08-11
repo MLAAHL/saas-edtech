@@ -132,6 +132,14 @@ async function safeRegisterPush(studentID) {
             document.head.appendChild(style);
           }
         });
+
+        // The reader tapped the notification. The sender can point it at a tab
+        // or a link, so the tap lands where the message is about instead of
+        // always on the dashboard.
+        PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+          const data = (action && action.notification && action.notification.data) || {};
+          goToNotificationTarget(data);
+        });
       }
       return;
     }
@@ -458,8 +466,10 @@ function setupDashboard(student) {
 
   showScreen('dashboardScreen');
   setTodayDate();
-  switchTab('daily');
-  
+  // Opened from a notification that names a tab? Start there instead of on
+  // Daily, so the reader lands on what the alert was about.
+  switchTab(pendingTab() || 'daily');
+
   reportActivity(currentStudent.studentID);
   startHeartbeat(currentStudent.studentID);
   safeRegisterPush(currentStudent.studentID);
@@ -616,6 +626,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ===== TABS =====
+// ---------------------------------------------------------------------------
+// Where a tapped notification lands
+// ---------------------------------------------------------------------------
+//
+// Three ways in, one destination. Android taps arrive through Capacitor, web
+// push taps arrive from the service worker — either as a message to an app
+// that is already open, or as ?tab= on a cold start.
+
+const NOTIFICATION_TABS = ['daily', 'full', 'insights', 'profile'];
+
+// Read once and cleared from the address bar, so a refresh later does not
+// send the reader back to the same tab.
+function pendingTab() {
+  try {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (!NOTIFICATION_TABS.includes(tab)) return '';
+    history.replaceState({}, '', window.location.pathname);
+    return tab;
+  } catch { return ''; }
+}
+
+function goToNotificationTarget(data) {
+  if (!data) return;
+
+  const link = String(data.linkUrl || '');
+  if (/^https?:\/\//i.test(link)) { window.open(link, '_blank', 'noopener'); return; }
+
+  const tab = String(data.actionTab || '');
+  if (!NOTIFICATION_TABS.includes(tab)) return;
+
+  // If the dashboard has not been drawn yet the tab buttons do not exist, so
+  // remember it and let the sign-in finish the job.
+  if (document.getElementById('dashboardScreen')?.classList.contains('active')) {
+    switchTab(tab);
+  } else {
+    try { history.replaceState({}, '', '?tab=' + tab); } catch { /* ignore */ }
+  }
+}
+
+// The service worker focuses an already-open app and tells it where to go.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const d = event.data;
+    if (d && d.type === 'open-tab') goToNotificationTarget({ actionTab: d.tab });
+  });
+}
+
 function switchTab(tab) {
   document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
   const activeNav = document.querySelector(`.nav-item[data-tab="${tab}"]`);

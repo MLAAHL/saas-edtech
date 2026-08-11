@@ -69,7 +69,7 @@ async function runOne(db, job) {
     }
 
     const { sent, failed, devices } = await broadcast.deliver(
-      db, students, job.title, job.body, !!job.personalised);
+      db, students, job.title, job.body, !!job.personalised, job.action || {});
 
     await db.collection(COLLECTION).updateOne({ _id: job._id }, {
       $set: {

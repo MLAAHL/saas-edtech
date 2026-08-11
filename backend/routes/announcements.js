@@ -373,8 +373,11 @@ router.post('/:id/notify', async (req, res) => {
       });
     }
 
+    // The card already knows where its button goes; the notification lands in
+    // the same place, so tapping either does the same thing.
     const { sent, failed, devices } = await broadcast.deliver(
-      req.db, students, title, body, false);
+      req.db, students, title, body, false,
+      { actionTab: doc.actionTab || '', linkUrl: doc.linkUrl || '' });
 
     // Recorded on the announcement so the panel can show it has already gone
     // out, and a second send is a deliberate choice rather than an accident.
