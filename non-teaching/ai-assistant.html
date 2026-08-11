@@ -5,6 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- Painted before anything else loads. Without this the browser shows its
+       own white canvas while the stylesheets are still arriving, which reads as
+       a flash on every page change. color-scheme also darkens the scrollbars
+       and any native control before the CSS lands. -->
+  <meta name="color-scheme" content="dark">
+  <style>html{background:#0C0C0E;color-scheme:dark}</style>
   <title>AI Assistant | Admin Panel</title>
   <link rel="icon" type="image/png" href="logo2.png" />
   <script src="js/config.js"></script>
