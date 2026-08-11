@@ -58,30 +58,28 @@
 .sb-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 10px 14px;
+  /* A full pill rather than a rounded rectangle. It reads as one selected
+   * object instead of a panel with a marker attached to it. */
+  border-radius: 100px;
   text-decoration: none;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
   position: relative;
 }
 
 .sb-link:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--text-primary);
 }
 
-/* The border replaces 3px of the left padding rather than adding to it, so the
- * label does not shift sideways when a page becomes the active one. */
 .sb-link.active {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary);
+  background: var(--purple-dim);
+  color: var(--purple);
   font-weight: 600;
-  border-left: 3px solid var(--purple);
-  padding-left: 7px;
 }
 
 .sb-link:focus-visible {
@@ -89,7 +87,18 @@
   outline-offset: -2px;
 }
 
-.sb-link .material-symbols-rounded { font-size: 18px; }
+.sb-link .material-symbols-rounded {
+  font-size: 20px;
+  /* The icon fills in on the selected tab. Same glyph, solid instead of
+   * outlined — which is why every page has to request the variable font, or
+   * the axis is fixed and this does nothing. */
+  font-variation-settings: 'FILL' 0, 'wght' 400;
+  transition: font-variation-settings 0.15s;
+}
+
+.sb-link.active .material-symbols-rounded {
+  font-variation-settings: 'FILL' 1, 'wght' 500;
+}
 
 .sb-link .badge {
   margin-left: auto;
